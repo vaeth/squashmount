@@ -8,15 +8,15 @@ depend() {
 description='mount/umount all squashmount configured mountpoints'
 
 start() {
-	ebegin 'mounting all squashmount configure mountpoints'
+	ebegin 'mounting all squashmount configured mountpoints'
 	squashmount mount
 	eend ${?}
+	# Succeed also if some mountpoint fail to force umount:
 	:
 }
 
 stop() {
-	ebegin 'umounting all squashmount configure mountpoints'
+	ebegin 'umounting all squashmount configured mountpoints'
 	squashmount umount
 	eend ${?}
-	:
 }

@@ -990,10 +990,10 @@ sub cmd_remount(\%\%) {
 	my ($will_squash, $will_remove) =
 		&check_squash($current, $user_config, $threshold, $kill, $user_config->{'BLOCKSIZE'});
 	unless($force || $will_squash || ($will_remove > 0)) {
-		&infotag($tag, 'remounting appears unnecessary. Use -f to force');
+		&infotag($tag, 'remounting appears unnecessary');
 		return 1
 	}
-	&title("remounting $tag") if($printed_title);
+	&title("$tag remount") if($printed_title);
 	return '' unless(&umount_main($current, $user_config, $will_squash, $will_remove, $tag));
 	return &cmd_mount($current, $user_config)
 }
@@ -1157,7 +1157,7 @@ sub umount_main(\%\%$$) {
 	}
 	if($created) {
 		my $squashfile = $current->{'FILE'};
-		my $backup = $current->{'BACKUP'};
+		my $backup = $user_config->{'BACKUP'};
 		if(&is_abspath($backup)) {
 			&infotag($tag, "$squashfile -> $backup") unless($quiet);
 			unlink($backup);
@@ -1177,7 +1177,7 @@ sub umount_main(\%\%$$) {
 	delete $user_config->{'TYPE'};
 	return 1 unless($will_remove);
 	my $changes = $current->{'CHANGES'};
-	&title("cleaning $tag");
+	&title("$tag cleaning");
 	&infotag($tag, 'cleaning directory...') unless($quiet);
 	return &clean_directory($changes)
 }
@@ -1333,7 +1333,7 @@ sub mksquashfs($$\%\%) {
 	push(@options, '-comp', $compression) if($compression ne '');
 	&push_ref(\@options, $user_config->{'MKSQUASHFS'}, undef);
 	my $tag = $user_config->{'TAG'};
-	&title("squashing $tag");
+	&title("$tag squashing");
 	my $oldout = undef;
 	if($squash_verbose != 2) {
 		open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', '/dev/null')
@@ -2041,5 +2041,5 @@ exit($exitstatus);
 
 END {
 	&title(($? == 0) ? 'squashmount finished' : 'squashmount failed')
-		if($printed_title)
+		if(defined($printed_title) && $printed_title)
 }
