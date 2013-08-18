@@ -9,19 +9,20 @@ _arguments -C -s -S -A '-*' : \
 '*'{'-q','--quiet'}'[be more quiet (accumulative)]' \
 {'*-c+','*--config='}'[CONFIGFILE (add CONFIGFILE to list)]:configfile:_files' \
 {'(--rundir)-r+','(-r)--rundir='}'[DIR (runtime config dir /run/squash_dir)]:runtime config dir:_files -/' \
-{'(--squash --nosquash --no-squash --threshold -s -n)-t+','(--squash --nosquash --no-squash -s -n -t)--threshold='}'[THRESHOLD (set threshold size)]:threshold size:(0 1m 10m 20m 30m 40m 500k 600k 700k 800k 900k "")' \
-{'(--squash --nosquash --no-squash --threshold -n -t)-s','(--nosquash --no-squash --threshold -n -t)--squash'}'[do resquash\: -t 0]' \
-{'(--squash --nosquash --no-squash --threshold -s -t)-n','(--squash --no-squash --threshold -s -n -t)--nosquash','(--squash --nosquash --threshold -s -n -t)--no-squash'}'[no resquash\: -t -1]' \
+'(--squash --no-squash --nosquash -s -n '{'--threshold)-t+','-t)--threshold='}'[THRESHOLD (set threshold size)]:threshold size:(0 1m 10m 20m 30m 40m 500k 600k 700k 800k 900k "")' \
+'(--threshold --no-squash --nosquash -t -n '{'--squash)-s','-s)--squash'}'[do resquash\: -t 0]' \
+'(--threshold --squash -t -s '{'--no-squash --nosquash)-n','--nosquash -n)--no-squash','--no-squash -n)--nosquash'}'[no resquash\: -t -1]' \
 {'(--separator)-S+','(-S)--separator='}'[SEP (separator for print-...)]:separator' \
 '--squash-verbose=[LEVEL (verbosity of mksquash)]:verbosity:(0 1 2)' \
 '--pass-directory[Args are paths]' \
 {'(--interactive)-i','(-i)--interactive'}'[ask before cleaning directory]' \
-{'(--kill --nokill --no-kill -K)-k','(--nokill --no-kill -k -K)--kill'}'[clean without resquashing]' \
-{'(--kill --nokill --no-kill -k)-K','(--kill --no-kill -k -K)--nokill','(--kill --nokill -k -K)--no-kill'}'[Remove effect of --kill]' \
+'(--no-kill --nokill -K '{'--kill)-k','-k)--kill'}'[clean without resquashing]' \
+'(--kill -k '{'--nokill --no-kill)-K','--nokill -K)--no-kill','--no-kill -K)--nokill'}'[Remove effect of --kill]' \
+{'(--force)-f','(-f)--force'}'[force remount]' \
 '(--no-lazy --nolazy)--lazy[lazy umount after failure]' \
-{'(--lazy --nolazy)--no-lazy','(--lazy --no-lazy)--nolazy'}'[no lazy umount after failure]' \
-{'(--no-error --noerror -E -e)--error','(--no-error --noerror -E --error)-e'}'[break on error]' \
-{'(--no-error --noerror --error -e)-E','(--noerror --error -E -e)--no-error','(--no-error --error -E -e)--noerror'}'[no break on error]' \
+'(--lazy '{'--nolazy)--no-lazy','--no-lazy)--nolazy'}'[no lazy umount after failure]' \
+'(--no-error -noerror -E '{'-e)--error','(--error)-e'}'[break on error]' \
+'(--error -e '{'--no-error --noerror)-E','--noerror -E)--no-error','--no-error -E)--noerror'}'[no break on error]' \
 {'*--title=','*-T+'}'[Set title option OPT]:title option:_title_opt' \
 '1:command:->cmds' \
 '*:mask:->mask'
@@ -32,11 +33,11 @@ case $state in
 	cmds=(
 	'help:print a brief help'
 	'man:show extended help as a manpage'
-	'mount:mount'
-	{'umount','unmount'}':umount, squashing/cleaning if necessary'
-	'remount:remount, squashing/cleaning if necessary'
+	{'mount','start'}':mount'
+	{'umount','stop'}':umount, squashing/cleaning if necessary'
+	{'remount','restart'}':remount, squashing/cleaning if necessary'
 	'set:modify state in /run/squashdir'
-	'status:output various information'
+	{'status','list'}':output various information'
 	'print-tag:print tag'
 	'print-dir:print DIR directory'
 	'print-readonly:print READONLY directory or 1'

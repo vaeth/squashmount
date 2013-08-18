@@ -4,13 +4,20 @@ This package is under the BSD license
 
 Init and management script for mounting rewritable squashfs-compressed data
 
+This is the successor of the squash_dir project
+	http://github.com/vaeth/squash_dir/
+It is actually a ground-up rewrite of that project in perl with a
+highly improved control interface.
+
+It is easily usable with any init system, but for systemd and openrc
+ready-to-use configuration files are provided.
+
 What is this project?
 =====================
 
-This is squashmount, a generic initscript (usable e.g. with systemd or openrc)
-which allows to keep a directory compressed by squashfs but simultaneously
-allows to write on it using some of (depending on the configuration and what is
-available):
+This is squashmount, a generic initscript, user interface and management tool
+for keeping directories compressed by squashfs but simultaneously keep them
+writable using some of (depending on the configuration and what is available):
 
 	overlayfs, see
 		http://git.kernel.org/?p=linux/kernel/git/mszeredi/vfs.git
@@ -20,15 +27,16 @@ available):
 	unionfs, see http://www.fsl.cs.sunysb.edu/project-unionfs.html
 	funionfs, see http://bugs.gentoo.org/show_bug.cgi?id=151673
 
-The idea is that on shutdown the data is recompressed
+The idea is that, as a rule, on shutdown the data is recompressed
 (and the temporary modified data removed).
 This approach is originally due to synss' script from
 	http://forums.gentoo.org/viewtopic-t-465367-highlight-.html
 In that forum thread you can also ask for help about this project.
-This script is the successor of the squash_dir project
-	http://github.com/vaeth/squash_dir/
-In fact, it is a complete rewrite of that project in one single perl-script
-which is much easier to handle and easily to adapt for other init-systems.
+
+For some mount points different rules then "resquash and delete on umount"
+might be desired (see the examples section below), and moreover,
+it might be necessary to override these rules temporarily.
+For such things a powerful user interface is provided.
 
 If the Gentoo portage tree /usr/portage is compressed with squashmount
 (without DISTDIR which you should store somewhere else when using this script),
@@ -73,8 +81,8 @@ In all cases you have to copy etc/squashmount.pl to /etc/squashmount.pl
 and adapt it to your need! This is the essential point of squashmount!
 
 
-An Example:
-===========
+Some Examples
+=============
 
 Essentially, the init-system (or you) has to call
 	squashmount mount
@@ -84,53 +92,98 @@ on stop (at a time when the local filesystems are already/still mounted).
 The provided installation files for systemd and openrc do just this.
 
 This will cause all configured mount-points to be mounted/umounted
-correspondingly.
+correspondingly. When umounting, by default the modified data is
+recompressed into the squashfiles (but this can be customized).
 
 The configuration of the mount-points happens in the file /etc/squashmount.pl
-This is a perl file, so you can use perl code to source other files at your
-discretion.
+This is a perl file, so you can use perl code in this file to source other
+files at your discretion.
 
-The provided file is rather realistic if you are a gentoo user:
-It provides three mount-points:
+The provided example configuration file etc/squashmount.pl is rather
+realistic if you are a gentoo user: It provides the following mount-points
 
-tex:      The installed files from texlive /usr/share/texmf-dist
-portage:  The gentoo portage tree /usr/portage (main package database)
-db:       The gentoo installed files   /var/db
+(a) guest-user: A guest user's home directory /home/guest
+(b) tex:        The installed files from texlive /usr/share/texmf-dist
+(c) portage:    The gentoo portage tree /usr/portage (main package database)
+(d) db:         The gentoo installed files   /var/db
+[further mount-points are in the config-file but not listed here].
 
-For all three directories it is reasonable to use squashmount with them for
+For all the mount-points it is reasonable to use squashmount with them for
 different reasons:
 
-The tex directory is huge, and it saves considerable space to keep it
+(a) The guest-user should be able to modify data in /home/guest, but its
+changes should usually be forgotten. (Sometimes you will not want to
+forget these changes, e.g. when you want to update the "default"
+home directory which the user sees; see below how to do this).
+
+(b) The tex directory is huge, and it saves considerable space to keep it
 comressed on disk.
-For the portage directory, after updating it with emerge --sync, you might want
-to compare some files with the previous version to see what has changed.
-The db directory is extremely imporant, and so it is wise to keep compressed
-backups.
 
-You can see in the example configuration etc/squashmount.pl how some special
-features for these various mount-points are activated.
+(c) Keeping the portage directory compressed does not only save an enormous
+amount of disk space but actually also speeds up portage considerable,
+because the disk access is faster on a single (squashed) file.
+Moreover, after changes with eix --sync you might want to compare the
+new files with previous versions in the squashed file which you can still
+access when you use squashmount.
 
-At the first call of "squashmount mount" the described directories will be
-squashed, and the original content removed (the content is now in the
-squashfile). Then this squashfile is mounted rewritable to the
-original directories. Even after you made some changes you can access the
-files stored in the squashfile in the readonly directory which is specified
-in etc/squashmount.pl
-When squashmount umount is called (e.g. before shutdown) the changed data
-is resquashed.
+(d) The db directory is short but its data is very sensible and the
+number files is huge: Keeping it in a compressed file gives a lot
+of disk space and speedup, and it makes sense to keep a compressed backup
+of the last mounted version.
 
-The additional features in the example include:
-1. keeping a backup of the squashfile for the db directory
-2. squashing portage and db only when a certain threshold is reached:
+In these examples, additional features of squashmount are used:
+
+1. For (a), it is obviously neceessary to use a different treatment:
+   The squash-file should not be generated, and the temporary data should
+   be removed.
+2. For (d), squashmount will keep a backup even of the squashfile for
+   the db directory.
+3. squashing of (c) and (d) should happen only when a certain
+   threshold is reached.
    The modified data will just survive the reboot even if it is not resquashed,
-   but it takes more diskspace of course, and you have no readonly version of
+   but it takes more diskspace of course, and there is no readonly version of
    the corresponding files.
-3. Not resquash of the tex directory when only certain files were updated:
-   In fact, the changes to these files are even lost when remounting.
+4. No resquash of the tex directory when only certain files (like the
+   automatically generated "ls-R" file) were updated:
+   In fact, if the only changes made to the directoy are in these files
+   (for some it is also checked that their content is not changed),
+   the directory will be cleared when umounting/remounting/rebooting.
 
 You can also call squashmount at runtime to resquash or clean certain
-directories manually. This can be handy e.g. if you want to undo changes
-made to these directories.
+directories manually or to change states for the above "default" actions
+on future umonts. For instance, if you changed the skeleton of the
+guest user in (a) you can call
+
+	squashmount --no-kill remount guest
+
+to force immediate regeneration of the squashed file from the directory.
+Moreover, you can call squashmount to temporarily change the state of mounted
+directories. For example, if you want to change temporarily that the guest
+user's data is saved on remount, use
+
+	squashmount --no-kill set guest
+
+A changed state will remain active until reset or until the next reboot.
+Another example: If a lot of data would be resquashed at the next umount,
+but you want to reboot urgently, just call
+
+	squashmount --no-squash set
+
+before rebooting.
+Conversely, if you want to squash the portage mount-point despite its
+threshold is not reached (e.g. because you plan to make an experimental
+change which you plan to undo later), you can call
+
+	squashmount --squash restart portage
+
+If afterwards you made your change and want to undo it, call
+
+	squashmount --kill restart portage
+
+If your changes take a longer time and you want to be sure that you do not
+forget to call the above command, you can temporarily change the state:
+
+	squashmount --kill set
 
 To get an exact description of the user interface and of the config file format
 just execute:

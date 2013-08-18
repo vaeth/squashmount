@@ -14,7 +14,7 @@ use Cwd 'abs_path';
 $|=1;
 
 sub version() {
-	print("squashmount 0.01\n");
+	print("squashmount 1.0\n");
 	exit 0
 }
 
@@ -81,7 +81,7 @@ The following values for I<command> are availabe:
 
 =over 8
 
-=item B<mount>
+=item B<mount> or B<start>
 
 Mount all configured mount-points.
 
@@ -89,18 +89,20 @@ If no corresponding squash-file exists (i.e., presumably only the first time
 when this mount-point is used), it is created from the specified directory,
 and the original data from that directory is removed.
 
-=item B<umount> or B<unmount>
+=item B<umount> or B<stop>
 
 Umount all configured mount-points, resquashing if data was changed
 (and has reached a configured threshold).
 Moreover, the modified data in the CHANGES directory is removed
 (the directory is "cleaned").
 
-=item B<remount>
+=item B<remount> or B<restart>
 
 This is somewhat like calling B<umount> followed by B<mount>.
+This is skipped if it is neither necessary to resquash nor to delete data.
+Use B<--force> to omit this skipping.
 
-=item B<status>
+=item B<status> or B<list>
 
 This outputs some general status information, depending on the verbosity level.
 To output particular data use the B<print-...> commands (and specify B<mask1>).
@@ -260,8 +262,9 @@ For positive I<size>, if the length of the changes is less than I<size> bytes,
 act as if B<--no-squash> is active, otherwise act normally, that is,
 the data is resquashed.
 
-For convenience, you can append B<k>, B<m>, or B<g> to the number to denote
-kilobytes (1024), megabytes (1024^2) or gigabytes (1024^3), respectively.
+For convenience, you can append B<k>, B<m>, B<g>, B<t> to the number to denote
+kilobytes (1024), megabytes (1024^2), gigabytes (1024^3),
+or terrabytes (1024^4), respectively.
 
 For the particular case that I<size> is empty the value configured in
 F</etc/squashmount.pl> is taken. This is useful B<set> has been used:
@@ -285,7 +288,7 @@ so that this happens for all subsequent umounts/remounts.
 If used with B<status> or B<print*> act as if filesystem was correspondingly
 configured (without actually changing the configuration, of course).
 
-=item B<--nokill> or B<--no-kill> or B<-K>
+=item B<--no-kill> or B<--nokill> or B<-K>
 
 Remove the effect of B<--kill>.
 
@@ -294,6 +297,11 @@ so that this happens for all subsequent umounts/remounts.
 
 If used with B<status> or B<print*> act as if filesystem was correspondingly
 configured (without actually changing the configuration, of course).
+
+=item B<--force> or B<-f>
+
+If used with B<remount> do not skip remounting, even if it is not
+necessary to resquash or to delete data.
 
 =item B<--lazy>
 
@@ -372,11 +380,25 @@ Here is an example for this file:
 
 =over 16
 
-=item TAG => 'portage',
+=item TAG => 'useless_minimal',
 
-=item DIR => '/usr/portage',
+=item DIR => '/usr/local',
 
-=item FILE => '/usr/portage.sqfs'
+=item FILE => '/usr/local.sqfs',
+
+=back
+
+=item }, {
+
+=over 16
+
+=item TAG => 'only_temporary',
+
+=item DIR => '/home/guest_user'
+
+=item FILE => '/home/guest_user.sqfs'
+
+=item KILL => 1 # Forget all changes when umounting
 
 =back
 
@@ -392,13 +414,29 @@ Here is an example for this file:
 
 =item CHANGES => '/usr/share/texmf-dist.changes',
 
-=item READONLY => '/tmp/texmf-dist.readonly',
+=item READONLY => '/use/share/texmf-dist.readonly',
 
-=item THRESHOLD => '40m',
+=item SKIP => '^ls-R$',
 
-=item SKIP => [ qr{^ls-R$}, qr{^tex(/generic(/config)?)?$} ],
+=item DIFF => '^tex(/generic(/config(/language(\.(dat(\.lua)?|def)))?)?)?$'
 
-=item DIFF => qr{^tex/generic/config/language\.(dat(|\.lua)|def)$}
+=back
+
+=item }, {
+
+=over 16
+
+=item TAG => 'portage',
+
+=item DIR => '/usr/portage,
+
+=item FILE => '/usr/portage.sqfs',
+
+=item CHANGES => '/usr/portage.changes',
+
+=item READONLY => '/usr/portage.readonly',
+
+=item THRESHOLD => '40m' # resquash on umount if 40 megabytes changed
 
 =back
 
@@ -408,15 +446,15 @@ Here is an example for this file:
 
 =item TAG => 'fancy_temporary',
 
-=item CHANGES => sub { return File::Temp::newdir() },
+=item DIR => sub { return File::Temp::newdir() },
 
-=item DIR => sub { return File::Temp::newdir(undef, DIR = '/ram') },
+=item CHANGES => sub { return File::Temp::newdir(undef, DIR = '/path/to/ramdisk') },
 
 =item READONLY => \&make_temporary_subdir,
 
 =item FILE => '/just/a/crazy/example.sqfs',
 
-=item PRUNE => qr{^temp}i, # prune e.g. TEMP* in main directory
+=item SKIPDIR => [ '(^|/)temp', qr{(^|/)tmp}i ], # temp* TMP* ...
 
 =item SKIPFUNC => sub { my ($rel, $abs, $ro) = @_; return (-d $abs) }
 
@@ -454,7 +492,7 @@ If this variable is not specified the value B<1> is chosen.
 
 =item B<@order>
 
-This array determines in which order the overlayfs/aufs/... tools are attempted.
+This array determines in which order the overlayfs/aufs/... tools are tried.
 The first successful tool is chosen, and if all fail, B<mount --bind> is used.
 If not modified, this array defaults to
 
@@ -629,8 +667,8 @@ threshold is essentially based on the number of files (instead of their size).
 
 =item B<SKIP>
 
-This is a regular expression (or string representing a regular expression)
-or a reference to an array of regular expressions.
+This is a regular expression (or a string representing a regular expression)
+or a reference to an array of such strings/regular expressions.
 For each file/directory in B<CHANGES> its path (relative to B<CHANGES>) is
 matched against these regular expressions.
 If the file matches, it is not considered as being changed.
@@ -641,10 +679,19 @@ When all changes are skipped during umounting, the B<CHANGES> directory is
 cleaned anyway, i.e. skipping a file means that changes to this file are
 usually lost!
 
+If a file you want to skip resides in a subdirectory (not in the root
+of B<CHANGES>) you probably also skip all parent directories.
+However, to be more careful you might want to do this with B<DIFF>
+(as that will check that it is really a directory).
+
 =item B<SKIPDIR>
 
 This is similar to B<SKIP>, but only for directories; moreover, also the
 whole content of matching directories is being considered as unchanged.
+
+If you want to B<SKIPDIR> a directory lying not in the root, of B<CHANGES>
+you will probably want to include its parent directories to B<DIFF>
+(or to B<SKIP> if you are less careful).
 
 =item B<DIFF>
 
@@ -654,8 +701,32 @@ corresponding file in the B<READONLY> directory, up to possibly
 permissions or time stamps.
 This is to avoid resquashing just because some timestamps or permissions
 were changed.
-Note that for subdirectories you usually must also specify the corresponding
-parent directories in B<SKIP> (see the above example).
+
+As for B<SKIP> and B<SKIPDIR>, for files in subdirectories you will probably
+also want to include the parent directories here.
+As an example, to ignore changes only in timestamps or permissions of
+the files
+
+=over 16
+
+=item F<tex/generic/config/language.dat>
+
+=item F<tex/generic/config/language.dat.lua>
+
+=item F<tex/generic/config/language.def>
+
+=back
+
+you must also ignore that the corresponding parends are created in CHANGES.
+Therefore, in the example file above (in TAG tex), the regular expression
+in B<DIFF> not only matches the above files but also their parent directories.
+
+To match for files, it might be convenient to use several regular expressions
+(or strings): All related variables B<SKIP>, B<SKIPDIR>, B<DIFF> accept also
+references to arrays of regular expressions. See e.g. B<SKIPDIR> in
+in the fancy_temporary example above.
+Note in that example also that you can can pass regular expressions
+instead of strings. This way you can pass e.g. perl flags to ignore case.
 
 =item B<SKIPFUNC>
 
@@ -729,6 +800,7 @@ my $verbose = 0;
 my $quiet = 0;
 my $squash_verbose = undef;
 my $lazy = undef;
+my $force = '';
 my $interactive = '';
 my $opt_threshold = '';
 my $opt_kill = undef;
@@ -757,6 +829,7 @@ GetOptions(
 	'no-kill|nokill|K', sub { $opt_kill = '' },
 	'squash-verbose=i', \$squash_verbose,
 	'lazy!', \$lazy,
+	'force|f', \$force,
 	'pass-directory', \$pass_directory,
 	'title|T=s', \@title,
 	'error|e', \$errorbreak,
@@ -789,43 +862,44 @@ $titleopt = undef if(($titleopt =~ qr/-/) || !(-t STDOUT));
 
 my $action = shift(@ARGV);
 $action = '' unless(defined($action));
-if($action eq 'status') {
+if($action =~ /^p/i) {
+	if($action =~ /tag/i) {
+		$action = \&cmd_print_tag
+	} elsif($action =~ /dir/i) {
+		$action = \&cmd_print_dir
+	} elsif($action =~ /chan/i) {
+		$action = \&cmd_print_changes
+	} elsif($action =~ /read|ro/i) {
+		$action = \&cmd_print_readonly
+	} elsif($action =~ /fil/i) {
+		$action = \&cmd_print_file
+	} elsif($action =~ /typ/i) {
+		$action = \&cmd_print_type
+	} elsif($action =~ /new|mod/i) {
+		$action = \&cmd_print_new
+	} elsif($action =~ /will|sq|comp/i) {
+		$action = \&cmd_print_will_squash
+	} elsif($action =~ /thr/i) {
+		$action = \&cmd_print_threshold
+	} elsif($action =~ /kil/i) {
+		$action = \&cmd_print_kill
+	}
+} elsif($action =~ /^(stat|l)/i) {
 	$action = \&cmd_status
-} elsif($action eq 'print-tag') {
-	$action = \&cmd_print_tag
-} elsif($action eq 'print-dir') {
-	$action = \&cmd_print_dir
-} elsif($action eq 'print-readonly') {
-	$action = \&cmd_print_readonly
-} elsif($action eq 'print-changes') {
-	$action = \&cmd_print_changes
-} elsif($action eq 'print-file') {
-	$action = \&cmd_print_file
-} elsif($action eq 'print-type') {
-	$action = \&cmd_print_type
-} elsif($action eq 'print-new') {
-	$action = \&cmd_print_new
-} elsif($action eq 'print-will-squash') {
-	$action = \&cmd_print_will_squash
-} elsif($action eq 'print-threshold') {
-	$action = \&cmd_print_threshold
-} elsif($action eq 'print-kill') {
-	$action = \&cmd_print_kill
-} elsif($action eq 'mount') {
+} elsif($action =~ /^(mou|star)/i) {
 	$action = \&cmd_mount
-} elsif($action eq 'umount') {
+} elsif($action =~ /^u|sto/i) {
 	$action = \&cmd_umount
-} elsif($action eq 'remount') {
+} elsif($action =~ /^r/i) {
 	$action = \&cmd_remount
-} elsif($action eq 'set') {
+} elsif($action =~ /^set/i) {
 	$action = \&cmd_set
 } elsif($action eq 'man') {
 	pod2usage(-verbose => 2)
 } elsif($action eq 'help') {
 	pod2usage(0)
-} else {
-	pod2usage(2)
 }
+pod2usage(2) unless(ref($action) eq 'CODE');
 
 # The default config:
 {
@@ -903,70 +977,24 @@ sub cmd_mount(\%\%) {
 sub cmd_umount(\%\%) {
 	my ($current, $user_config) = @_;
 	my $tag = $user_config->{'TAG'};
-	unless(&is_nonempty($current->{'MOUNT_DIR'})) {
-		&error("\[$tag\]: DIR was not mounted");
-		return ''
-	}
-	my $created = '';
-	my $tempfile;
-	my $dir = $current->{'DIR'};
+	return '' if(&error_unless_mounted($current, $tag));
 	my ($will_squash, $will_remove) =
 		&check_squash($current, $user_config, $threshold, $kill, $user_config->{'BLOCKSIZE'});
-	if($will_squash) {
-		&infotag($tag, 'squashing (this may take a while)') unless($quiet);
-		my $tempdir = $user_config->{'TEMPDIR'};
-		if(&is_abspath($tempdir)) {
-			$tempfile = File::Temp->new(DIR => $tempdir)
-		} else {
-			$tempfile = File::Temp->new();
-		}
-		return '' unless(&mksquashfs($tempfile->filename, $dir, $user_config, $squash_verbose));
-		$created = 1
-	}
-	&infotag($tag, 'umounting...') unless($quiet);
-	return '' unless(&umount_dir($dir, $user_config));
-	$current->{'MOUNT_DIR'} = '';
-	if($current->{'MOUNT_RO'}) {
-		my $dir_ro = $current->{'READONLY'};
-		return '' unless(&umount_dir($dir_ro, $user_config));
-		$current->{'MOUNT_RO'} = ''
-	}
-	if($created) {
-		my $squashfile = $current->{'FILE'};
-		my $backup = $current->{'BACKUP'};
-		if(&is_abspath($backup)) {
-			&infotag($tag, "$squashfile -> $backup") unless($quiet);
-			unlink($backup);
-			unless(move($squashfile, $backup)) {
-				&error("failed moving $squashfile to $backup");
-				return ''
-			}
-		}
-		&infotag($tag, "tempfile -> $squashfile") unless($quiet);
-		unlink($squashfile);
-		$tempfile->unlink_on_destroy('');
-		unless(move($tempfile->filename, $squashfile)) {
-			&error("failed moving tempfile to $squashfile");
-			return ''
-		}
-	}
-	delete $user_config->{'TYPE'};
-	return 1 unless($will_remove);
-	my $changes = $current->{'CHANGES'};
-	&title("cleaning $tag");
-	&infotag($tag, 'cleaning directory...') unless($quiet);
-	return &clean_directory($changes)
+	return &umount_main($current, $user_config, $will_squash, $will_remove, $tag)
 }
 
 sub cmd_remount(\%\%) {
 	my ($current, $user_config) = @_;
 	my $tag = $user_config->{'TAG'};
-	unless(&is_nonempty($current->{'MOUNT_DIR'})) {
-		&error("\[$tag\]: DIR was not mounted");
-		return ''
+	return '' if(&error_unless_mounted($current, $tag));
+	my ($will_squash, $will_remove) =
+		&check_squash($current, $user_config, $threshold, $kill, $user_config->{'BLOCKSIZE'});
+	unless($force || $will_squash || ($will_remove > 0)) {
+		&infotag($tag, 'remounting appears unnecessary. Use -f to force');
+		return 1
 	}
-	return '' unless(&cmd_umount($current, $user_config));
 	&title("remounting $tag") if($printed_title);
+	return '' unless(&umount_main($current, $user_config, $will_squash, $will_remove, $tag));
 	return &cmd_mount($current, $user_config)
 }
 
@@ -989,7 +1017,7 @@ sub cmd_status(\%\%) {
 		if($verbose) {
 			&print_status_first($type)
 		} else {
-			&print_status_first(${type} . (' ' x (7 - length($human)))
+			&print_status_first(${type} . (' ' x (5 - length($human)))
 				. "(${human})")
 		}
 		my $blocksize = $user_config->{'BLOCKSIZE'};
@@ -997,17 +1025,17 @@ sub cmd_status(\%\%) {
 				$kill ? 0 : $threshold, '', $blocksize);
 		if($newdata) {
 			&print_status($kill ?
-				'will kill new data' :
-				'will resquash')
+				'will kill modifications' :
+				'will resquash modifications')
 		} elsif($kill) {
 			&print_status(
-				'kill but no new data')
+				'will kill, but yet unmodified')
 		} else {
 			my ($nonempty, undef) =
 				&check_squash($current, $user_config, 0, '', $blocksize);
 			&print_status($nonempty ?
-				'new data but will not resquash' :
-				'no new data')
+				'modified, but will not resquash' :
+				'unmodified')
 		}
 		if($verbose) {
 			&print_status('threshold ' .
@@ -1101,6 +1129,69 @@ sub cmd_print_kill(\%\%) {
 # Functions
 #
 
+# The main umount function
+
+sub umount_main(\%\%$$) {
+	my ($current, $user_config, $will_squash, $will_remove, $tag) = @_;
+	my $created = '';
+	my $tempfile;
+	my $dir = $current->{'DIR'};
+	if($will_squash) {
+		&infotag($tag, 'squashing (this may take a while)') unless($quiet);
+		my $tempdir = $user_config->{'TEMPDIR'};
+		if(&is_abspath($tempdir)) {
+			$tempfile = File::Temp->new(DIR => $tempdir)
+		} else {
+			$tempfile = File::Temp->new();
+		}
+		return '' unless(&mksquashfs($tempfile->filename, $dir, $user_config, $squash_verbose));
+		$created = 1
+	}
+	&infotag($tag, 'umounting...') unless($quiet);
+	return '' unless(&umount_dir($dir, $user_config));
+	$current->{'MOUNT_DIR'} = '';
+	if($current->{'MOUNT_RO'}) {
+		my $dir_ro = $current->{'READONLY'};
+		return '' unless(&umount_dir($dir_ro, $user_config));
+		$current->{'MOUNT_RO'} = ''
+	}
+	if($created) {
+		my $squashfile = $current->{'FILE'};
+		my $backup = $current->{'BACKUP'};
+		if(&is_abspath($backup)) {
+			&infotag($tag, "$squashfile -> $backup") unless($quiet);
+			unlink($backup);
+			unless(move($squashfile, $backup)) {
+				&error("failed moving $squashfile to $backup");
+				return ''
+			}
+		}
+		&infotag($tag, "tempfile -> $squashfile") unless($quiet);
+		unlink($squashfile);
+		$tempfile->unlink_on_destroy('');
+		unless(move($tempfile->filename, $squashfile)) {
+			&error("failed moving tempfile to $squashfile");
+			return ''
+		}
+	}
+	delete $user_config->{'TYPE'};
+	return 1 unless($will_remove);
+	my $changes = $current->{'CHANGES'};
+	&title("cleaning $tag");
+	&infotag($tag, 'cleaning directory...') unless($quiet);
+	return &clean_directory($changes)
+}
+
+# print an error and return 1 if not mounted
+
+sub error_unless_mounted(\%$ ) {
+	my ($current, $tag) = @_;
+	unless(&is_nonempty($current->{'MOUNT_DIR'})) {
+		&error("\[$tag\]: DIR was not mounted");
+		return 1
+	}
+	return ''
+}
 # This function is called for the first creation of the squash-file
 
 sub first_create($$\%) {
@@ -1276,18 +1367,19 @@ sub umount_dir($\%) {
 }
 
 # Check whether squashing is necessary, taking $current and options into account
-# Returns ($will_squash, $will_remove)
+# Returns ($will_squash, $will_remove).
+# $will_remove = -1 denotes cleaning a presumably empty directory.
 
 sub check_squash(\%\%$$$) {
 	my ($current, $user_config, $threshold, $kill, $blocksize) = @_;
 	my $type = $current->{'TYPE'};
-	return ('', '') if(($threshold < 0) || !&is_resquash_type($type));
+	return ('', 0) if(($threshold < 0) || !&is_resquash_type($type));
 	return ('', 1) if($kill);
 	my $thr = &threshold_dir($user_config, $current->{'CHANGES'},
 		$current->{'READONLY'}, $threshold, $blocksize, $type);
-	return ('', 1) if($thr == 0); # clean "empty" directory
+	return ('', -1) if($thr == 0); # clean "empty" directory
 	return (1, 1) if($thr > 0);
-	return ('', '')
+	return ('', 0)
 }
 
 # The main function to read a configuration file:
@@ -1401,32 +1493,44 @@ sub parse_threshold($) {
 	return 0 unless(defined($threshold));
 	$threshold =~ s/[[:space:]]//g;
 	$threshold =~ s/^\+//;
-	return 0 unless($threshold =~ qr/^(\-?\d+)([kKmMgG])?$/);
+	return 0 unless($threshold =~ qr/^(\-?\d+)([kKmMgGtT])?$/);
 	my ($num, $ext) = ($1, $2);
 	return (-1) if($num < 0);
 	return $num unless(defined($ext) && ($ext ne ''));
 	return 1024 * $num if($ext =~ qr/[kK]/);
 	return (1024 * 1024) * $num if($ext =~ qr/[mM]/);
-	return (1024 * 1024 * 1024) * $num
+	return (1024 * 1024 * 1024) * $num if($ext =~ qr/[gG]/);
+	return (1024 * 1024 * 1024 * 1024) * $num # if($ext =~ qr/[tT]/);
 }
 
 # Turn argument into a human-readable string
 
 sub human_threshold($) {
 	my ($threshold) = @_;
-	if($threshold > (1024 * 1024 * 1024)) {
-		$threshold /= (1024 * 1024 * 1024);
+	if($threshold > (512 * 1024 * 1024 * 1024)) {
+		$threshold = &roundup($threshold, 1024 * 1024 * 1024 * 1024);
+		return "${threshold}t"
+	}
+	if($threshold > (512 * 1024 * 1024)) {
+		$threshold = &roundup($threshold, 1024 * 1024 * 1024);
 		return "${threshold}g"
 	}
-	if($threshold > (1024 * 1024)) {
-		$threshold /= (1024 * 1024);
+	if($threshold > (512 * 1024)) {
+		$threshold = &roundup($threshold, 1024 * 1024);
 		return "${threshold}m"
 	}
-	if($threshold > 1024) {
-		$threshold /= 1024;
+	if($threshold > 512) {
+		$threshold = &roundup($threshold, 1024);
 		return "${threshold}k"
 	}
 	return "$threshold"
+}
+
+# Return $a / $b rounded up
+
+sub roundup($$) {
+	my ($a, $b) = @_;
+	return (($a + $b - 1) / $b)
 }
 
 # Check whether passed configuration has a directory from $pass_directory
@@ -1513,16 +1617,17 @@ sub is_resquash_type($) {
 # Check whether a directory tree is empty or reaches a threshold.
 # Return value 1 means threshold is reached, -1 means nonempty but not reached.
 
-{
+{ # This block must occur before our actual function:
+# "local arguments" to the "wanted" subfunction are kept in separate namespace:
 	package process_dir;
-	our $to_find;
-	our $found;
+	our $to_find; # We count from threshold downwards...
+	our $found;   # Flag whether there is at least some data
 	our $dir;
 	our $skipfunc;
 	our $skip;
 	our $skipdir;
 	our $check;
-	our @compare;
+	our @compare; # Our memory for postponed file content comparison...
 	our $blocksize;
 }
 
@@ -1559,6 +1664,9 @@ sub threshold_dir(\%$$$$$) {
 		wanted => \&process_dir
 	}, $process_dir::dir);
 	return 1 if($process_dir::to_find < 0);
+	# Only if the threshold is not reached we now do have to compare
+	# also the content of files (see comments above file_is_equal):
+	# If the files differ, they add to the threshold...
 	for my $i (@process_dir::compare) {
 		next if(compare($i->[0], $i->[1]) == 0);
 		$process_dir::to_find -= $i->[2];
@@ -1591,14 +1699,19 @@ sub process_dir {
 		local($_);
 		return unless(&{$process_dir::skipfunc}($path, $_, $process_dir::readonly . "/$path"))
 	}
-	$process_dir::to_find -= $process_dir::blocksize +
-		(((-l $_) || !(-f $_)) ? 0 : ((-s $_) % $process_dir::blocksize));
-	if($process_dir::to_find < 0) {
-		$File::Find::prune = 1;
-		return
-	}
-	$process_dir::found = 1
+	$process_dir::found = 1;
+	my $size = (((-l $_) || !(-f $_)) ? 1 : (-s $_));
+	$size = 1 if($size == 0);
+	my $modulo = ($size % $process_dir::blocksize);
+	$size += ($process_dir::blocksize - $modulo) if($modulo != 0);
+	$process_dir::to_find -= $size;
+	$File::Find::prune = 1 if($process_dir::to_find < 0)
 }
+
+# Check whether filetypes are equal.
+# In case of files, postpone comparison by pushing into @process_dir::compare:
+# We will compare the filecontent only if we did not reach the threshold
+# in another way.
 
 sub file_is_equal($$) {
 	my ($a, $b) = @_;
@@ -1830,14 +1943,14 @@ $taglen = 0;
 for(my $i = 0; $i < @CFG::mounts; ++$i) {
 	my $mount = $CFG::mounts[$i];
 	my $tag = $mount->{'TAG'};
-	$taglen = length($tag) if(length($tag) > $taglen);
-	&fatal('config error: mount-point ' . $i + 1 . ' has no TAG')
+	&fatal('config error: mount-point ' . ($i + 1) . ' has no TAG')
 		unless(&is_nonempty($tag));
 	&fatal("config error: $tag not alphanumeric")
 		if($tag =~ qr/[^a-zA-Z\d_.\-]/);
 	&fatal("config error: $tag duplicate in mount-points" .
-		$tags{$tag} . ' and ' . $i + 1) if(exists($tags{$tag}));
+		($tags{$tag} + 1) . ' and ' . ($i + 1)) if(exists($tags{$tag}));
 	$tags{$tag} = $i;
+	$taglen = length($tag) if(length($tag) > $taglen);
 	&fatal("config error: $tag has no absolute FILE specified")
 		unless(&is_abspath($mount->{'FILE'}));
 	my $dir = $mount->{'DIR'};
