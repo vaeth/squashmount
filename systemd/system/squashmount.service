@@ -1,0 +1,12 @@
+[Unit]
+Description=mount/umount all squashmount configured mountpoints
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/bin/squashmount mount
+ExecStop=/usr/bin/squashmount umount
+
+[Install]
+WantedBy=multi-user.target

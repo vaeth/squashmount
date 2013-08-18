@@ -1,0 +1,70 @@
+#compdef squashmount
+local curcontext="$curcontext" state state_descr line
+typeset -A opt_args
+_arguments -C -s -S -A '-*' : \
+'(* -)'{'--help','-h'}'[print a brief help]' \
+'(* -)'{'--man','-\\?'}'[show extended help as a manpage]' \
+'(* -)'{'--version','-V'}'[print version and exit]' \
+'*'{'-v','--verbose'}'[be more verbose (accumulative)]' \
+'*'{'-q','--quiet'}'[be more quiet (accumulative)]' \
+{'*-c+','*--config='}'[CONFIGFILE (add CONFIGFILE to list)]:configfile:_files' \
+{'(--rundir)-r+','(-r)--rundir='}'[DIR (runtime config dir /run/squash_dir)]:runtime config dir:_files -/' \
+{'(--squash --nosquash --no-squash --threshold -s -n)-t+','(--squash --nosquash --no-squash -s -n -t)--threshold='}'[THRESHOLD (set threshold size)]:threshold size:(0 1m 10m 20m 30m 40m 500k 600k 700k 800k 900k "")' \
+{'(--squash --nosquash --no-squash --threshold -n -t)-s','(--nosquash --no-squash --threshold -n -t)--squash'}'[do resquash\: -t 0]' \
+{'(--squash --nosquash --no-squash --threshold -s -t)-n','(--squash --no-squash --threshold -s -n -t)--nosquash','(--squash --nosquash --threshold -s -n -t)--no-squash'}'[no resquash\: -t -1]' \
+{'(--separator)-S+','(-S)--separator='}'[SEP (separator for print-...)]:separator' \
+'--squash-verbose=[LEVEL (verbosity of mksquash)]:verbosity:(0 1 2)' \
+'--pass-directory[Args are paths]' \
+{'(--interactive)-i','(-i)--interactive'}'[ask before cleaning directory]' \
+{'(--kill --nokill --no-kill -K)-k','(--nokill --no-kill -k -K)--kill'}'[clean without resquashing]' \
+{'(--kill --nokill --no-kill -k)-K','(--kill --no-kill -k -K)--nokill','(--kill --nokill -k -K)--no-kill'}'[Remove effect of --kill]' \
+'(--no-lazy --nolazy)--lazy[lazy umount after failure]' \
+{'(--lazy --nolazy)--no-lazy','(--lazy --no-lazy)--nolazy'}'[no lazy umount after failure]' \
+{'(--no-error --noerror -E -e)--error','(--no-error --noerror -E --error)-e'}'[break on error]' \
+{'(--no-error --noerror --error -e)-E','(--noerror --error -E -e)--no-error','(--no-error --error -E -e)--noerror'}'[no break on error]' \
+{'*--title=','*-T+'}'[Set title option OPT]:title option:_title_opt' \
+'1:command:->cmds' \
+'*:mask:->mask'
+local ret=$?
+case $state in
+(cmds)
+	local cmds
+	cmds=(
+	'help:print a brief help'
+	'man:show extended help as a manpage'
+	'mount:mount'
+	{'umount','unmount'}':umount, squashing/cleaning if necessary'
+	'remount:remount, squashing/cleaning if necessary'
+	'set:modify state in /run/squashdir'
+	'status:output various information'
+	'print-tag:print tag'
+	'print-dir:print DIR directory'
+	'print-readonly:print READONLY directory or 1'
+	'print-changes:print CHANGES directory'
+	'print-file:print squash-file path'
+	'print-type:print mount type'
+	'print-new:print 1 if there is new data'
+	'print-will-squash:print 1 if data is resquashed'
+	'print-threshold:print active threshold value'
+	'print-kill:print 1 is --kill is active'
+	)
+	_describe -t commands 'command' cmds
+	ret=$?;;
+(mask)
+	local expl
+	if [[ -z ${opt_args[--pass-directory]++} ]]
+	then	_tags masks
+		_requested masks && {
+			local masks
+			masks=(${(f)"$(_call_program print-masks 'squashmount print-tag 2>/dev/null')"})
+			_description masks expl 'mask'
+			compadd "$expl[@]" - $masks
+			ret=?
+		}
+	else	local paths
+		paths=(${(f)"$(_call_program print-dirs 'squashmount print-dir 2>/dev/null')"})
+		_canonical_paths -A paths directories 'mount point'
+		ret=$?
+	fi;;
+esac
+return ret

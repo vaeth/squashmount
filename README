@@ -1,0 +1,187 @@
+
+(C) Martin Väth <martin@mvath.de>
+This package is under the BSD license
+
+Init and management script for mounting rewritable squashfs-compressed data
+
+What is this project?
+=====================
+
+This is squashmount, a generic initscript (usable e.g. with systemd or openrc)
+which allows to keep a directory compressed by squashfs but simultaneously
+allows to write on it using some of (depending on the configuration and what is
+available):
+
+	overlayfs, see
+		http://git.kernel.org/?p=linux/kernel/git/mszeredi/vfs.git
+	aufs, see http://aufs.sourceforge.net
+	unionfs-fuse, see http://podgorny.cz/moin/UnionFsFuse
+		(unionfs-fuse-0.25 or newer is required)
+	unionfs, see http://www.fsl.cs.sunysb.edu/project-unionfs.html
+	funionfs, see http://bugs.gentoo.org/show_bug.cgi?id=151673
+
+The idea is that on shutdown the data is recompressed
+(and the temporary modified data removed).
+This approach is originally due to synss' script from
+	http://forums.gentoo.org/viewtopic-t-465367-highlight-.html
+In that forum thread you can also ask for help about this project.
+This script is the successor of the squash_dir project
+	http://github.com/vaeth/squash_dir/
+In fact, it is a complete rewrite of that project in one single perl-script
+which is much easier to handle and easily to adapt for other init-systems.
+
+If the Gentoo portage tree /usr/portage is compressed with squashmount
+(without DISTDIR which you should store somewhere else when using this script),
+the required disk space is only about 50 MB (instead of about 180 MB,
+the actual space requirement depending essentially on the filesystem),
+and usually the access is even faster.
+
+Requirements
+============
+
+The script requires of course that squashfs support is activated in the
+kernel (and supports the COMPRESSION method), that the mksquashfs tool
+is available, and also that some of the above mentioned unionfs-type tools
+is available and supported by the kernel.
+
+Moreover, you need a decently new version of perl-5 together with some of
+its standard modules (which might need to be installed separately if your
+perl-5 version should be too old).
+
+If you want that the hard status line is set, also the title script from
+http://github.com/vaeth/runtitle (version >=2.3) is required in your path.
+
+
+Installation
+============
+
+If you are a gentoo user, you can just emerge squashmount from the mv overlay.
+
+Otherwise you just have to copy bin/squashmount into /usr/bin/squashmount
+or any other directory of your $PATH.
+For zsh completion support also copy zsh/_squashmount into a directory of
+your zsh's $fpath.
+
+For openrc-support copy openrc/init.d/squashmount to /etc/init.d/squashmount
+and activate it in the usual way.
+For system-support copy systemd/system/squashmount.service to your
+systemd system folder and activate it in the usual way.
+(If you copied the main script not to /usr/bin/squashmount, you have
+to modify the squashmount.service file for systemd correspondingly.)
+
+In all cases you have to copy etc/squashmount.pl to /etc/squashmount.pl
+and adapt it to your need! This is the essential point of squashmount!
+
+
+An Example:
+===========
+
+Essentially, the init-system (or you) has to call
+	squashmount mount
+on start and
+	squashmount umount
+on stop (at a time when the local filesystems are already/still mounted).
+The provided installation files for systemd and openrc do just this.
+
+This will cause all configured mount-points to be mounted/umounted
+correspondingly.
+
+The configuration of the mount-points happens in the file /etc/squashmount.pl
+This is a perl file, so you can use perl code to source other files at your
+discretion.
+
+The provided file is rather realistic if you are a gentoo user:
+It provides three mount-points:
+
+tex:      The installed files from texlive /usr/share/texmf-dist
+portage:  The gentoo portage tree /usr/portage (main package database)
+db:       The gentoo installed files   /var/db
+
+For all three directories it is reasonable to use squashmount with them for
+different reasons:
+
+The tex directory is huge, and it saves considerable space to keep it
+comressed on disk.
+For the portage directory, after updating it with emerge --sync, you might want
+to compare some files with the previous version to see what has changed.
+The db directory is extremely imporant, and so it is wise to keep compressed
+backups.
+
+You can see in the example configuration etc/squashmount.pl how some special
+features for these various mount-points are activated.
+
+At the first call of "squashmount mount" the described directories will be
+squashed, and the original content removed (the content is now in the
+squashfile). Then this squashfile is mounted rewritable to the
+original directories. Even after you made some changes you can access the
+files stored in the squashfile in the readonly directory which is specified
+in etc/squashmount.pl
+When squashmount umount is called (e.g. before shutdown) the changed data
+is resquashed.
+
+The additional features in the example include:
+1. keeping a backup of the squashfile for the db directory
+2. squashing portage and db only when a certain threshold is reached:
+   The modified data will just survive the reboot even if it is not resquashed,
+   but it takes more diskspace of course, and you have no readonly version of
+   the corresponding files.
+3. Not resquash of the tex directory when only certain files were updated:
+   In fact, the changes to these files are even lost when remounting.
+
+You can also call squashmount at runtime to resquash or clean certain
+directories manually. This can be handy e.g. if you want to undo changes
+made to these directories.
+
+To get an exact description of the user interface and of the config file format
+just execute:
+
+	squashmount man
+
+
+A Word of None-Warning
+======================
+
+It is in general rather safe to squash a directory, even a rather vital one:
+Even if e.g. you boot from a kernel which has no support for some of
+aufs|overlayfs|unionfs-fuse|unionfs|funionfs to make the directory writable,
+the script will mount it at least as read-only (using "mount --bind" if
+necessary). Moreover, if everything goes wrong you can still use "unsquashfs"
+to unpack the directory manually.
+Probably the only danger in packing "strange" directories are special files
+like hard links (this information will usually get lost) or special devices
+which are perhaps not supported by the used tools.
+
+
+Modules and Mounting
+====================
+
+If you compiled squashfs, aufs, overlayfs, or fuse as modules, you should
+modprobe these modules first (or better put them into /etc/conf.d/modules).
+squash_dir will make no attempt to load the modules (unless this happens
+automatically by the corresponding mount program): The script will just
+attempt to mount the directories using the corresponding tool and
+will check its return status for success.
+If the mount fails, the next tool is attempted for mounting, until one
+succeeds (the order and which tools are attempted can be influenced using
+the ORDER variable described below).
+If no tool succeeds, it is attempted to use "mount --bind" to get
+the directory at least readonly on the expected place, so even in
+this bad situation (which probably only happens if you boot from an
+experimental kernel or a brand new kernel without corresponding support)
+you can still access the directory read-only. Hence, also rather vital
+directories can be compressed as long as it is not vital to write to them
+(and as long as the relevant programs for mounting etc. are not contained
+withing these directories, of course).
+
+
+Patching squashfs-tools
+=======================
+
+It is recommended to use a patched version of squashfs-tools which
+redirects its progress bar to stderr (instead of stdout).
+Cf. the description of the VERBOSE_MODE variable in ./squashmount man
+for details.
+As a gentoo user you can install such a patched version from the mv overlay.
+
+However, this patching is only an eye-candy: squashmount will work without
+any problems also with an unpatched version of squashfs-tools.
