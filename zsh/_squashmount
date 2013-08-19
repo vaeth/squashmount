@@ -8,7 +8,7 @@ _arguments -C -s -S -A '-*' : \
 '*'{'-v','--verbose'}'[be more verbose (accumulative)]' \
 '*'{'-q','--quiet'}'[be more quiet (accumulative)]' \
 {'*-c+','*--config='}'[CONFIGFILE (add CONFIGFILE to list)]:configfile:_files' \
-{'(--rundir)-r+','(-r)--rundir='}'[DIR (runtime config dir /run/squash_dir)]:runtime config dir:_files -/' \
+'--rundir=[DIR (runtime config dir /run/squash_dir)]:runtime config dir:_files -/' \
 '(--squash --no-squash --nosquash -s -n '{'--threshold)-t+','-t)--threshold='}'[THRESHOLD (set threshold size)]:threshold size:(0 1m 10m 20m 30m 40m 500k 600k 700k 800k 900k "")' \
 '(--threshold --no-squash --nosquash -t -n '{'--squash)-s','-s)--squash'}'[do resquash\: -t 0]' \
 '(--threshold --squash -t -s '{'--no-squash --nosquash)-n','--nosquash -n)--no-squash','--no-squash -n)--nosquash'}'[no resquash\: -t -1]' \
@@ -18,7 +18,8 @@ _arguments -C -s -S -A '-*' : \
 {'(--interactive)-i','(-i)--interactive'}'[ask before cleaning directory]' \
 '(--no-kill --nokill -K '{'--kill)-k','-k)--kill'}'[clean without resquashing]' \
 '(--kill -k '{'--nokill --no-kill)-K','--nokill -K)--no-kill','--no-kill -K)--nokill'}'[Remove effect of --kill]' \
-{'(--force)-f','(-f)--force'}'[force remount]' \
+{'(--force)-f','(-f)--force'}'[force remount, create, or forget]' \
+{'(--reset)-r','(-r)--reset'}'[reset after umounting]' \
 '(--no-lazy --nolazy)--lazy[lazy umount after failure]' \
 '(--lazy '{'--nolazy)--no-lazy','--no-lazy)--nolazy'}'[no lazy umount after failure]' \
 '(--no-error -noerror -E '{'-e)--error','(--error)-e'}'[break on error]' \
@@ -33,11 +34,16 @@ case $state in
 	cmds=(
 	'help:print a brief help'
 	'man:show extended help as a manpage'
-	{'mount','start'}':mount'
-	{'umount','stop'}':umount, squashing/cleaning if necessary'
-	{'remount','restart'}':remount, squashing/cleaning if necessary'
+	'mount:mount'
+	'start:mount, creating squashfile first if necessary'
+	'umount:umount, squashing/cleaning if necessary'
+	'stop:umount and forget'
+	'forget:forget all information in /run/squashdir'
+	'remount:remount, squashing/cleaning if necessary'
+	'restart:stop and start'
 	'set:modify state in /run/squashdir'
-	{'status','list'}':output various information'
+	'reset:restore state in /run/squashdir'
+	{'status','list'}':output infos; depending on -v -vv'
 	'print-tag:print tag'
 	'print-dir:print DIR directory'
 	'print-readonly:print READONLY directory or 1'

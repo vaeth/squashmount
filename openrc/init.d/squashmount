@@ -5,18 +5,18 @@ depend() {
 	need localmount
 }
 
-description='mount/umount all squashmount configured mountpoints'
+description='start/stop all squashmount configured mountpoints'
 
 start() {
-	ebegin 'mounting all squashmount configured mountpoints'
-	squashmount mount
+	ebegin 'mounting with squashmount'
+	squashmount start
 	eend ${?}
 	# Succeed also if some mountpoint fail to force umount:
 	:
 }
 
 stop() {
-	ebegin 'umounting all squashmount configured mountpoints'
-	squashmount umount
+	ebegin 'umounting/stopping squashmount'
+	squashmount stop
 	eend ${?}
 }

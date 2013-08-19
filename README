@@ -85,15 +85,15 @@ Some Examples
 =============
 
 Essentially, the init-system (or you) has to call
-	squashmount mount
+	squashmount start
 on start and
-	squashmount umount
+	squashmount stop
 on stop (at a time when the local filesystems are already/still mounted).
 The provided installation files for systemd and openrc do just this.
 
 This will cause all configured mount-points to be mounted/umounted
 correspondingly. When umounting, by default the modified data is
-recompressed into the squashfiles (but this can be customized).
+recompressed into the squash-files (but this can be customized).
 
 The configuration of the mount-points happens in the file /etc/squashmount.pl
 This is a perl file, so you can use perl code in this file to source other
@@ -102,10 +102,10 @@ files at your discretion.
 The provided example configuration file etc/squashmount.pl is rather
 realistic if you are a gentoo user: It provides the following mount-points
 
-(a) guest-user: A guest user's home directory /home/guest
-(b) tex:        The installed files from texlive /usr/share/texmf-dist
-(c) portage:    The gentoo portage tree /usr/portage (main package database)
-(d) db:         The gentoo installed files   /var/db
+(a) guest:    A guest user's home directory /home/guest
+(b) tex:      The installed files from texlive /usr/share/texmf-dist
+(c) portage:  The gentoo portage tree /usr/portage (main package database)
+(d) db:       The gentoo installed files   /var/db
 [further mount-points are in the config-file but not listed here].
 
 For all the mount-points it is reasonable to use squashmount with them for
@@ -163,7 +163,7 @@ user's data is saved on remount, use
 
 	squashmount --no-kill set guest
 
-A changed state will remain active until reset or until the next reboot.
+A changed state will remain active until reset, restart, or stop is executed.
 Another example: If a lot of data would be resquashed at the next umount,
 but you want to reboot urgently, just call
 
@@ -183,10 +183,21 @@ If afterwards you made your change and want to undo it, call
 If your changes take a longer time and you want to be sure that you do not
 forget to call the above command, you can temporarily change the state:
 
-	squashmount --kill set
+	squashmount --kill set portage
 
-To get an exact description of the user interface and of the config file format
-just execute:
+Normally, this setting will survive a remount. In order to reset to the
+original setting after remounting, use option -r with remount:
+
+	squashmount -r remount portage
+
+This is the same as calling
+
+	squashmount remount portage
+	squashmount reset portage
+
+The above examples should perhaps be enough to give you an impression how
+to use squashmount. To get an exact description of the user interface and
+of the config file format just execute:
 
 	squashmount man
 

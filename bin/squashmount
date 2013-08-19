@@ -13,8 +13,10 @@ use Cwd 'abs_path';
 
 $|=1;
 
-sub version() {
-	print("squashmount 1.0\n");
+my $name = 'squashmount';
+
+sub version {
+	print("$name 2.0\n");
 	exit 0
 }
 
@@ -28,8 +30,8 @@ squashmount - mount certain directories with squashfs + overlayfs/aufs/...
 
 =item B<squashmount> [options] I<command> [I<mask1> I<mask2> ...]
 
-Where I<command> is one of B<mount>, B<umount>, B<remount>, B<set>, B<status>,
-B<print-...>
+Where I<command> is one of B<mount>, B<umount>, B<remount>, B<set>, B<reset>,
+B<status>, B<forget>, B<print->I<...>
 
 =back
 
@@ -56,24 +58,27 @@ documented later (the path can be changed with B<--configfile>).
 B<squashmount> keeps its current state in F</run/squashmount> (the path
 can be changed with B<--rundir>) in a format which may depend on tools used
 and which may also change in future versions of B<squashmount>.
-The path F</run/squashmount> can change, but it should be in a directory
-which is deleted on the next boot: B<squashmount> assumes that its data stored
+(The path F</run/squashmount> can be changed with an option.)
+B<squashmount> assumes that its data stored
 in F</run/squashmount> and the actually mounted directories coincide, that is,
 that they are not mounted/umounted without using B<squashmount> and in
 particular, that you do not reboot without cleaning the directory.
-If you modify F</etc/squashmount.pl> in a nontrivial way (e.g. if you change
-some paths) you should better be careful and call B<squashmount umount>
-in advance and (in case of success) remove the previous F</run/squashmount>.
+Therefore, if you modify F</etc/squashmount.pl>, you must make sure to update
+F</run/squashmount>; see the B<stop> and B<forget> commands.
 
 B<squashmount set> can be used to set/unset certain
 temporary states for the matching mount-tags into F</run/squashmount> which
-will be honoured during umount (or shutdown) or remount.
+will be honoured during umount, stop, restart, or remount.
 For example, combining with B<--no-squash> or B<--kill> you can instruct
 B<squashmount> to keep or kill the new data without resquashing when
 umounting, remounting, or shutting down.
-Note, however, that this state will be lost on the next reboot
-(since F</run/squashmount> should then be erased); to make it permanent
-you have to configure that mount-tag in F</etc/squashmount.pl> correspondingly.
+This set is kept until B<squashmount stop> or B<squashmount restart> is
+executed (or until F</run> is cleaned by the system e.g. on a reboot).
+In particular, this state is unchanged by B<squashmount umount> and
+B<squashmount remount>.
+To change the state permanently, modify the definition of the mount-tag in
+the configuration file F</etc/squashmount.pl> correspondingly and call
+B<squashmount reset> to propagate the modification to the running system.
 
 Each I<command> applies to all configured mount-points
 (resp. to those selected by the additional B<mask1> B<mask2> ... arguments).
@@ -81,26 +86,59 @@ The following values for I<command> are availabe:
 
 =over 8
 
-=item B<mount> or B<start>
+=item B<mount>
 
 Mount all configured mount-points.
 
-If no corresponding squash-file exists (i.e., presumably only the first time
-when this mount-point is used), it is created from the specified directory,
-and the original data from that directory is removed.
+This works only if the corresponding squash-file already exists.
+Use B<start> or B<create> instead if you want to create the squash-file
+for the first time.
 
-=item B<umount> or B<stop>
+=item B<umount>
 
 Umount all configured mount-points, resquashing if data was changed
 (and has reached a configured threshold).
 Moreover, the modified data in the CHANGES directory is removed
 (the directory is "cleaned").
+This command keeps the local setting made with B<quashmount set>
+unless the option B<-r> (B<--reset>) is used.
 
-=item B<remount> or B<restart>
+=item B<remount>
 
 This is somewhat like calling B<umount> followed by B<mount>.
 This is skipped if it is neither necessary to resquash nor to delete data.
 Use B<--force> to omit this skipping.
+
+=item B<create>
+
+This is meant to be used only the first time when a mount-point is used:
+It creates the squash-file from the directory DIR specified in the
+configuration of that mount-point; afterwards that directory is cleaned.
+If the squash-file already exists, you have to use B<--force> (and B<--quiet>
+if you want to suppress the corresponding warning).
+
+=item B<start>
+
+This is like B<squashmount mount>, but if there is not yet a squash-file
+(that is, presumably only the first time when this mount-point is used),
+B<squashmount create> is executed in advance.
+
+=item B<stop>
+
+This is like calling B<squashmount umount> followed by B<squashmount forget>:
+After umounting it forgets all corresponding information of B<squashmount set>
+for the corresponding mount-points, and moreover, if the configuration uses
+temporary directories, new directories will be chosen on the next B<mount>.
+
+In order to change F</etc/squashmount.pl> after B<squasmount mount> was called,
+the safe way is to call first B<squashmount stop> (at least for the
+mount-points you want to modify) and then do your modifications.
+
+=item B<restart>
+
+This is like calling B<squashmount stop> followed by B<squashmount start>.
+Note that in contrast to B<remount> this is executed unconditionally
+(and it differs also substantially from B<squashmount --force remount>).
 
 =item B<status> or B<list>
 
@@ -110,7 +148,42 @@ To output particular data use the B<print-...> commands (and specify B<mask1>).
 =item B<set>
 
 If combined with other options, modify the corresponding active state
-of B<--threshold> and B<--kill> in F</run/squashdir>.
+of B<--threshold> and B<--kill> in F</run/squashmount>.
+
+=item B<reset>
+
+Undo all effects of a previous B<set> commands for the corresponding
+mount-point, according to the current F</etc/squashmount.pl>.
+
+If you change B<THRESHOLD> or B<KILL> for a mount point in
+F</etc/squashmount.pl>, use B<squashmount reset> to active this new setting.
+For other changes on F</etc/squashmount.pl> see the description of the
+B<forget> command.
+
+=item B<forget>
+
+This removes B<all> local configuration stored in F</run/squashmount> for
+the corresponding mountpoints. It works only for umounted mountpoints.
+(You can use F<--force> to make it work anyway, but this is very dangerous;
+see below).
+
+In order to change F</etc/squashmount.pl> after B<squasmount mount> was called,
+the safe way is to call first B<squashmount stop>, i.e. B<squashmount umount>
+followed by B<squasmount forget> (at least for the mount-points you want to
+modify) and only then do your modification.
+
+If you shortcut this (e.g. because you forgot calling B<squashmount stop>
+in advance or because you cannot umount currently some reason) you have to
+know more details: Changes to B<BACKUP> become immediately active.
+All other changes get ignored; changes to B<THRESHOLD> or
+B<KILL> can be made active by using B<squashmount reset>.
+With this knowledge you should be able to call B<squashmount stop> even
+after you made your changes.
+
+If you plan to use B<forget> with the B<--force> flag on a mounted mount-point,
+you must know what you are doing: B<squasmount> is then no longer aware that
+the correspondig mount-point is actually mounted; you are then responsible
+for umounting these mount-points without using B<squashmount>.
 
 =item B<print-tag>
 
@@ -259,15 +332,16 @@ For negative I<size> act as described for B<--no-squash>, and for zero I<size>
 act as described for B<--squash>.
 
 For positive I<size>, if the length of the changes is less than I<size> bytes,
-act as if B<--no-squash> is active, otherwise act normally, that is,
-the data is resquashed.
+squashmount will act with B<umount> as if B<--no-squash> is active, otherwise
+it acts normally, that is, the data is resquashed.
 
 For convenience, you can append B<k>, B<m>, B<g>, B<t> to the number to denote
 kilobytes (1024), megabytes (1024^2), gigabytes (1024^3),
 or terrabytes (1024^4), respectively.
 
-For the particular case that I<size> is empty the value configured in
-F</etc/squashmount.pl> is taken. This is useful B<set> has been used:
+For the particular case that I<size> is empty the value of the current
+F</etc/squashmount.pl> is taken (cf. the B<unset> command).
+This is useful B<set> has been used:
 
 If used with B<set>, set the state in F</run/squashmount>
 so that this happens for all subsequent umounts/remounts.
@@ -298,10 +372,20 @@ so that this happens for all subsequent umounts/remounts.
 If used with B<status> or B<print*> act as if filesystem was correspondingly
 configured (without actually changing the configuration, of course).
 
+=item B<--reset> or B<-r>
+
+After umounting, reset the data changed with the B<set> command according
+to the current configuration in F</etc/squashmount.pl>
+
 =item B<--force> or B<-f>
 
 If used with B<remount> do not skip remounting, even if it is not
 necessary to resquash or to delete data.
+
+If used with B<create>, continue even if the squash-file already exists.
+
+If used with B<forget>, forget information also if mountpoint is mounted.
+The latter is very dangerous, see the description of the B<forget> command.
 
 =item B<--lazy>
 
@@ -366,7 +450,9 @@ the array B<@dirs> with references to hashes; one hash for every tag.
 In addition, the array B<@order> can be filled with the available tools
 and the order in which they should be tried.
 Also the default variables $B<$lazy> and B<$squash_verbose> can be initialized.
-Here is an example for this file:
+Here is an example for this file
+(actually, a different syntax is recommended, see the remarks at the
+end of this manpage):
 
 =over 8
 
@@ -392,11 +478,11 @@ Here is an example for this file:
 
 =over 16
 
-=item TAG => 'only_temporary',
+=item TAG => 'guest',
 
-=item DIR => '/home/guest_user'
+=item DIR => '/home/guest'
 
-=item FILE => '/home/guest_user.sqfs'
+=item FILE => '/home/guest-skelton.sqfs'
 
 =item KILL => 1 # Forget all changes when umounting
 
@@ -462,7 +548,7 @@ Here is an example for this file:
 
 =item });
 
-=item sub make_temporary_subdir($) { my ($tag) = @_;
+=item sub make_temporary_subdir { my ($tag) = @_;
 
 =over 16
 
@@ -502,7 +588,7 @@ If not modified, this array defaults to
 
 =back
 
-These defaults contain all tools supported by B<squashmount>
+These defaults contain all tools supported by B<squashmount>.
 
 =back
 
@@ -559,7 +645,7 @@ The same rules as for B<DIR> hold, that is, you can also pass a function which
 explicitly calls File::Temp::newdir with appropriate data.
 
 Note that using a temporary directory may be dangerous since if temporary
-directories are cleared on boot this means that modifications to B<DIR>
+directories are cleaned on boot this means that modifications to B<DIR>
 are lost if they are not (successfully) squashed on shutdown
 (e.g. due to option B<--keep>).
 If you use a temporary directory, you can find the actual path with
@@ -643,9 +729,12 @@ If B<COMPRESSION> is not explicitly set or undefined, the value B<xz> is used.
 
 =item B<BACKUP>
 
-When this is set to some path, then when resquashing B<FILE>,
+If this is set to an absolute path, then when resquashing B<FILE>,
 a copy of the old version is moved to that path.
 If the file B<BACKUP> already exists, it is removed.
+
+If B<BACKUP> is not an absolute path but nonempty, the path is that of
+B<FILE> with the string C<.bak> appended.
 
 =item B<TEMPDIR>
 
@@ -731,10 +820,10 @@ instead of strings. This way you can pass e.g. perl flags to ignore case.
 =item B<SKIPFUNC>
 
 This is the most generic form of B<SKIP>, B<SKIPDIR>, B<DIFF>:
-This is a pointer to a function which can decide whether the file is being
+This is a reference to a function which can decide whether the file is being
 considered as changed.
 The function gets passed three parameters: The relative filename,
-the absolute filename, and the corresponding pathname in the redonly directory.
+the absolute filename, and the corresponding pathname in the READONLY directory.
 The function must return a true value (e.g. 1) if the file should not be
 considered as changed.
 If the function sets C<$File::Find::prune = 1> in case of a directory
@@ -745,42 +834,99 @@ added/modified (empty) directories.
 
 =back
 
-Note that F</etc/squashmount.pl> is ordinary perl code, so you are not
-restricted to the syntax of the above example.
-In fact, to simplify filling hashes in a standard way, a function is available:
+Note that F</etc/squashmount.pl> is ordinary perl code, so you can use
+perl e.g. to source other files at your discration.
+Moreover, you are not restricted to the syntax of the above example.
+In fact, to simplify filling hash references for typical usage, some functions
+are provided by B<squashmount> when F</etc/squashmount.pl> is parsed:
 
 =over 8
 
-=item B<standard_hash(>I<root>B<,> I<dir>B<,> I<tag>B<,> I<backup>B<)>
+=item B<&standard_mount(>I<tag>B<,> I<dir> I<...> B<)>
 
-This function returns a hash with the keys B<TAG>, B<DIR> and B<TEMPFILE>
-filled in the obvious way (B<DIR> is I<root>I<dir>, B<TEMPFILE> is
-I<root>B</tmp>), and in addition the values for the keys
-B<CHANGES>, B<READONLY>, and B<FILE> are generated by just appending
-C<.changes>, C<.readonly>, C<.sqfs> to I<root>I<dir>.
-If I<backup> is passed and nonempty then also B<BACKUP> is added to the hash
-analogously, using the appendix C<.sqfs.bak>
+This function returns a reference to a hash with the keys B<TAG> and B<DIR>
+filled according to the first two arguments.
+In addition, the values for the keys B<CHANGES>, B<READONLY>, and B<FILE>
+are generated by just appending C<.changes>, C<.readonly>, C<.sqfs> to I<dir>.
+Moreover, if I<...> are references to hashes, they are added to the hash:
+Later hashes override earlier ones; setting a value to C<undef> in a sense
+cancels a previous definition.
+
+=item B<&added_hash(>I<hash_reference>B<,> I<hash_reference>B<,> ...B<)>
+
+This function returns a reference to a hash which adds all passed hashes,
+that is, it is like B<&standard_mount> except that it does not fill a
+hash with certain values first.
 
 =back
 
-Here is an example how this function can by used to create 2 mount-points:
+Here is an example how to use this to specify the portage mount-point from
+the above example and additionally a "standard" mount point (analogously
+to the portage mount-point but with different paths and without the
+B<THRESHOLD> option) in a shorter way:
 
 =over 8
 
-=item my %a = &standard_hash('', '/var/db', 'db', 1);
+=item push(@mounts,
 
-=item $a{THRESHOLD} = "2m";
+=over 16
 
-=item $a{BLOCKSIZE} = 65536;
+=item &standard_mount('portage, '/usr/portage', {
 
-=item push(@mounts, \%a);
+=over 24
 
-=item %a = &standard_hash('', '/usr/portage', 'portage'));
-
-=item push(@mount, \%a);
+=item THRESHOLD => '40m'
 
 =back
 
+=item }),
+
+=item &standard_mount('kernel', '/usr/src')
+
+=back
+
+=item );
+
+=back
+
+It is recommended to use a perl variable like B<$defaults> to contains
+a reference to a hash with data which you want to specify for practically
+every mount-point like B<COMPRESSION> or B<TEMPDIR> and to add this
+variable to every point-mount.
+This way you can easily change the defaults without manipulating every
+mount-point entry manually. (You can still override $defaults
+for particular mount points at your discretion.)
+Here is such an example which also demonstrates the use of B<&added_hash>:
+
+=over 8
+
+=item my $tempdir = { TEMPDIR => '/my/ramdisk' };
+
+=item my $always = { COMPRESSION => 'gzip', THRESHOLD => '20m' };
+
+=item my $defaults = &added_hash($always, { BACKUP => 1 }, $tempdir);
+
+=item push(@mounts,
+
+=over 16
+
+=item &standard_mount('kernel', '/usr/src', $defaults),
+
+=item &standard_mount('games' '/usr/share/games', $defaults, {
+
+=over 24
+
+=item READONLY => undef # cancel standard definition
+
+=back
+
+=item )}
+
+=back
+
+=item );
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -801,6 +947,7 @@ my $quiet = 0;
 my $squash_verbose = undef;
 my $lazy = undef;
 my $force = '';
+my $reset = '';
 my $interactive = '';
 my $opt_threshold = '';
 my $opt_kill = undef;
@@ -810,204 +957,103 @@ my $firstmatch = '';
 my @configs = ();
 my $separator = "\n";
 my $rundir = '/run/squashmount';
+my $titleopt;
 
-# Parse Options:
+# Global/State variables:
 
-$Getopt::Long::bundling = 1;
-GetOptions(
-	'help|h', sub { pod2usage(1) },
-	'man|?', sub { pod2usage(-verbose => 2) },
-	'version|V', \&version,
-	'config|c=s', \@configs,
-	'rundir|r=s', \$rundir,
-	'separator|S=s', \$separator,
-	'interactice|i', \$interactive,
-	'threshold|t=s', \$opt_threshold,
-	'no-squash|nosquash|n', sub { $opt_threshold = '-1' },
-	'squash|squash|s', sub { $opt_threshold = '0' },
-	'kill|k', \$opt_kill,
-	'no-kill|nokill|K', sub { $opt_kill = '' },
-	'squash-verbose=i', \$squash_verbose,
-	'lazy!', \$lazy,
-	'force|f', \$force,
-	'pass-directory', \$pass_directory,
-	'title|T=s', \@title,
-	'error|e', \$errorbreak,
-	'no-error|noerror|E', sub { $errorbreak = '' },
-	'first|1', \$firstmatch,
-	'verbose|v+', \$verbose,
-	'quiet|q+', \$quiet
-) or pod2usage(2);
-
-# Check options:
-
-&fatal("$rundir is not an absolute path") unless(&is_abspath($rundir));
-for my $i (@configs) {
-	&fatal("config-file $i is not an absolute path") unless(&is_abspath($rundir))
-}
-@configs = ('/etc/squashmount.pl') unless(@configs);
-
-# Postprocess options:
-
-if($quiet < $verbose) {
-	$verbose -= $quiet; $quiet = 0
-} else {
-	$quiet -= $verbose; $verbose = 0
-}
-my $titleopt = join('', @title);
-undef @title;
-$titleopt = undef if(($titleopt =~ qr/-/) || !(-t STDOUT));
-
-# Determine action:
-
-my $action = shift(@ARGV);
-$action = '' unless(defined($action));
-if($action =~ /^p/i) {
-	if($action =~ /tag/i) {
-		$action = \&cmd_print_tag
-	} elsif($action =~ /dir/i) {
-		$action = \&cmd_print_dir
-	} elsif($action =~ /chan/i) {
-		$action = \&cmd_print_changes
-	} elsif($action =~ /read|ro/i) {
-		$action = \&cmd_print_readonly
-	} elsif($action =~ /fil/i) {
-		$action = \&cmd_print_file
-	} elsif($action =~ /typ/i) {
-		$action = \&cmd_print_type
-	} elsif($action =~ /new|mod/i) {
-		$action = \&cmd_print_new
-	} elsif($action =~ /will|sq|comp/i) {
-		$action = \&cmd_print_will_squash
-	} elsif($action =~ /thr/i) {
-		$action = \&cmd_print_threshold
-	} elsif($action =~ /kil/i) {
-		$action = \&cmd_print_kill
-	}
-} elsif($action =~ /^(stat|l)/i) {
-	$action = \&cmd_status
-} elsif($action =~ /^(mou|star)/i) {
-	$action = \&cmd_mount
-} elsif($action =~ /^u|sto/i) {
-	$action = \&cmd_umount
-} elsif($action =~ /^r/i) {
-	$action = \&cmd_remount
-} elsif($action =~ /^set/i) {
-	$action = \&cmd_set
-} elsif($action eq 'man') {
-	pod2usage(-verbose => 2)
-} elsif($action eq 'help') {
-	pod2usage(0)
-}
-pod2usage(2) unless(ref($action) eq 'CODE');
-
-# The default config:
-{
-	package CFG;
-	our $lazy = 1;
-	our $squash_verbose = 1;
-	our @order = ('overlayfs', 'aufs', 'unionfs-fuse', 'unionfs', 'funionfs');
-	our @mounts = ();
-}
-
-# Read config files:
-
-for my $file (@configs) {
-	&read_config_file($file)
-}
-
-# Modify options according to config:
-
-$squash_verbose = $CFG::squash_verbose unless(defined($squash_verbose));
-$lazy = $CFG::lazy unless(defined($lazy));
-
-# "Global" variables:
-
-my $printed_title = '';
-my $taglen;
-my $threshold;
-my $kill;
+my $current = undef;    # current configuration in /run/squashmount
+my $user_config = undef;# current configuration in /etc/squashmount.pl
+my $tag = '';           # $user_config->{'TAG'}
+my $printed_title = ''; # Have we printed a statusline?
+my $taglen;             # Length of the longest tag
+my $threshold;          # currently active threshold (integer)
+my $kill;               # currently active kill (boolean)
 
 #
 # Commands
 #
 
-sub cmd_mount(\%\%) {
-	my ($current, $user_config) = @_;
-	my $tag = $user_config->{'TAG'};
-	if(&is_nonempty($current->{'MOUNT_DIR'})) {
-		my $dir = $user_config->{'DIR'};
-		&error("\[$tag\]: already mounted DIR");
-		return ''
-	}
-	return '' unless(&create_dir($current, $user_config, 'DIR', 1));
-	my $dir = $current->{'DIR'};
-	my $squashfile = &get_squashfile($current, $user_config);
-	unless(-f $squashfile) {
-		return '' unless(&first_create($squashfile, $dir, $user_config))
-	}
-	$current->{'FILE'} = abs_path($squashfile);
-	my $ro_stat = &create_dir($current, $user_config, 'READONLY', '');
-	return '' unless($ro_stat);
-	&infotag($tag, 'mounting...') unless($quiet);
-	if($ro_stat < 0) {
-		return '' unless(&mount_squash($squashfile, $dir, $user_config));
-		$current->{'MOUNT_DIR'} = 1;
-		$current->{'TYPE'} = 'readonly';
-		$current->{'CHANGES'} = '';
-		return 1
-	}
-	my $dir_ro = $current->{'READONLY'};
-	if($current->{'MOUNT_RO'}) {
-		&warning("\[$tag\]: have mounted READONLY $dir_ro")
-			unless($quiet > 1)
-	} else {
-		return '' unless(&mount_squash($squashfile, $dir_ro, $user_config));
-		$current->{'MOUNT_RO'} = 1
-	}
-	return '' unless(&create_dir($current, $user_config, 'CHANGES', 1));
-	my $dir_changes = $current->{'CHANGES'};
-	my $type = &mount_rw($dir_ro, $dir, $dir_changes, $user_config);
-	return '' unless(defined($type));
-	$current->{'MOUNT_DIR'} = 1;
-	$current->{'TYPE'} = $type;
-	return 1
+sub cmd_mount {
+	return &mount_main('')
 }
 
-sub cmd_umount(\%\%) {
-	my ($current, $user_config) = @_;
-	my $tag = $user_config->{'TAG'};
-	return '' if(&error_unless_mounted($current, $tag));
-	my ($will_squash, $will_remove) =
-		&check_squash($current, $user_config, $threshold, $kill, $user_config->{'BLOCKSIZE'});
-	return &umount_main($current, $user_config, $will_squash, $will_remove, $tag)
+sub cmd_umount {
+	return '' if(&error_unless_mounted());
+	return &umount_main(undef, undef)
 }
 
-sub cmd_remount(\%\%) {
-	my ($current, $user_config) = @_;
-	my $tag = $user_config->{'TAG'};
-	return '' if(&error_unless_mounted($current, $tag));
-	my ($will_squash, $will_remove) =
-		&check_squash($current, $user_config, $threshold, $kill, $user_config->{'BLOCKSIZE'});
+sub cmd_remount {
+	return '' if(&error_unless_mounted());
+	my ($will_squash, $will_remove) = &check_squash($threshold, $kill);
 	unless($force || $will_squash || ($will_remove > 0)) {
-		&infotag($tag, 'remounting appears unnecessary');
+		&info('remounting appears unnecessary');
 		return 1
 	}
 	&title("$tag remount") if($printed_title);
-	return '' unless(&umount_main($current, $user_config, $will_squash, $will_remove, $tag));
-	return &cmd_mount($current, $user_config)
+	return '' unless(&umount_main($will_squash, $will_remove));
+	return &mount_main('');
 }
 
-sub cmd_set(\%\%) {
-	my ($current, $user_config) = @_;
+sub cmd_create {
+	return '' if(&error_if_mounted());
+	my $squashfile = &get_squashfile();
+	if(-f $squashfile) {
+		if($force) {
+			&warning("squashfile $squashfile already exists") unless($quiet);
+		} else {
+			&error("squashfile $squashfile already exists");
+			return ''
+		}
+	}
+	return '' unless(&create_dir('DIR', 1));
+	return(&first_create($squashfile, $current->{'DIR'}))
+}
+
+sub cmd_start {
+	return &mount_main(1)
+}
+
+sub cmd_stop {
+	if(&error_unless_mounted()) {
+		&forget_settings();
+		return ''
+	}
+	return '' unless(&umount_main());
+	return &forget_settings()
+}
+
+sub cmd_restart {
+	my $ret;
+	if(&error_unless_mounted()) {
+		$ret = ''
+	} else {
+		return '' unless(&umount_main());
+		$ret = 1
+	}
+	return '' unless(&forget_settings());
+	return &mount_main(1);
+}
+
+sub cmd_forget {
+	unless($force || !&is_nonempty($current->{'MOUNT_DIR'})) {
+		&error('mounted, forget is not used');
+		return ''
+	}
+	return &forget_settings()
+}
+
+sub cmd_set {
 	$current->{'THRESHOLD'} = $threshold;
 	$current->{'KILL'} = $kill;
 	return 1
 }
 
-sub cmd_status(\%\%) {
-	my ($current, $user_config) = @_;
-	&print_header($user_config);
+sub cmd_reset {
+	return &reset_main(!$quiet)
+}
+
+sub cmd_status {
+	&print_header();
 	my $type = undef;
 	if(&is_nonempty($current->{'MOUNT_DIR'})) {
 		$type = $current->{'TYPE'}
@@ -1020,9 +1066,7 @@ sub cmd_status(\%\%) {
 			&print_status_first(${type} . (' ' x (5 - length($human)))
 				. "(${human})")
 		}
-		my $blocksize = $user_config->{'BLOCKSIZE'};
-		my ($newdata, undef) = &check_squash($current, $user_config,
-				$kill ? 0 : $threshold, '', $blocksize);
+		my ($newdata, undef) = &check_squash($kill ? 0 : $threshold, '');
 		if($newdata) {
 			&print_status($kill ?
 				'will kill modifications' :
@@ -1031,8 +1075,7 @@ sub cmd_status(\%\%) {
 			&print_status(
 				'will kill, but yet unmodified')
 		} else {
-			my ($nonempty, undef) =
-				&check_squash($current, $user_config, 0, '', $blocksize);
+			my ($nonempty, undef) = &check_squash(0, '');
 			&print_status($nonempty ?
 				'modified, but will not resquash' :
 				'unmodified')
@@ -1045,7 +1088,7 @@ sub cmd_status(\%\%) {
 		&print_status_first($type ? $type : 'not mounted')
 	}
 	unless($verbose > 1) {
-		&print_status_end;
+		&print_status_end();
 		return 1
 	}
 	for my $i ('DIR', 'READONLY', 'CHANGES', 'FILE') {
@@ -1053,75 +1096,63 @@ sub cmd_status(\%\%) {
 		next unless(&is_abspath($p));
 		&print_status("$i: $p")
 	}
-	&print_status_end;
+	&print_status_end();
 	return 1
 }
 
-sub cmd_print_tag(\%\%) {
-	my ($current, $user_config) = @_;
-	&print_header($user_config) if($verbose);
-	return &do_print($user_config->{'TAG'})
+sub cmd_print_tag {
+	&print_header() if($verbose);
+	return &do_print($tag)
 }
 
-sub cmd_print_dir(\%\%) {
-	my ($current, $user_config) = @_;
-	&print_header($user_config) if($verbose);
+sub cmd_print_dir {
+	&print_header() if($verbose);
 	return &do_print($current->{'DIR'})
 }
 
-sub cmd_print_readonly(\%\%) {
-	my ($current, $user_config) = @_;
-	&print_header($user_config) if($verbose);
+sub cmd_print_readonly {
+	&print_header() if($verbose);
 	return &do_print($current->{'READONLY'})
 }
 
-sub cmd_print_changes(\%\%) {
-	my ($current, $user_config) = @_;
-	&print_header($user_config) if($verbose);
+sub cmd_print_changes {
+	&print_header() if($verbose);
 	return &do_print($current->{'CHANGES'})
 }
 
-sub cmd_print_file(\%\%) {
-	my ($current, $user_config) = @_;
-	&print_header($user_config) if($verbose);
+sub cmd_print_file {
+	&print_header() if($verbose);
 	return &do_print($current->{'FILE'})
 }
 
-sub cmd_print_type(\%\%) {
-	my ($current, $user_config) = @_;
-	&print_header($user_config) if($verbose);
+sub cmd_print_type {
+	&print_header() if($verbose);
 	return &do_print($current->{'TYPE'})
 }
 
-sub cmd_print_new(\%\%) {
-	my ($current, $user_config) = @_;
-	&print_header($user_config) if($verbose);
+sub cmd_print_new {
+	&print_header() if($verbose);
 	my $changes = $current->{'CHANGES'};
 	return '' unless(&is_abspath($changes));
-	my ($will_squash, undef) =
-		&check_squash($current, $user_config, 0, '', $user_config->{'BLOCKSIZE'});
+	my ($will_squash, undef) = &check_squash(0, '');
 	return &do_print($will_squash ? '1' : '')
 }
 
-sub cmd_print_will_squash(\%\%) {
-	my ($current, $user_config) = @_;
-	&print_header($user_config) if($verbose);
+sub cmd_print_will_squash {
+	&print_header() if($verbose);
 	my $changes = $current->{'CHANGES'};
 	return '' unless(&is_abspath($changes));
-	my ($will_squash, undef) =
-		&check_squash($current, $user_config, $threshold, $kill, $user_config->{'BLOCKSIZE'});
+	my ($will_squash, undef) = &check_squash($threshold, $kill);
 	return &do_print($will_squash ? '1' : '')
 }
 
-sub cmd_print_threshold(\%\%) {
-	my ($current, $user_config) = @_;
-	&print_header($user_config) if($verbose);
+sub cmd_print_threshold {
+	&print_header() if($verbose);
 	return &do_print($threshold)
 }
 
-sub cmd_print_kill(\%\%) {
-	my ($current, $user_config) = @_;
-	&print_header($user_config) if($verbose);
+sub cmd_print_kill {
+	&print_header() if($verbose);
 	return &do_print($kill ? '1' : '')
 }
 
@@ -1129,44 +1160,98 @@ sub cmd_print_kill(\%\%) {
 # Functions
 #
 
-# The main umount function
+# The main start/mount function:
 
-sub umount_main(\%\%$$) {
-	my ($current, $user_config, $will_squash, $will_remove, $tag) = @_;
+sub mount_main {
+	my ($first_create) = @_;
+	if(&is_nonempty($current->{'MOUNT_DIR'})) {
+		my $dir = $user_config->{'DIR'};
+		&error('already mounted DIR');
+		return ''
+	}
+	my $squashfile = &get_squashfile();
+	if(-f $squashfile) {
+		$first_create = ''
+	} elsif(!$first_create) {
+		&error("squashfile $squashfile not found");
+		return ''
+	}
+	return '' unless(&create_dir('DIR', 1));
+	my $dir = $current->{'DIR'};
+	if($first_create) {
+		return '' unless(&first_create($squashfile, $dir))
+	}
+	$current->{'FILE'} = abs_path($squashfile);
+	my $ro_stat = &create_dir('READONLY', '');
+	return '' unless($ro_stat);
+	&info('mounting...') unless($quiet);
+	if($ro_stat < 0) {
+		return '' unless(&mount_squash($squashfile, $dir));
+		$current->{'MOUNT_DIR'} = 1;
+		$current->{'TYPE'} = 'readonly';
+		$current->{'CHANGES'} = '';
+		return 1
+	}
+	my $dir_ro = $current->{'READONLY'};
+	if($current->{'MOUNT_RO'}) {
+		&warning("have mounted READONLY $dir_ro")
+			unless($quiet > 1)
+	} else {
+		return '' unless(&mount_squash($squashfile, $dir_ro));
+		$current->{'MOUNT_RO'} = 1
+	}
+	return '' unless(&create_dir('CHANGES', 1));
+	my $type = &mount_rw($dir_ro, $dir, $current->{'CHANGES'});
+	return '' unless(defined($type));
+	$current->{'MOUNT_DIR'} = 1;
+	$current->{'TYPE'} = $type;
+	return 1
+}
+
+# The main umount function.
+# $will_squash and $will_remove will be calculated if they are undef
+
+sub umount_main {
+	my ($will_squash, $will_remove) = @_;
+	($will_squash, $will_remove) = &check_squash($threshold, $kill)
+		unless(defined($will_squash) && defined($will_remove));
 	my $created = '';
 	my $tempfile;
 	my $dir = $current->{'DIR'};
 	if($will_squash) {
-		&infotag($tag, 'squashing (this may take a while)') unless($quiet);
+		&info('squashing (this may take a while)') unless($quiet);
 		my $tempdir = $user_config->{'TEMPDIR'};
 		if(&is_abspath($tempdir)) {
 			$tempfile = File::Temp->new(DIR => $tempdir)
 		} else {
 			$tempfile = File::Temp->new();
 		}
-		return '' unless(&mksquashfs($tempfile->filename, $dir, $user_config, $squash_verbose));
+		return '' unless(&mksquashfs($tempfile->filename, $dir, $squash_verbose));
 		$created = 1
 	}
-	&infotag($tag, 'umounting...') unless($quiet);
-	return '' unless(&umount_dir($dir, $user_config));
+	&info('umounting...') unless($quiet);
+	return '' unless(&umount_dir($dir));
 	$current->{'MOUNT_DIR'} = '';
+	&reset_main(!$quiet) if($reset);
 	if($current->{'MOUNT_RO'}) {
 		my $dir_ro = $current->{'READONLY'};
-		return '' unless(&umount_dir($dir_ro, $user_config));
+		return '' unless(&umount_dir($dir_ro));
 		$current->{'MOUNT_RO'} = ''
 	}
 	if($created) {
 		my $squashfile = $current->{'FILE'};
 		my $backup = $user_config->{'BACKUP'};
-		if(&is_abspath($backup)) {
-			&infotag($tag, "$squashfile -> $backup") unless($quiet);
+		if(&is_nonempty($backup)) {
+			$backup = $squashfile . '.bak'
+				unless(&is_abspath($backup));
+			&info("$squashfile -> $backup") unless($quiet);
 			unlink($backup);
 			unless(move($squashfile, $backup)) {
 				&error("failed moving $squashfile to $backup");
 				return ''
 			}
 		}
-		&infotag($tag, "tempfile -> $squashfile") unless($quiet);
+		&info("tempfile -> $squashfile") unless($quiet);
 		unlink($squashfile);
 		$tempfile->unlink_on_destroy('');
 		unless(move($tempfile->filename, $squashfile)) {
@@ -1178,88 +1263,103 @@ sub umount_main(\%\%$$) {
 	return 1 unless($will_remove);
 	my $changes = $current->{'CHANGES'};
 	&title("$tag cleaning");
-	&infotag($tag, 'cleaning directory...') unless($quiet);
+	&info('cleaning directory...') unless($quiet);
 	return &clean_directory($changes)
 }
 
+# The main reset function.
+
+sub reset_main {
+	my ($message) = @_;
+	&info('resetting configuration') if($message);
+	return &fill_current(1)
+}
+
+
 # print an error and return 1 if not mounted
 
-sub error_unless_mounted(\%$ ) {
-	my ($current, $tag) = @_;
+sub error_unless_mounted {
 	unless(&is_nonempty($current->{'MOUNT_DIR'})) {
-		&error("\[$tag\]: DIR was not mounted");
+		&error('DIR was not mounted');
 		return 1
 	}
 	return ''
 }
+
+# print an error and return 1 if mounted
+
+sub error_if_mounted {
+	if(&is_nonempty($current->{'MOUNT_DIR'})) {
+		&error('already mounted DIR on ' . $current->{'DIR'});
+		return 1
+	}
+	return ''
+}
+
 # This function is called for the first creation of the squash-file
 
-sub first_create($$\%) {
-	my ($squashfile, $dir, $user_config) = @_;
-	my $tag = $user_config->{'TAG'};
-	&infotag($tag, 'It seems this is mounted for the first time:',
+sub first_create {
+	my ($squashfile, $dir) = @_;
+	&info('It seems this is mounted for the first time:',
 		"The squashed file $squashfile does not exist yet;",
 		"it will be initialized now from $dir") unless($quiet);
-	return '' unless(&mksquashfs($squashfile, $dir, $user_config, 2));
-	&infotag($tag, 'cleaning original content') unless($quiet);
+	return '' unless(&mksquashfs($squashfile, $dir, 2));
+	&info('cleaning original content') unless($quiet);
 	return &clean_directory($dir)
 }
 
 # The main function to mount read-writable. Returns type or undef
 
-sub mount_rw($$$\%) {
-	my ($ro, $rw, $changes, $user_config) = @_;
+sub mount_rw {
+	my ($ro, $rw, $changes) = @_;
 	for my $i (@CFG::order) {
 		if($i =~ qr/overlay/i) {
-			return 'overlayfs' if(&mount_overlayfs($ro, $rw, $changes, $user_config))
+			return 'overlayfs' if(&mount_overlayfs($ro, $rw, $changes))
 		} elsif($i =~ qr/aufs/i) {
-			return 'aufs' if(&mount_aufs($ro, $rw, $changes, $user_config))
+			return 'aufs' if(&mount_aufs($ro, $rw, $changes))
 		} elsif($i =~ qr/fuse/i) {
-			return 'unionfs-fuse' if(&mount_unionfs_fuse($ro, $rw, $changes, $user_config))
+			return 'unionfs-fuse' if(&mount_unionfs_fuse($ro, $rw, $changes))
 		} elsif($i =~ qr/funion/i) {
-			return 'funionfs' if(&mount_funionfs($ro, $rw, $changes, $user_config))
+			return 'funionfs' if(&mount_funionfs($ro, $rw, $changes))
 		} else { # ($i =~ qr/union/i)
-			return 'unionfs' if(&mount_unionfs($ro, $rw, $changes, $user_config))
+			return 'unionfs' if(&mount_unionfs($ro, $rw, $changes))
 		}
 	}
-	my $tag = $user_config->{'TAG'};
-	&error("\[$tag\]: fallback to mount --bind");
-	return (&mount_bind($ro, $rw, $user_config) ? 'bind' : undef)
+	&error('fallback to mount --bind');
+	return (&mount_bind($ro, $rw) ? 'bind' : undef)
 }
 
 # Mount with overlayfs:
 
-sub mount_overlayfs($$\%\%) {
-	my ($ro, $rw, $changes, $user_config) = @_;
+sub mount_overlayfs {
+	my ($ro, $rw, $changes) = @_;
 	&push_ref(\my @options, $user_config->{'MOUNT_OVERLAYFS'},
 		['-o', 'noatime']);
 	return 1 if(system('mount', '-t', 'overlayfs', @options,
 		'-o', "upperdir=${changes}", '-o', "lowerdir=${ro}",
 		'--', 'overlayfs', $rw) == 0);
-	my $tag = $user_config->{'TAG'};
-	&warning("\[$tag\]: overlayfs failed") unless($quiet > 1);
+	&warning('overlayfs failed') unless($quiet > 1);
 	return ''
 }
 
 # Mount with aufs:
 
-sub mount_aufs($$$\%) {
-	my ($ro, $rw, $changes, $user_config) = @_;
+sub mount_aufs {
+	my ($ro, $rw, $changes) = @_;
 	&push_ref(\my @options, $user_config->{'MOUNT_AUFS'},
 		['-o', 'noatime']);
 	$ro =~ s/([=:])/\\$1/g;
 	$changes =~ s/([=:])/\\$1/g;
 	return 1 if(system('mount', '-t', 'aufs', @options,
 		'-o', "br:${changes}=rw:${ro}=rr", '--', 'aufs', $rw) == 0);
-	my $tag = $user_config->{'TAG'};
-	&warning("\[$tag\]: aufs failed") unless($quiet > 1);
+	&warning('aufs failed') unless($quiet > 1);
 	return ''
 }
 
 # Mount with unionfs-fuse
 
-sub mount_unionfs_fuse($$$\%) {
-	my ($ro, $rw, $changes, $user_config) = @_;
+sub mount_unionfs_fuse {
+	my ($ro, $rw, $changes) = @_;
 	&push_ref(\my @options, $user_config->{'MOUNT_UNIONFS_FUSE'},
 		['-o', 'cow'. '-o', 'allow_other', '-o', 'use_ino',
 		'-o', 'nonempty', '-o', 'noatime', '-o', 'hide_meta_files']);
@@ -1267,72 +1367,66 @@ sub mount_unionfs_fuse($$$\%) {
 	$changes =~ s/([=:])/\\$1/g;
 	return 1 if(system('unionfs', @options,
 		'-o', "br:${changes}=RW:${ro}=RO", $rw) == 0);
-	my $tag = $user_config->{'TAG'};
-	&warning("\[$tag\]: unionfs-fuse failed") unless($quiet > 1);
+	&warning('unionfs-fuse failed') unless($quiet > 1);
 	return ''
 }
 
 # Mount with unionfs
 
-sub mount_unionfs($$$\%) {
-	my ($ro, $rw, $changes, $user_config) = @_;
+sub mount_unionfs {
+	my ($ro, $rw, $changes) = @_;
 	&push_ref(\my @options, $user_config->{'MOUNT_UNIONFS'},
 		['-o', 'noatime']);
 	$ro =~ s/([=:])/\\$1/g;
 	$changes =~ s/([=:])/\\$1/g;
 	return 1 if(system('mount', '-t', 'unionfs', @options,
 		'-o', "br:${changes}=rw:${ro}=ro", '--', 'unionfs', $rw) == 0);
-	my $tag = $user_config->{'TAG'};
-	&warning("\[$tag\]: unionfs failed") unless($quiet > 1);
+	&warning('unionfs failed') unless($quiet > 1);
 	return ''
 }
 
 # Mount with funionfs
 
-sub mount_funionfs($$$\%) {
-	my ($ro, $rw, $changes, $user_config) = @_;
+sub mount_funionfs {
+	my ($ro, $rw, $changes) = @_;
 	&push_ref(\my @options, $user_config->{'MOUNT_FUNIONFS'},
 		['-o', 'allow_other', '-o', 'nonempty']);
 	$ro =~ s/\=/\\\=/g;
 	return 1 if(system('funionfs', $changes, $rw, @options,
 		'-o', "dirs=${ro}=ro") == 0);
-	my $tag = $user_config->{'TAG'};
-	&warning("\[$tag\]: funionfs failed") unless($quiet > 1);
+	&warning('funionfs failed') unless($quiet > 1);
 	return ''
 }
 
 # Mount with bind:
 
-sub mount_bind($$\%) {
-	my ($from, $to, $user_config) = @_;
+sub mount_bind {
+	my ($from, $to) = @_;
 	return 1 if(system('mount', '--bind', '--', $from, $to) == 0);
-	my $tag = $user_config->{'TAG'};
-	&error("\[$tag\]: mount --bind failed");
+	&error('mount --bind failed');
 	return ''
 }
 
 # Mount the squash-file readonly:
 
-sub mount_squash($$\%) {
-	my ($squashfile, $dir, $user_config) = @_;
+sub mount_squash {
+	my ($squashfile, $dir) = @_;
 	return 1 if(system('mount','-t', 'squashfs',
 		'-o', 'loop,ro,noatime', '--', $squashfile, $dir) == 0);
-	my $tag = $user_config->{'TAG'};
-	&error("\[$tag\]: failed to mount squashfile");
+	&error('failed to mount squashfile');
 	return ''
 }
 
 # Create the squash file:
 
-sub mksquashfs($$\%\%) {
-	my ($squashfile, $dir, $user_config, $squash_verbose) = @_;
+sub mksquashfs {
+	my ($squashfile, $dir, $squash_verbose) = @_;
 	my @options = ('-noappend');
 	push(@options, '-no-progress') if($squash_verbose == 0);
 	my $compression = $user_config->{'COMPRESSION'};
 	$compression = 'xz' unless(defined($compression));
 	push(@options, '-comp', $compression) if($compression ne '');
 	&push_ref(\@options, $user_config->{'MKSQUASHFS'}, undef);
-	my $tag = $user_config->{'TAG'};
 	&title("$tag squashing");
 	my $oldout = undef;
 	if($squash_verbose != 2) {
@@ -1345,21 +1439,20 @@ sub mksquashfs($$\%\%) {
 
 # Umount the directoy, possibly lazily:
 
-sub umount_dir($\%) {
-	my ($dir, $user_config) = @_;
+sub umount_dir {
+	my ($dir) = @_;
 	my $oldout = undef;
 	open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', '/dev/null');
 	my $ret = (system('umount', '--', $dir) == 0);
 	unless($ret) {
-		my $tag = $user_config->{'TAG'};
 		if($lazy) {
-			&error("\[$tag\]: non-lazy umount failed,",
+			&error('non-lazy umount failed,',
 				"using lazy umount of $dir") unless($quiet > 1);
 			$ret = (system('umount', '-l', '--', $dir) == 0);
-			&error("\[$tag\]: lazy umount failed: $dir")
+			&error("lazy umount failed: $dir")
 				unless($ret);
 		} else {
-			&error("\[$tag\]: non-lazy umount failed");
+			&error('non-lazy umount failed');
 		}
 	}
 	open(STDOUT, '>&', $oldout) if(defined($oldout));
@@ -1370,13 +1463,12 @@ sub umount_dir($\%) {
 # Returns ($will_squash, $will_remove).
 # $will_remove = -1 denotes cleaning a presumably empty directory.
 
-sub check_squash(\%\%$$$) {
-	my ($current, $user_config, $threshold, $kill, $blocksize) = @_;
+sub check_squash {
+	my ($threshold, $kill) = @_;
 	my $type = $current->{'TYPE'};
 	return ('', 0) if(($threshold < 0) || !&is_resquash_type($type));
 	return ('', 1) if($kill);
-	my $thr = &threshold_dir($user_config, $current->{'CHANGES'},
-		$current->{'READONLY'}, $threshold, $blocksize, $type);
+	my $thr = &threshold_dir($threshold, $type);
 	return ('', -1) if($thr == 0); # clean "empty" directory
 	return (1, 1) if($thr > 0);
 	return ('', 0)
@@ -1384,7 +1476,16 @@ sub check_squash(\%\%$$$) {
 
 # The main function to read a configuration file:
 
-sub read_config_file($) {
+# The default config must be parsed before the function
+{
+	package CFG;
+	our $lazy = 1;
+	our $squash_verbose = 1;
+	our @order = ('overlayfs', 'aufs', 'unionfs-fuse', 'unionfs', 'funionfs');
+	our @mounts = ();
+}
+
+sub read_config_file {
 	my ($file) = @_;
 	$file = abs_path($file);
 	unless(-f $file) {
@@ -1397,19 +1498,24 @@ sub read_config_file($) {
 	our $squash_verbose;
 	our @order;
 	our @mounts;
-	sub standard_hash {
-		my ($root, $dir, $tag, $backup) = @_;
-		$dir = $root . $dir;
-		my %a = (
-			'TAG', $tag,
-			'DIR', $dir,
-			'CHANGES', $dir . '.changes',
-			'READONLY', $dir . '.readonly',
-			'FILE', $dir . '.sqfs',
-			'TEMPDIR', $root . '/tmp',
-		);
-		$a{'BACKUP'} = $dir . '.sqfs.bak' if(defined($backup) && $backup);
-		return %a
+	sub standard_mount {
+		my ($tag, $dir, @rest) = @_;
+		return &added_hash({
+			TAG => $tag,
+			DIR => $dir,
+			CHANGES => $dir . '.changes',
+			READONLY => $dir . '.readonly',
+			FILE => $dir . '.sqfs',
+		}, @rest)
+	}
+	sub added_hash {
+		my $a = {};
+		for my $i (@_) {
+			for my $j (keys(%$i)) {
+				$a->{$j} = $i->{$j}
+			}
+		}
+		return $a
 	}
 	unless(my $ret = do($file)) {
 		die "error parsing $file: $@\nstopped" if($@);
@@ -1419,21 +1525,19 @@ sub read_config_file($) {
 
 # Read settings from /run/squashmount:
 
-sub read_settings($\%) {
-	my ($tag, $current) = @_;
+sub read_settings {
 	my $file = $rundir . '/' . $tag;
-	if(-r $file) {
+	{
 		package RUNCFG;
 		our %data = ();
-		do($file)
+		do($file) if(-r $file);
 	}
 	%$current = %RUNCFG::data;
 }
 
 # Write settings to /run/squashmount:
 
-sub write_settings($\%) {
-	my ($tag, $current) = @_;
+sub write_settings {
 	my $file = $rundir . "/$tag";
 	my $fh;
 	unless(open($fh, '>', $file)) {
@@ -1456,10 +1560,23 @@ sub write_settings($\%) {
 	close($fh)
 }
 
+# forget settings from /run/squashmount and mark that we will not save current
+
+sub forget_settings {
+	&info('forgetting settings') unless($quiet);
+	$current->{'NOWRITE'} = 1;
+	my $file = $rundir . "/$tag";
+	return 1 unless(-f $file);
+	unless(unlink($file)) {
+		&error("unlinking $file failed: $!");
+		return ''
+	}
+	return 1
+}
+
 # Fill "global" variables according to options and $current state
 
-sub set_globals(\%) {
-	my ($current) = @_;
+sub set_globals {
 	if($opt_threshold ne '') {
 		$threshold = &parse_threshold($opt_threshold)
 	} else {
@@ -1476,19 +1593,20 @@ sub set_globals(\%) {
 
 # Fill $current state with defaults from $user_config.
 
-sub fill_defaults(\%\%) {
-	my ($current, $user_config) = @_;
-	unless(exists($current->{'THRESHOLD'})) {
+sub fill_current {
+	my ($force) = @_;
+	if($force || !exists($current->{'THRESHOLD'})) {
 		$current->{'THRESHOLD'} = &parse_threshold($user_config->{'THRESHOLD'})
 	}
-	unless(exists($current->{'KILL'})) {
-		$current->{'KILL'} = $user_config->{'KILL'};
+	if($force || !exists($current->{'KILL'})) {
+		$current->{'KILL'} = $user_config->{'KILL'}
 	}
+	return 1
 }
 
 # Turn argument into a number.
 
-sub parse_threshold($) {
+sub parse_threshold {
 	my ($threshold) = @_;
 	return 0 unless(defined($threshold));
 	$threshold =~ s/[[:space:]]//g;
@@ -1505,7 +1623,7 @@ sub parse_threshold($) {
 
 # Turn argument into a human-readable string
 
-sub human_threshold($) {
+sub human_threshold {
 	my ($threshold) = @_;
 	if($threshold > (512 * 1024 * 1024 * 1024)) {
 		$threshold = &roundup($threshold, 1024 * 1024 * 1024 * 1024);
@@ -1528,19 +1646,19 @@ sub human_threshold($) {
 
 # Return $a / $b rounded up
 
-sub roundup($$) {
+sub roundup {
 	my ($a, $b) = @_;
 	return (($a + $b - 1) / $b)
 }
 
 # Check whether passed configuration has a directory from $pass_directory
 
-sub find_pass_directory(\%\%) {
-	my ($current, $pass_directory) = @_;
+sub find_pass_directory {
+	my ($hash, $pass_directory) = @_;
 	for my $i (
-		$current->{'DIR'},
-		$current->{'CHANGES'},
-		$current->{'READONLY'}) {
+		$hash->{'DIR'},
+		$hash->{'CHANGES'},
+		$hash->{'READONLY'}) {
 		return 1 if(exists($pass_directory->{$i}))
 	}
 	return ''
@@ -1549,15 +1667,14 @@ sub find_pass_directory(\%\%) {
 # Initialize and create $current->{$i} from $user_config->{$i} if necessary
 # Returns 1 on success -1 if directory is a nonempty non-path, '' otherwise
 
-sub create_dir(\%\%$$) {
-	my ($current, $user_config, $i, $require_dir) = @_;
+sub create_dir {
+	my ($i, $require_dir) = @_;
 	if(exists($current->{$i})) {
 		return (&is_abspath($current->{$i}) ? 1 : -1)
 	}
-	my $dir = &create_dirname($user_config->{$i}, $user_config);
+	my $dir = &create_dirname($user_config->{$i});
 	unless(is_nonempty($dir)) {
-		my $tag = $user_config->{'TAG'};
-		&error("\[$tag\]: failed to create $i");
+		&error("failed to create $i");
 		return ''
 	}
 	if(&is_abspath($dir)) {
@@ -1565,8 +1682,7 @@ sub create_dir(\%\%$$) {
 		return 1
 	}
 	if($require_dir) {
-		my $tag = $user_config->{'TAG'};
-		&error("\[$tag\]: no absolute directory $i");
+		&error("no absolute directory $i");
 		return ''
 	}
 	$current->{$i} = 1;
@@ -1575,11 +1691,11 @@ sub create_dir(\%\%$$) {
 
 # Fetch a filename from @CFG::mounts, creating the directory if necessary
 
-sub create_dirname($\%) {
-	my ($temp, $user_config) = @_;
+sub create_dirname {
+	my ($temp) = @_;
 	$temp = '' unless(defined($temp));
 	if(ref($temp) eq 'CODE') {
-		$temp = &{$temp}($user_config->{'TAG'})
+		$temp = &{$temp}($tag)
 	}
 	if(ref($temp) eq 'File::Temp::Dir') {
 		$temp->unlink_on_destroy('');
@@ -1597,8 +1713,7 @@ sub create_dirname($\%) {
 
 # Return squashfile:
 
-sub get_squashfile(\%\%) {
-	my($current, $user_config) = @_;
+sub get_squashfile {
 	if(exists($current->{'FILE'})) {
 		return $current->{'FILE'}
 	}
@@ -1607,7 +1722,7 @@ sub get_squashfile(\%\%) {
 
 # Test if argument is a valid type for resquashing:
 
-sub is_resquash_type($) {
+sub is_resquash_type {
 	my ($type) = @_;
 	return '' unless(defined($type));
 	return !(($type eq '') || ($type eq 'readonly') || ($type =~ qr/bind/))
@@ -1631,12 +1746,13 @@ sub is_resquash_type($) {
 	our $blocksize;
 }
 
-sub threshold_dir(\%$$$$$) {
-	my ($user_config, $changes, $readonly, $threshold, $blocksize, $type) = @_;
-	$process_dir::dir = $changes;
-	$process_dir::readonly = $readonly;
+sub threshold_dir {
+	my ($threshold, $type) = @_;
+	$process_dir::dir = $current->{'CHANGES'},;
+	$process_dir::readonly = $current->{'READONLY'};
 	$process_dir::to_find = $threshold;
 	$process_dir::found = '';
+	my $blocksize = $user_config->{'BLOCKSIZE'};
 	$process_dir::blocksize = ((defined($blocksize) && ($blocksize > 0)) ?
 					$blocksize : 4096 );
 	$process_dir::skipfunc = $user_config->{'SKIPFUNC'};
@@ -1713,7 +1829,7 @@ sub process_dir {
 # We will compare the filecontent only if we did not reach the threshold
 # in another way.
 
-sub file_is_equal($$) {
+sub file_is_equal {
 	my ($a, $b) = @_;
 	if(-l $a) {
 		return (-l $b);
@@ -1736,7 +1852,7 @@ sub file_is_equal($$) {
 
 # Compare against an array of regular expressions
 
-sub is_match($$) {
+sub is_match {
 	my($a, $reg) = @_;
 	for my $r (@$reg) {
 		return 1 if($a =~ $r)
@@ -1746,7 +1862,7 @@ sub is_match($$) {
 
 # Make a directory with parents
 
-sub make_directory($) {
+sub make_directory {
 	my ($dir) = @_;
 	make_path($dir, { error => \my $err });
 	return undef unless(&filepath_ok($err, 1))
@@ -1754,7 +1870,7 @@ sub make_directory($) {
 
 # Clean all files from a directory
 
-sub clean_directory($) {
+sub clean_directory {
 	my ($dir) = @_;
 	if($interactive) {
 		print("Clean $dir? ");
@@ -1773,7 +1889,7 @@ sub clean_directory($) {
 
 # Handle the error of make_path or remove_tree. Return true if no error
 
-sub filepath_ok($$) {
+sub filepath_ok {
 	my ($err, $make_path) = @_;
 	return 1 unless(@$err);
 	my $text = $make_path ? 'creating' : 'removing';
@@ -1790,57 +1906,53 @@ sub filepath_ok($$) {
 
 # Output fatal error and die:
 
-sub fatal(@) {
+sub fatal {
 	my @a = @_;
-	&format(\@a, 'squashmount: fatal: ');
+	&format(\@a, "$name: fatal: ");
 	print(STDERR @a);
 	exit(1)
 }
 
 # Output errors:
 
-sub error(@) {
+sub error {
 	my @a = @_;
-	&format(\@a, 'squashmount: error:');
+	&format(\@a, "$name: error:   ", 1);
 	print(STDERR @a)
 }
 
 # Output warnings:
 
-sub warning(@) {
+sub warning {
 	my @a = @_;
-	&format(\@a, 'squashmount: warning:');
+	&format(\@a, "$name: warning: ", 1);
 	print(@a)
 }
 
 # Output informal messages:
 
-sub info(@) {
+sub info {
 	my @a = @_;
-	&format(\@a, '');
+	&format(\@a, '', 1);
 	print(@a)
 }
 
-# Output informal messages with tag
+# Format array for output:
 
-sub infotag(@) {
-	my ($tag, @a) = @_;
-	&format(\@a, "\[$tag\]: " . (' ' x ($taglen - length($tag))));
-	print(@a)
-}
-
-# Format array for output
-
-sub format(\@$) {
-	my ($array, $tag) = @_;
-	my $s = ' ' x length($tag);
+sub format(\@$$) {
+	my ($array, $label, $withtag) = @_;
+	$withtag = '' unless(defined($withtag));
+	$label = '' unless(defined($label));
+	$label .= "\[$tag\]: " . (' ' x ($taglen - length($tag)))
+		if($withtag && defined($tag) && ($tag ne ''));
+	my $s = (' ' x length($label));
 	grep($_ = "$s$_\n", @$array);
-	$array->[0] =~ s/$s/$tag/
+	$array->[0] =~ s/^$s/$label/ if($s ne '')
 }
 
 # Set title:
 
-sub title($) {
+sub title {
 	my ($a) = @_;
 	return unless(defined($titleopt));
 	my @opt = ();
@@ -1855,7 +1967,7 @@ sub title($) {
 
 # If defined, print with $separator attached and return 1
 
-sub do_print($) {
+sub do_print {
 	my ($a) = @_;
 	return '' unless(defined($a));
 	$a .= $separator;
@@ -1865,23 +1977,21 @@ sub do_print($) {
 
 # The header of the print-* commands; only visible in verbose mode
 
-sub print_header(\%) {
-	my ($user_config) = @_;
-	my $tag = $user_config->{'TAG'};
+sub print_header {
 	print "\[$tag\]: " . ' ' x ($taglen - length($tag));
 }
 
 # Output for status command, respecting verbose modes
 
-sub print_status_first($) {
+sub print_status_first {
 	print $_[0]
 }
 
-sub print_status_end() {
+sub print_status_end {
 	print "\n"
 }
 
-sub print_status($) {
+sub print_status {
 	my ($a) = @_;
 	if($verbose) {
 		print("\n" . (' ' x ($taglen + 4)) . $a);
@@ -1892,19 +2002,19 @@ sub print_status($) {
 
 # Is argument defined and nonempty?
 
-sub is_nonempty($) {
+sub is_nonempty {
 	return (defined($_[0]) && ($_[0] ne ''))
 }
 
 # Is argument defined and an absolute path?
 
-sub is_abspath($) {
+sub is_abspath {
 	return (defined($_[0]) && (substr($_[0], 0, 1) eq '/'))
 }
 
 # compare two hashes
 
-sub hash_equal(\%\%) {
+sub hash_equal {
 	my ($a, $b) = @_;
 	for my $i (keys(%$a)) {
 		next unless(defined($a->{$i}));
@@ -1920,7 +2030,7 @@ sub hash_equal(\%\%) {
 
 # push string or reference to array of strings. If $s is undefined use $t
 
-sub push_ref(\%$$) {
+sub push_ref {
 	my ($arr, $s, $t) = @_;
 	$s = $t unless(defined($s));
 	return unless(defined($s));
@@ -1935,6 +2045,123 @@ sub push_ref(\%$$) {
 # Now the main program:
 #
 
+# Parse Options:
+
+$Getopt::Long::bundling = 1;
+GetOptions(
+	'help|h', sub { pod2usage(1) },
+	'man|?', sub { pod2usage(-verbose => 2) },
+	'version|V', \&version,
+	'config|c=s', \@configs,
+	'rundir=s', \$rundir,
+	'separator|S=s', \$separator,
+	'interactice|i', \$interactive,
+	'threshold|t=s', \$opt_threshold,
+	'no-squash|nosquash|n', sub { $opt_threshold = '-1' },
+	'squash|squash|s', sub { $opt_threshold = '0' },
+	'kill|k', \$opt_kill,
+	'no-kill|nokill|K', sub { $opt_kill = '' },
+	'squash-verbose=i', \$squash_verbose,
+	'lazy!', \$lazy,
+	'force|f', \$force,
+	'reset|r', \$reset,
+	'pass-directory', \$pass_directory,
+	'title|T=s', \@title,
+	'error|e', \$errorbreak,
+	'no-error|noerror|E', sub { $errorbreak = '' },
+	'first|1', \$firstmatch,
+	'verbose|v+', \$verbose,
+	'quiet|q+', \$quiet
+) or pod2usage(2);
+
+# Check options:
+
+&fatal("$rundir is not an absolute path") unless(&is_abspath($rundir));
+for my $i (@configs) {
+	&fatal("config-file $i is not an absolute path") unless(&is_abspath($rundir))
+}
+
+# Postprocess options:
+
+@configs = ('/etc/squashmount.pl') unless(@configs);
+if($quiet < $verbose) {
+	$verbose -= $quiet; $quiet = 0
+} else {
+	$quiet -= $verbose; $verbose = 0
+}
+$titleopt = join('', @title);
+undef(@title);
+$titleopt = undef if(($titleopt =~ qr/-/) || !(-t STDOUT));
+
+# Determine action:
+
+my $action = shift(@ARGV);
+$action = '' unless(defined($action));
+if($action =~ /^p/i) {
+	if($action =~ /tag/i) {
+		$action = \&cmd_print_tag
+	} elsif($action =~ /dir/i) {
+		$action = \&cmd_print_dir
+	} elsif($action =~ /chan/i) {
+		$action = \&cmd_print_changes
+	} elsif($action =~ /read|ro/i) {
+		$action = \&cmd_print_readonly
+	} elsif($action =~ /fil/i) {
+		$action = \&cmd_print_file
+	} elsif($action =~ /typ/i) {
+		$action = \&cmd_print_type
+	} elsif($action =~ /new|mod/i) {
+		$action = \&cmd_print_new
+	} elsif($action =~ /will|sq|comp/i) {
+		$action = \&cmd_print_will_squash
+	} elsif($action =~ /thr/i) {
+		$action = \&cmd_print_threshold
+	} elsif($action =~ /kil/i) {
+		$action = \&cmd_print_kill
+	}
+} elsif($action =~ /^(stat|l)/i) {
+	$action = \&cmd_status
+} elsif($action =~ /^mo/i) {
+	$action = \&cmd_mount
+} elsif($action =~ /^star/i) {
+	$action = \&cmd_start
+} elsif($action =~ /^cr/i) {
+	$action = \&cmd_create
+} elsif($action =~ /set/i) {
+	if($action =~ /[ur]/i) {
+		$action = \&cmd_reset
+	} else {
+		$action = \&cmd_set
+	}
+} elsif($action =~ /^u/i) {
+	$action = \&cmd_umount
+} elsif($action =~ /^sto/i) {
+	$action = \&cmd_stop
+} elsif($action =~ /^rem/i) {
+	$action = \&cmd_remount
+} elsif($action =~ /^rest/i) {
+	$action = \&cmd_restart
+} elsif($action =~ /^for/i) {
+	$action = \&cmd_forget
+} elsif($action =~ /^m/i) {
+	pod2usage(-verbose => 2)
+} elsif($action =~ /^h|\?/i) {
+	pod2usage(0)
+}
+pod2usage(2) unless(ref($action) eq 'CODE');
+
+# Read config files:
+
+for my $file (@configs) {
+	&read_config_file($file)
+}
+
+# Modify options according to config:
+
+$squash_verbose = $CFG::squash_verbose unless(defined($squash_verbose));
+$lazy = $CFG::lazy unless(defined($lazy));
+
+
 # Fill the %tags array in the appropriate order.
 # As a side result calculate $taglen.
 
@@ -1942,6 +2169,8 @@ my %tags = ();
 $taglen = 0;
 for(my $i = 0; $i < @CFG::mounts; ++$i) {
 	my $mount = $CFG::mounts[$i];
+	&fatal('config error: element ' . ($i + 1) . 'of @mounts is not a hash')
+		unless(ref($mount) eq 'HASH');
 	my $tag = $mount->{'TAG'};
 	&fatal('config error: mount-point ' . ($i + 1) . ' has no TAG')
 		unless(&is_nonempty($tag));
@@ -1977,7 +2206,6 @@ for(my $i = 0; $i < @CFG::mounts; ++$i) {
 		}
 	}
 }
-
 
 # Now fill @mounts or %pass_directory, respectively, according to masks:
 
@@ -2021,25 +2249,29 @@ if($pass_directory) {
 
 my $exitstatus = 0;
 for my $i ($pass_directory ? (@CFG::mounts) : (@mounts)) {
-	my $tag = $i->{'TAG'};
+	$user_config = $i;
+	$tag = $i->{'TAG'};
 	my %current;
-	&read_settings($tag, \%current);
+	$current = \%current;
+	&read_settings();
 	if($pass_directory) {
-		next unless(&find_pass_directory(\%current) || &find_pass_directory($i, \%pass_directory))
+		next unless(&find_pass_directory($current, \%pass_directory)
+			|| &find_pass_directory($user_config, \%pass_directory))
 	}
 	my %current_bak = %current;
-	&fill_defaults(\%current, $i);
-	&set_globals(\%current);
-	unless(&{$action}(\%current, $i)) {
+	&fill_current('');
+	&set_globals();
+	unless(&{$action}()) {
 		$exitstatus = 1 if($exitstatus == 0)
 	}
-	&write_settings($tag, \%current)
-		unless(&hash_equal(\%current_bak, \%current));
+	my $nowrite = $current{'NOWRITE'};
+	$nowrite = '' unless(defined($nowrite));
+	&write_settings() unless($nowrite || &hash_equal(\%current_bak, $current));
 	last if(($firstmatch) || ($errorbreak && ($exitstatus != 0)))
 }
 exit($exitstatus);
 
 END {
-	&title(($? == 0) ? 'squashmount finished' : 'squashmount failed')
+	&title(($? == 0) ? "$name finished" : "$name failed")
 		if(defined($printed_title) && $printed_title)
 }

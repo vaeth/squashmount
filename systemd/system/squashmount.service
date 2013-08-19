@@ -5,8 +5,8 @@ After=local-fs.target
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStart=/usr/bin/squashmount mount
-ExecStop=/usr/bin/squashmount umount
+ExecStart=/usr/bin/squashmount start
+ExecStop=/usr/bin/squashmount stop
 
 [Install]
 WantedBy=multi-user.target
