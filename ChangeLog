@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squash_dir-2.1
+	Martin Väth <martin at mvath.de>:
+	- Fix division by 0 on 32 bit systems
+
 *squash_dir-2.0
 	Martin Väth <martin at mvath.de>:
 	- Introduce &standard_mount, &added_hash config helpers,

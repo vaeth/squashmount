@@ -1625,15 +1625,15 @@ sub parse_threshold {
 
 sub human_threshold {
 	my ($threshold) = @_;
-	if($threshold > (512 * 1024 * 1024 * 1024)) {
+	if($threshold > (512 * 1024 * 1024 * 1024) && (1024 * 1024 * 1024 * 1024 != 0)) {
 		$threshold = &roundup($threshold, 1024 * 1024 * 1024 * 1024);
 		return "${threshold}t"
 	}
-	if($threshold > (512 * 1024 * 1024)) {
+	if($threshold > (512 * 1024 * 1024) && (1024 * 1024 * 1024 != 0)) {
 		$threshold = &roundup($threshold, 1024 * 1024 * 1024);
 		return "${threshold}g"
 	}
-	if($threshold > (512 * 1024)) {
+	if($threshold > (512 * 1024) && (1024 * 1024 != 0)) {
 		$threshold = &roundup($threshold, 1024 * 1024);
 		return "${threshold}m"
 	}
