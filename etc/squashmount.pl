@@ -62,8 +62,10 @@ push(@mounts,
 
 # We configure tex as in the "squashmount man" example:
 	&standard_mount('text', '/usr/share/texmf-dist', $defaults, {
-		SKIP => '^ls-R$',
-		DIFF => '^tex(/generic(/config(/language(\.(dat(\.lua)?|def)))?)?)?$'
+		DIFF => [
+			qr{^ls-R$},
+			qr{^tex(/generic(/config(/language(\.(dat(\.lua)?|def)))?)?)?$}
+		]
 	}),
 	&standard_mount('portage', '/usr/portage', $defaults, {
 		THRESHOLD => '80m'

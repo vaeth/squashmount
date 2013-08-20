@@ -1,5 +1,16 @@
 # ChangeLog for squashmount
 
+*squash_dir-2.2
+	Martin Väth <martin at mvath.de>:
+	- Remember paths; check for existence with File::Which
+	- Fix usage of unionfs-fuse and of unionfs. Thanks to yoshi314 for
+	  reporting: http://forums.gentoo.org/viewtopic-t-465367-start-248.html
+	- Require -f on stop for umounted points to avoid accidental forget
+	  of a semi-mounted state (could happen in case of certain bugs in
+	  /etc/squashmount.pl or squashmount)
+	- Use bigint for sizes/thresholds to make it reliable on 32 bit systems
+	- Add more sanity checks
+
 *squash_dir-2.1
 	Martin Väth <martin at mvath.de>:
 	- Fix division by 0 on 32 bit systems

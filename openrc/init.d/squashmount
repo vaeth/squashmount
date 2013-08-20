@@ -17,6 +17,6 @@ start() {
 
 stop() {
 	ebegin 'umounting/stopping squashmount'
-	squashmount stop
+	squashmount -f stop
 	eend ${?}
 }
