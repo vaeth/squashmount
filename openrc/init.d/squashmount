@@ -11,8 +11,6 @@ start() {
 	ebegin 'mounting with squashmount'
 	squashmount start
 	eend ${?}
-	# Succeed also if some mountpoint fail to force umount:
-	:
 }
 
 stop() {

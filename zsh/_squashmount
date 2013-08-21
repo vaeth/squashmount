@@ -14,14 +14,20 @@ _arguments -C -s -S -A '-*' : \
 '(--threshold --squash -t -s '{'--no-squash --nosquash)-n','--nosquash -n)--no-squash','--no-squash -n)--nosquash'}'[no resquash\: -t -1]' \
 {'(--separator)-S+','(-S)--separator='}'[SEP (separator for print-...)]:separator' \
 '--squash-verbose=[LEVEL (verbosity of mksquash)]:verbosity:(0 1 2)' \
-'--pass-directory[Args are paths]' \
-{'(--interactive)-i','(-i)--interactive'}'[ask before cleaning directory]' \
+'--pass-dir[Args are paths]' \
+{'(--interactive)-i','(-i)--interactive'}'[ask before cleaning directories]' \
 '(--no-kill --nokill -K '{'--kill)-k','-k)--kill'}'[clean without resquashing]' \
 '(--kill -k '{'--nokill --no-kill)-K','--nokill -K)--no-kill','--no-kill -K)--nokill'}'[Remove effect of --kill]' \
 {'(--force)-f','(-f)--force'}'[force remount, create, or forget]' \
 {'(--reset)-r','(-r)--reset'}'[reset after umounting]' \
+'(--no-color -nocolor -C '{'-F)--color','(--color)-F'}'[force color on non-terminal]' \
+'(--color -F '{'--no-color --nocolor)-C','--nocolor -C)--no-color','--no-color -E)--nocolor'}'[non-colored output]' \
+'(--no-star --nostar)--star[print stars for info commands]' \
+'(--star '{'--nostar)--no-star','--no-star)--nostar'}'[do not print stars]' \
 '(--no-lazy --nolazy)--lazy[lazy umount after failure]' \
 '(--lazy '{'--nolazy)--no-lazy','--no-lazy)--nolazy'}'[no lazy umount after failure]' \
+'(--no-fatal --nofatal)--fatal[return nonzero on every failure]' \
+'(--fatal '{'--nofatal)--no-fatal','--no-fatal)--nofatal'}'[return nonzero only on fatal failure]' \
 '(--no-error -noerror -E '{'-e)--error','(--error)-e'}'[break on error]' \
 '(--error -e '{'--no-error --noerror)-E','--noerror -E)--no-error','--no-error -E)--noerror'}'[no break on error]' \
 {'*--title=','*-T+'}'[Set title option OPT]:title option:_title_opt' \
@@ -59,17 +65,17 @@ case $state in
 	ret=$?;;
 (mask)
 	local expl
-	if [[ -z ${opt_args[--pass-directory]++} ]]
+	if [[ -z ${opt_args[--pass-dir]++} ]]
 	then	_tags masks
 		_requested masks && {
 			local masks
-			masks=(${(f)"$(_call_program print-masks 'squashmount print-tag 2>/dev/null')"})
+			masks=(${(f)"$(_call_program print-masks 'squashmount -q print-tag 2>/dev/null')"})
 			_description masks expl 'mask'
 			compadd "$expl[@]" - $masks
 			ret=?
 		}
 	else	local paths
-		paths=(${(f)"$(_call_program print-dirs 'squashmount print-dir 2>/dev/null')"})
+		paths=(${(f)"$(_call_program print-dirs 'squashmount -q print-dir 2>/dev/null')"})
 		_canonical_paths -A paths directories 'mount point'
 		ret=$?
 	fi;;

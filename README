@@ -53,9 +53,10 @@ kernel (and supports the COMPRESSION method), that the mksquashfs tool
 is available, and also that some of the above mentioned unionfs-type tools
 is available and supported by the kernel.
 
-Moreover, you need a decently new version of perl-5 together with some of
+Moreover, you need a decently new version of perl5 together with some of
 its standard modules (which might need to be installed separately if your
-perl-5 version should be too old).
+perl5 version should be too old). Decently new perl versions should have the
+TERM::ANSIColor module; you need this if you want to see nicely colored output.
 
 It is also strongly recommended to install the File::Which module
 (although there are some fallbacks if it is not available).

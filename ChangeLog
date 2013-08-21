@@ -1,5 +1,26 @@
 # ChangeLog for squashmount
 
+*squash_dir-2.3
+	Martin Väth <martin at mvath.de>:
+	- Fix serious bug with restart command (forgetting despite mounting)
+	- Change of the /run/squashmount format (MOUNT_RW is now part of TYPE).
+	  Be aware that this can lead to problems for mount-points mounted
+	  with an older version of squashmount!
+	- Never touch /run/squashmount for info (status, print-...) commands
+	- Deal better with half-mounted/half-umounted directories (i.e. after
+	  fatal mount/umount failures)
+	- More beautiful colored output if TERM::ANSIColor is available
+	- New options -c -C (--color --no-color), --star, --no-star
+	- Make most print-* commands return reasonable results also for
+	  mount-points never mounted
+	- Rename option --pass-directory into --pass-dir
+	- Let print-... produce now more verbose output by default;
+	  honour --separator only with -q
+	- Let print-threshold without -v or -q print the human-readable form
+	- Introduce --{no,}fatal and make --fatal default for {re,}start, stop
+	- internal: use File::Spec for more compatibility
+	- internal: make wanted function local to threshold_dir, using closures
+
 *squash_dir-2.2
 	Martin Väth <martin at mvath.de>:
 	- Remember paths; check for existence with File::Which
@@ -22,8 +43,8 @@
 	- Let start, stop, restart differ from mount, umount, remount
 	- Introduce a separate create command
 	- Introduce reset, forget, --reset
-	- internal change: make $current, $user_config global
-	- internal change: reorder to allow prototyping if desired,
+	- internal: make $current, $user_config global
+	- internal: reorder to allow prototyping if desired,
 	  but avoid it as it makes no sense in perl5
 
 *squash_dir-1.1
