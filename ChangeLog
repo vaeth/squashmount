@@ -1,6 +1,11 @@
 # ChangeLog for squashmount
 
-*squash_dir-2.3
+*squashmount-2.5
+	Martin Väth <martin at mvath.de>:
+	- Fix severe typo which caused umount to not save its state:
+	  Regression introduced in squashmount-2.3 (=squashmount-2.4)
+
+*squashmount-2.3
 	Martin Väth <martin at mvath.de>:
 	- Fix serious bug with restart command (forgetting despite mounting)
 	- Change of the /run/squashmount format (MOUNT_RW is now part of TYPE).
@@ -21,7 +26,7 @@
 	- internal: use File::Spec for more compatibility
 	- internal: make wanted function local to threshold_dir, using closures
 
-*squash_dir-2.2
+*squashmount-2.2
 	Martin Väth <martin at mvath.de>:
 	- Remember paths; check for existence with File::Which
 	- Fix usage of unionfs-fuse and of unionfs. Thanks to yoshi314 for
@@ -32,11 +37,11 @@
 	- Use bigint for sizes/thresholds to make it reliable on 32 bit systems
 	- Add more sanity checks
 
-*squash_dir-2.1
+*squashmount-2.1
 	Martin Väth <martin at mvath.de>:
 	- Fix division by 0 on 32 bit systems
 
-*squash_dir-2.0
+*squashmount-2.0
 	Martin Väth <martin at mvath.de>:
 	- Introduce &standard_mount, &added_hash config helpers,
 	  remove misguided &standard_hash
@@ -47,19 +52,19 @@
 	- internal: reorder to allow prototyping if desired,
 	  but avoid it as it makes no sense in perl5
 
-*squash_dir-1.1
+*squashmount-1.1
 	Martin Väth <martin at mvath.de>:
 	- Fix handling of BACKUP
 	- various cosmetical fixes
 
-*squash_dir-1.0
+*squashmount-1.0
 	Martin Väth <martin at mvath.de>:
 	- Improve documentation
 	- Fix rounding
 	- Fix sanity checks
 	- Try to skip remount
 
-*squash_dir-0.01
+*squashmount-0.01
 	Martin Väth <martin at mvath.de>:
 	- Initial implementation, using some ideas of the squash_dir project
 

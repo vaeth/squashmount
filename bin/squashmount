@@ -1306,7 +1306,7 @@ sub umount_main {
 	}
 	&info('umounting...') unless($quiet);
 	return '' unless(&umount_dir($dir));
-	delete $user_config->{'TYPE'};
+	delete $current->{'TYPE'};
 	&reset_main(!$quiet) if($reset);
 	my $ret = &umount_readonly();
 	if($created) {
