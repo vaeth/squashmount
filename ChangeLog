@@ -1,10 +1,18 @@
 # ChangeLog for squashmount
 
+*squashmount-2.6
+	Martin Väth <martin at mvath.de>:
+	- Require -f for restart to forget+start an umounted mountpoint
+	- Introduce --ignore-state to deal better with exceptional
+	  situations caused by bugs (in squashmount or its config) or
+	  by manual interfering
+
 *squashmount-2.5
 	Martin Väth <martin at mvath.de>:
 	- Fix severe typo which caused umount to not save its state:
 	  Regression introduced in squashmount-2.3 (=squashmount-2.4)
 
+*squashmount-2.4
 *squashmount-2.3
 	Martin Väth <martin at mvath.de>:
 	- Fix serious bug with restart command (forgetting despite mounting)

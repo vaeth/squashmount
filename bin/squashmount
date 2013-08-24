@@ -19,7 +19,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 2.3\n");
+	print("$name 2.6\n");
 	exit(0)
 }
 
@@ -144,11 +144,14 @@ In order to change F</etc/squashmount.pl> after B<squasmount mount> was called,
 the safe way is to call first B<squashmount stop> (at least for the
 mount-points you want to modify) and then do your modifications.
 
+If used with B<--force> forget also umounted mountpoints.
+
 =item B<restart>
 
 This is like calling B<squashmount stop> followed by B<squashmount start>.
 Note that in contrast to B<remount> this is executed unconditionally
 (and it differs also substantially from B<squashmount --force remount>).
+If used with B<--force> forget and try to mount umounted mountpoints.
 
 =item B<status> or B<list>
 
@@ -307,6 +310,7 @@ if not specified there the default is B<1>.
 
 Quiet output.
 Use this with B<print-...> if you want to use the output in scripts.
+See also B<--separator>.
 
 =item B<--version> or B<-V>
 
@@ -407,10 +411,22 @@ necessary to resquash or to delete data.
 
 If used with B<create>, continue even if the squash-file already exists.
 
-If used with B<stop>, forget information also for umounted mountpoints.
+If used with B<stop> or B<restart>, forget information also for
+umounted mountpoints.
 
 If used with B<forget>, forget information also if mountpoint is mounted.
 The latter is very dangerous, see the description of the B<forget> command.
+
+=item B<--ignore-state> or B<-I>
+
+Whenever umounting, try to umount even mount-points which are apparently
+umounted according to the setting in F</run/squashmount>.
+
+Similarly, whenever mounting, try to mount even if apparently already
+mounted according to the setting in F</run/squashmount>.
+
+This option should only be necessary in exceptional caseas like bugs in
+B<squashmount> or F</etc/squashmount.pl> or if you manually interfered.
 
 =item B<--lazy>
 
@@ -458,14 +474,13 @@ Omit printing C< * > at beginning of messages.
 
 =item B<--star>
 
-Print B< * > at beginning of messages.
+Print C< * > at beginning of messages.
 This is currently the default, but this might change in future versions
 of squashmount, at least for certain commands.
 
 =item B<--title=>I<options> or B<-T> I<options>
 
-Here I<options> is some of the letters:
-The corresponding option(s) are passed to the title script to set the
+The corresponding I<options> are passed to the title script to set the
 hardstatus title. This option can be used accumulatively.
 If at least one passed option is B<->, the title script is not used.
 
@@ -1019,6 +1034,7 @@ my $opt_color = undef;
 my $star = undef;
 my $lazy = undef;
 my $force = '';
+my $ignore_state = '';
 my $reset = '';
 my $interactive = '';
 my $opt_threshold = '';
@@ -1113,6 +1129,7 @@ sub cmd_stop {
 sub cmd_restart {
 	my $ret;
 	if(&error_unless_mounted()) {
+		return '' unless($force);
 		$ret = ''
 	} else {
 		return '' unless(&umount_main());
@@ -1286,7 +1303,7 @@ sub mount_main {
 
 sub umount_main {
 	return &umount_readonly($quiet ? '' : 'umounting READONLY')
-		unless(&is_nonempty($current->{'TYPE'}));
+		unless($ignore_state || &is_nonempty($current->{'TYPE'}));
 	my ($will_squash, $will_remove) = @_;
 	($will_squash, $will_remove) = &check_squash($threshold, $kill)
 		unless(defined($will_squash) && defined($will_remove));
@@ -1368,23 +1385,29 @@ sub reset_main {
 	return &fill_current(1)
 }
 
-# print an error and return 1 if not at least halfmounted:
+# print an error and return 1 if not at least halfmounted and not -I
 
 sub error_unless_mounted {
 	unless(&is_nonempty($current->{'TYPE'})
 		|| &is_nonempty($current->{'MOUNT_RO'})) {
-		&error('not mounted');
-		return 1
+		unless($ignore_state) {
+			&error('not mounted');
+			return 1
+		}
+		&warning('apparently not mounted; ignoring due to -I')
 	}
 	return ''
 }
 
-# print an error and return 1 if mounted
+# print an error and return 1 if mounted and not -I
 
 sub error_if_mounted {
 	if(&is_nonempty($current->{'TYPE'})) {
-		&error('already mounted');
-		return 1
+		unless($ignore_state) {
+			&error('already mounted');
+			return 1
+		}
+		&warning('apparently mounted; ignoring due to -I')
 	}
 	return ''
 }
@@ -2295,6 +2318,7 @@ GetOptions(
 	'squash-verbose=i', \$squash_verbose,
 	'lazy!', \$lazy,
 	'force|f', \$force,
+	'ignore-state|I', \$ignore_state,
 	'reset|r', \$reset,
 	'pass-dir', \$pass_dir,
 	'title|T=s', \@title,

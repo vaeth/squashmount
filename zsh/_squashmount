@@ -19,6 +19,7 @@ _arguments -C -s -S -A '-*' : \
 '(--no-kill --nokill -K '{'--kill)-k','-k)--kill'}'[clean without resquashing]' \
 '(--kill -k '{'--nokill --no-kill)-K','--nokill -K)--no-kill','--no-kill -K)--nokill'}'[Remove effect of --kill]' \
 {'(--force)-f','(-f)--force'}'[force remount, create, or forget]' \
+{'(--ignore-state)-I','(-I)--ignore-state'}'[ignore state of mounts/umounts]' \
 {'(--reset)-r','(-r)--reset'}'[reset after umounting]' \
 '(--no-color -nocolor -C '{'-F)--color','(--color)-F'}'[force color on non-terminal]' \
 '(--color -F '{'--no-color --nocolor)-C','--nocolor -C)--no-color','--no-color -E)--nocolor'}'[non-colored output]' \
