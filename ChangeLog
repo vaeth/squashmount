@@ -1,5 +1,11 @@
 # ChangeLog for squashmount
 
+*squashmount-2.8
+	Martin Väth <martin at mvath.de>:
+	- fix: --error and --fatal can work together
+	- fix restart: postpone forget, not releasing lock too early
+	- Improve error handling for writing to /run/squashmount
+
 *squashmount-2.7
 	Martin Väth <martin at mvath.de>:
 	- Introduce --locking and $locking and make it default

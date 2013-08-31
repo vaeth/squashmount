@@ -20,7 +20,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 2.7\n");
+	print("$name 2.8\n");
 	exit(0)
 }
 
@@ -522,8 +522,8 @@ Do not process further mount points when an error occurs.
 
 =item B<--no-error> or B<--noerror> or B<-E>
 
-Do not break on non-fatal errors but try to process all mount-points
-if there is a chance to do so (default).
+Do not break on non-fatal errors but try to process all (matching) mount-points
+if there is a chance to do so. This is the default.
 
 =item B<--fatal>
 
@@ -1104,7 +1104,9 @@ my $lockfh = undef;
 my $stdoutterm = (-t STDOUT);
 my $stderrterm = undef;
 my $exitstatus = 0;
+my $had_error = '';
 my $current = undef;    # current configuration in /run/squashmount
+my $current_empty;      # if defined and equal to $current, will remove file
 my $user_config = undef;# current configuration in /etc/squashmount.pl
 my $tag = '';           # $user_config->{'TAG'}
 my $printed_title = ''; # Have we printed a statusline?
@@ -1160,11 +1162,12 @@ sub cmd_start {
 
 sub cmd_stop {
 	if(&error_unless_mounted()) {
-		&forget_settings(1) if($force);
+		&forget_settings() if($force);
 		return ''
 	}
 	return '' unless(&umount_main());
-	return &forget_settings(1)
+	&forget_settings();
+	return 1
 }
 
 sub cmd_restart {
@@ -1176,7 +1179,7 @@ sub cmd_restart {
 		return '' unless(&umount_main());
 		$ret = 1
 	}
-	return '' unless(&forget_settings());
+	&forget_settings();
 	return (&mount_main(1) && $ret);
 }
 
@@ -1185,7 +1188,8 @@ sub cmd_forget {
 		&error('mounted, forget is not used');
 		return ''
 	}
-	return &forget_settings(1)
+	&forget_settings();
+	return 1
 }
 
 sub cmd_set {
@@ -1450,7 +1454,7 @@ sub umount_main {
 	return 1 unless($will_remove);
 	my $changes = $current->{'CHANGES'};
 	&title("$tag cleaning");
-	&info('cleaning directory...') unless($quiet);
+	&info('cleaning changes...') unless($quiet);
 	return &clean_directory($changes)
 }
 
@@ -1518,7 +1522,7 @@ sub first_create {
 		"The squashed file $squashfile does not exist yet;",
 		"it will be initialized now from $dir") unless($quiet);
 	return '' unless(&mksquashfs($squashfile, $dir, 2));
-	&info('cleaning original content') unless($quiet);
+	&info('cleaning original DIR') unless($quiet);
 	return &clean_directory($dir)
 }
 
@@ -1793,22 +1797,23 @@ sub write_settings {
 		$fh = $lockfh;
 		unless(seek($fh, 0, SEEK_SET)) {
 			&error("cannot seek $file");
-			return
+			return ''
 		}
 		unless(truncate($fh, 0)) {
 			&error("cannot truncate $file");
-			return
+			return ''
 		}
 	} else {
 		unless(open($fh, '>', $file)) {
 			&error("cannot open $file for writing");
-			return
+			return ''
 		}
 		if($locking) {
 			$lockfh = $fh; # unlock even if we die
 			flock($lockfh, LOCK_EX)
 		}
 	}
+	my $ret = 1;
 	for my $i (keys(%$current)) {
 		my $value = $current->{$i};
 		next unless(defined($value));
@@ -1822,9 +1827,23 @@ sub write_settings {
 		} else {
 			$write .= '"' . quotemeta($value) . "\"\;\n"
 		}
-		print($fh $write) or &error("cannot write to $file")
+		unless(print($fh $write)) {
+			&error("cannot write to $file") unless($ret);
+			$ret = ''
+		}
 	}
-	close($fh) unless(&end_locking())
+	close($fh) unless(&end_locking());
+	return $ret
+}
+
+# forget settings in /run/squashmount if $current_empty suggests to.
+
+sub remove_settings {
+	return '' unless(defined($current_empty));
+	return '' unless(&hash_equal($current_empty, $current));
+	my $file = &settings_file();
+	return 1 unless(-f $file);
+	return unlink($file)
 }
 
 # Start locking in /run/squashmount unless $run_ro
@@ -1849,26 +1868,15 @@ sub end_locking {
 	return 1
 }
 
-# Forget settings from /run/squashmount in ram.
-# With argument 1 also remove from disk and mark that we will not save current.
+# Forget settings from $current and remember new state in $current_empty
 
 sub forget_settings {
-	my ($nowrite) = @_;
 	&info('forgetting settings') unless($quiet);
 	$current = {};
 	&fill_current();
 	&set_globals();
-	return 1 unless(defined($nowrite) && $nowrite);
-	my $file = &settings_file();
-	if(-f $file) {
-		unless(unlink($file)) {
-			# Do *not* set NOWRITE here: Try to write empty file later
-			&error("unlinking $file failed: $!");
-			return ''
-		}
-	}
-	$current->{'NOWRITE'} = 1;
-	return 1
+	$current_empty = {};
+	%$current_empty = %$current
 }
 
 # Return the filename in /run/squashmount for the current tag
@@ -2322,7 +2330,7 @@ sub title {
 	$titleopt = undef
 }
 
-# If title was called once, we have to reset it on every exit:
+# If title was called once or we locked, we have to reset this on every exit:
 
 END {
 	&end_locking();
@@ -2477,6 +2485,13 @@ sub push_ref {
 		return
 	}
 	push(@$arr, $s) if($s ne '')
+}
+
+# set $had_error and $exitstatus according to $errorbreak and $fatalreturn
+
+sub bad_status {
+	$had_error = 1 if($errorbreak);
+	$exitstatus = 1 unless($fatalreturn || ($exitstatus != 0))
 }
 
 #
@@ -2705,14 +2720,7 @@ if($pass_dir) {
 }
 
 # Make sure that /run/squashmount exists (unless we have $run_ro)
-# Moreover, wait for a free lock
 
-END {
-	if(defined($lockfh)) {
-		flock($lockfh, LOCK_UN);
-		close($lockfh)
-	}
-}
 &make_directory($rundir) unless($run_ro || (-d $rundir));
 
 # Finally, the main loop over the @mounts or %pass_dir entries:
@@ -2720,6 +2728,7 @@ END {
 for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 	$user_config = $i;
 	$tag = $i->{'TAG'};
+	$current_empty = undef;
 	$current = {};
 	&read_settings();
 	&start_locking();
@@ -2731,11 +2740,16 @@ for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 	&fill_current();
 	&set_globals();
 	unless(&{$action}()) {
-		$exitstatus = 1 unless($fatalreturn || ($exitstatus != 0))
+		&bad_status();
 	}
-	&write_settings() unless($run_ro || &is_nonempty($current->{'NOWRITE'})
-		|| &hash_equal(\%current_bak, $current));
+	unless($run_ro) {
+		unless(&remove_settings() || &hash_equal(\%current_bak, $current)) {
+			unless(&write_settings()) {
+				&bad_status()
+			}
+		}
+	}
 	&end_locking();
-	last if(($firstmatch) || ($errorbreak && ($exitstatus != 0)))
+	last if($firstmatch || $had_error)
 }
 exit($exitstatus);
