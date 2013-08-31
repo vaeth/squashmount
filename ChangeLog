@@ -1,5 +1,13 @@
 # ChangeLog for squashmount
 
+*squashmount-2.7
+	Martin Väth <martin at mvath.de>:
+	- Introduce --locking and $locking and make it default
+	- New check command
+	- Add tmpfiles.d
+	- squashmount -fI {u,}mount now even continues after error
+	- Allow -f for status and print-... and improve results without -f
+
 *squashmount-2.6
 	Martin Väth <martin at mvath.de>:
 	- Require -f for restart to forget+start an umounted mountpoint

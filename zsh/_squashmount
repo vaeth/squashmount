@@ -18,7 +18,7 @@ _arguments -C -s -S -A '-*' : \
 {'(--interactive)-i','(-i)--interactive'}'[ask before cleaning directories]' \
 '(--no-kill --nokill -K '{'--kill)-k','-k)--kill'}'[clean without resquashing]' \
 '(--kill -k '{'--nokill --no-kill)-K','--nokill -K)--no-kill','--no-kill -K)--nokill'}'[Remove effect of --kill]' \
-{'(--force)-f','(-f)--force'}'[force remount, create, or forget]' \
+{'(--force)-f','(-f)--force'}'[force action even if unreasonable]' \
 {'(--ignore-state)-I','(-I)--ignore-state'}'[ignore state of mounts/umounts]' \
 {'(--reset)-r','(-r)--reset'}'[reset after umounting]' \
 '(--no-color -nocolor -C '{'-F)--color','(--color)-F'}'[force color on non-terminal]' \
@@ -27,6 +27,8 @@ _arguments -C -s -S -A '-*' : \
 '(--star '{'--nostar)--no-star','--no-star)--nostar'}'[do not print stars]' \
 '(--no-lazy --nolazy)--lazy[lazy umount after failure]' \
 '(--lazy '{'--nolazy)--no-lazy','--no-lazy)--nolazy'}'[no lazy umount after failure]' \
+'(--no-locking --nolocking)--locking[use file locking]' \
+'(--locking '{'--nolocking)--no-locking','--no-locking)--nolocking'}'[do not use file locking]' \
 '(--no-fatal --nofatal)--fatal[return nonzero on every failure]' \
 '(--fatal '{'--nofatal)--no-fatal','--no-fatal)--nofatal'}'[return nonzero only on fatal failure]' \
 '(--no-error -noerror -E '{'-e)--error','(--error)-e'}'[break on error]' \
@@ -45,6 +47,7 @@ case $state in
 	'start:mount, creating squashfile first if necessary'
 	'umount:umount, squashing/cleaning if necessary'
 	'stop:umount and forget'
+	'check:check whether DIR is empty'
 	'forget:forget all information in /run/squashdir'
 	'remount:remount, squashing/cleaning if necessary'
 	'restart:stop and start'

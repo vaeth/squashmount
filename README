@@ -75,12 +75,23 @@ or any other directory of your $PATH.
 For zsh completion support also copy zsh/_squashmount into a directory of
 your zsh's $fpath.
 
+It is strongly recommended to put
+	alias squashmount='noglob squashmount'
+into your ~/.zshrc or /etc/zsh/zshrc or /etc/zshrc, respectively,
+so that things like
+	squashmount start *
+will work in your zsh as intended without the need to quote *.
+(I assume that you do not use a poor shell instead of zsh.)
+
 For openrc-support copy openrc/init.d/squashmount to /etc/init.d/squashmount
 and activate it in the usual way.
 For system-support copy systemd/system/squashmount.service to your
 systemd system folder and activate it in the usual way.
 (If you copied the main script not to /usr/bin/squashmount, you have
 to modify the squashmount.service file for systemd correspondingly.)
+Also copy tmpfiles.d/squashmount.conf to /usr/lib/tmpfiles.d, though that
+is not absolutely necessary (squashmount will create the corresponding
+directories anyway).
 
 In all cases you have to copy etc/squashmount.pl to /etc/squashmount.pl
 and adapt it to your need! This is the essential point of squashmount!
