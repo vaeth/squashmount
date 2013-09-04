@@ -92,6 +92,16 @@ to modify the squashmount.service file for systemd correspondingly.)
 Also copy tmpfiles.d/squashmount.conf to /usr/lib/tmpfiles.d, though that
 is not absolutely necessary (squashmount will create the corresponding
 directories anyway).
+If you use an init-system which does not mount /run as a ramdisk,
+you should cleanup /run/squashmount on every fresh start before
+calling "squashmount start".
+Depending on your init-system, a way to achieve this might be to change the
+first letter in the crucial line in /usr/lib/tmpfiles.d/squashmount.conf
+from "d" to "D" and to make sure that the processing of /usr/lib/tmpfiles.d
+takes place before calling "squashmount start".
+(Since accidental cleaning can have very inconvenient consequences, "d" is
+the default.) See section "Emergency Case" what to do if /run/squashmount
+is removed accidentally anyway.
 
 In all cases you have to copy etc/squashmount.pl to /etc/squashmount.pl
 and adapt it to your need! This is the essential point of squashmount!
@@ -220,6 +230,21 @@ to use squashmount. To get an exact description of the user interface and
 of the config file format just execute:
 
 	squashmount man
+
+Emergency Case
+==============
+
+If you accidentally removed or corrupted /run/squashmount, e.g. due to a bug
+in squashmount itself or in its configuration or if the init-system was
+misconfigured and removed /run/squashmount after calling "squashmount start",
+you should try to umount unconditionally.
+You can instruct squashmount to do this with
+	squashmount -fI umount
+or (if you do not want resquashing in such a situation):
+	squashmount -nfI umount
+This will work reliably unless you used temporary directories in your setup.
+It will even work with temporary directories if their name is still stored
+in /run/squashmount, i.e. if the information there was not lost completely.
 
 
 A Word of None-Warning

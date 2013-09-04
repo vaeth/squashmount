@@ -1,6 +1,6 @@
 [Unit]
 Description=mount/umount all squashmount configured mountpoints
-After=local-fs.target
+After=local-fs.target systemd-tmpfiles-setup.service
 
 [Service]
 Type=oneshot

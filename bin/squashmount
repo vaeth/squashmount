@@ -20,7 +20,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 2.8\n");
+	print("$name 2.9\n");
 	exit(0)
 }
 
@@ -447,7 +447,11 @@ mounted according to the setting in F</run/squashmount>.
 If combined with B<-f> proceed even if mounting of B<READONLY> seems to fail.
 
 This option should only be necessary in exceptional caseas like bugs in
-B<squashmount> or F</etc/squashmount.pl> or if you manually interfered.
+B<squashmount> or F</etc/squashmount.pl> or if you manually interfered
+or removed or corrupted F</run/squashmount>.
+In this case, the best attempt is to call
+C<squashmount -fI umount> or C<squashmount -nfI umount> for trying to force
+umounting unconditionally all configured directories.
 
 =item B<--lazy>
 
@@ -1203,7 +1207,7 @@ sub cmd_reset {
 }
 
 sub cmd_check {
-	my $dir = &get_abspath('DIR', '');
+	my $dir = &get_abspath('DIR');
 	unless(&is_abspath($dir)) {
 		&error("DIR is not known yet; use first: $name -f print-dir");
 		return 1
@@ -1216,7 +1220,7 @@ sub cmd_check {
 		}
 		&info('umounting...') unless($quiet);
 		return '' unless(&umount_dir($dir));
-		delete $current->{'TYPE'}
+		delete($current->{'TYPE'})
 	}
 	my $status = &dir_is_empty($dir);
 	if($status eq '') {
@@ -1404,8 +1408,9 @@ sub umount_main {
 		unless(defined($will_squash) && defined($will_remove));
 	my $created = '';
 	my $tempfile;
-	my $dir = $current->{'DIR'};
-	if($will_squash) {
+	my $dir = &get_abspath('DIR');
+	$dir = undef unless(&is_abspath($dir));
+	if($will_squash && defined($dir)) {
 		&info('squashing (this may take a while)') unless($quiet);
 		my $tempdir = $user_config->{'TEMPDIR'};
 		if(&is_abspath($tempdir)) {
@@ -1419,13 +1424,14 @@ sub umount_main {
 	&info('umounting...') unless($quiet);
 	my $ret = 1;
 	my $message = '';
-	unless(&umount_dir($dir)) {
+	unless(defined($dir) && &umount_dir($dir)) {
+		&error('cannot determine DIR') unless(defined($dir));
 		return '' unless($ignore_state && $force);
 		&warning('presuming umount was succesful due to -fI') unless($quiet > 1);
 		$ret = '';
 		$message = 'umounting READONLY' unless($quiet)
 	}
-	delete $current->{'TYPE'};
+	delete($current->{'TYPE'});
 	&reset_main(!$quiet) if($reset);
 	$ret = '' unless(&umount_readonly($message));
 	if($created) {
@@ -1452,7 +1458,7 @@ sub umount_main {
 		}
 	}
 	return 1 unless($will_remove);
-	my $changes = $current->{'CHANGES'};
+	my $changes = &get_abspath('CHANGES');
 	&title("$tag cleaning");
 	&info('cleaning changes...') unless($quiet);
 	return &clean_directory($changes)
@@ -2739,14 +2745,10 @@ for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 	my %current_bak = %$current;
 	&fill_current();
 	&set_globals();
-	unless(&{$action}()) {
-		&bad_status();
-	}
+	&bad_status() unless(&{$action}());
 	unless($run_ro) {
 		unless(&remove_settings() || &hash_equal(\%current_bak, $current)) {
-			unless(&write_settings()) {
-				&bad_status()
-			}
+			&bad_status() unless(&write_settings())
 		}
 	}
 	&end_locking();

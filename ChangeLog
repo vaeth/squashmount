@@ -1,5 +1,13 @@
 # ChangeLog for squashmount
 
+*squashmount-2.9
+	Martin Väth <martin at mvath.de>:
+	- fix tmpfiles.d content which caused sometimes breakage with systemd
+	- fix systemd/openrc deps to avoid most problems even with "D" setting
+	- document emergency case explicitly
+	- improve behaviour in emergency case (getting DIR)
+	- cosmetical code cleanup
+
 *squashmount-2.8
 	Martin Väth <martin at mvath.de>:
 	- fix: --error and --fatal can work together

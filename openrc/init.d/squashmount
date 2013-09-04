@@ -2,7 +2,7 @@
 # (C) Martin V\"ath <martin@mvath.de>
 
 depend() {
-	need localmount
+	need localmount tmpfiles.setup
 }
 
 description='start/stop all squashmount configured mountpoints'
