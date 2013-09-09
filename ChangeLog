@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-2.10
+	Martin Väth <martin at mvath.de>:
+	- Support FILL and FILLFUNC
+
 *squashmount-2.9
 	Martin Väth <martin at mvath.de>:
 	- fix tmpfiles.d content which caused sometimes breakage with systemd

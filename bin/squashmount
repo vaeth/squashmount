@@ -20,7 +20,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 2.9\n");
+	print("$name 2.10\n");
 	exit(0)
 }
 
@@ -637,7 +637,11 @@ end of this manpage):
 
 =item READONLY => '/usr/portage.readonly',
 
-=item THRESHOLD => '40m' # resquash on umount if 40 megabytes changed
+=item THRESHOLD => '40m', # resquash on umount if 40 MB changed, or
+
+=item # if local/* (with * not .git, profiles, metadata) changed:
+
+=item FILL => qr{^local/(?!(\.git|profiles|metadata)(/|$))}
 
 =back
 
@@ -954,6 +958,20 @@ then its content is not considered as changed, either.
 
 In the above B<fancy_temporary> example, this functions is used to ignore all
 added/modified (empty) directories.
+
+=item B<FILL>
+
+This is similar to B<SKIP>, but with the opposite meaning:
+If there is a matching file/directory then any positive value of
+B<THRESHOLD> is considered as reached by the corresponding data.
+If B<SKIP>, B<SKIPDIR>, B<DIFF>, or B<SKIPFUNC> apply also, these
+take precedence over B<FILL> or B<FILLFUNC>.
+
+=item B<FILLFUNC>
+
+This is the analogue of B<SKIPFUNC>, but corresponding to B<FILL> instead of B<SKIP>.
+If the function returns a true value (e.g. 1) if the threshold should be considered as filled.
+This function has no need to modify C<$File::Find::prune>.
 
 =back
 
@@ -2099,6 +2117,8 @@ sub threshold_dir {
 	my $skip = $user_config->{'SKIP'};
 	my $skipdir = $user_config->{'SKIPDIR'};
 	my $check = $user_config->{'DIFF'};
+	my $fill = $user_config->{'FILL'};
+	my $fillfunc = $user_config->{'FILLFUNC'};
 
 	# Now some hidden files/directories for special filesystems:
 	# We skip these files also if the $type does not match;
@@ -2139,8 +2159,16 @@ sub threshold_dir {
 			local($_);
 			return unless(&{$skipfunc}($path, $_, $readonly . "/$path"))
 		}
+		my $currfill = &is_match($path, $fill);
+		if((!$currfill) && defined($fillfunc) && (ref($fillfunc) eq 'CODE')) {
+			local($_);
+			$currfill = &{$fillfunc}($path, $_, $readonly . "/$path")
+		}
 		$found = 1;
-		{
+		if($currfill) {
+			use bigint;
+			$to_find = -1
+		} else {
 			use bigint;
 			my $size = (((-l $_) || !(-f $_)) ? 1 : (-s $_));
 			$size = 1 if($size == 0);
@@ -2666,7 +2694,7 @@ for(my $i = 0; $i < @CFG::mounts; ++$i) {
 		unless(defined($dir) && ((ref($dir) eq 'CODE')
 			|| &is_abspath($dir)));
 	# Compile all regular expressions and transform into arrays:
-	for my $j ('SKIP', 'SKIPDIR', 'DIFF') {
+	for my $j ('SKIP', 'SKIPDIR', 'DIFF', 'FILL') {
 		my $a = $mountpoint->{$j};
 		unless(defined($a)) {
 			$mountpoint->{$j} = [];

@@ -68,7 +68,9 @@ push(@mounts,
 		]
 	}),
 	&standard_mount('portage', '/usr/portage', $defaults, {
-		THRESHOLD => '80m'
+		THRESHOLD => '80m',
+		# Change in local (except .git, profiles, metadata) => resquash
+		FILL => qr{^local/(?!(\.git|profiles|metadata)(/|$))}
 	}),
 	&standard_mount('games', '/usr/share/games', $defaults, {
 		# games is huge: use the fastest compression algorithm for it.
