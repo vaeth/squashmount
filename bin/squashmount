@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 3.0\n");
+	print("$name 3.1\n");
 	exit(0)
 }
 
@@ -1867,7 +1867,7 @@ sub my_modprobe {
 	my ($oldout, $olderr);
 	$oldout = undef unless(open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', $devnull));
 	$olderr = undef unless(open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull));
-	$probed = ${probed{$module}} =
+	$probed = $probed{$module} =
 		(&my_system(\$modprobe, 'modprobe', $module) == 0);
 	open(STDERR, '>&', $olderr) if(defined($olderr));
 	open(STDOUT, '>&', $oldout) if(defined($oldout));

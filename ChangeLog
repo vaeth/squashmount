@@ -1,6 +1,6 @@
 # ChangeLog for squashmount
 
-*squashmount-3.0
+*squashmount-3.1
 	Martin Väth <martin at mvath.de>:
 	- modprobe modules by default
 	- Support flags !, !!, ?, ??, # in @order
