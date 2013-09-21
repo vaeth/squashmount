@@ -1,5 +1,14 @@
 # ChangeLog for squashmount
 
+*squashmount-3.0
+	Martin Väth <martin at mvath.de>:
+	- modprobe modules by default
+	- Support flags !, !!, ?, ??, # in @order
+	- Support $modprobe_squashfs
+	- Set @order to empty string if not needed
+	- Use qw(...) in examples where it makes sense
+	- standard_mount() and added_hash() can now be called without &
+
 *squashmount-2.10
 	Martin Väth <martin at mvath.de>:
 	- Support FILL and FILLFUNC

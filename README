@@ -264,16 +264,17 @@ which are perhaps not supported by the used tools.
 Modules and Mounting
 ====================
 
-If you compiled squashfs, aufs, overlayfs, or fuse as modules, you should
-modprobe these modules first (or better put them into /etc/conf.d/modules).
-squash_dir will make no attempt to load the modules (unless this happens
-automatically by the corresponding mount program): The script will just
-attempt to mount the directories using the corresponding tool and
-will check its return status for success.
-If the mount fails, the next tool is attempted for mounting, until one
-succeeds (the order and which tools are attempted can be influenced using
-the ORDER variable described below).
-If no tool succeeds, it is attempted to use "mount --bind" to get
+Since version 3.0, unless configured otherwise, squashmount will attempt
+to modprobe the modules
+	squashfs, aufs, fuse, overlayfs, unionfs
+when they are required; optionally/alternatively, also the corresponding
+kernel option can be checked in /proc/config.gz; also the existence of
+required binaries can be checked before actually the mounting is attempted.
+It depends on your setting whether this is done and/or whether in case
+of failure the corresponding tool is skipped tacitly without attempting
+to mount.
+
+If no tool mounts successfully, it is attempted to use "mount --bind" to get
 the directory at least readonly on the expected place, so even in
 this bad situation (which probably only happens if you boot from an
 experimental kernel or a brand new kernel without corresponding support)

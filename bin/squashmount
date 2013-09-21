@@ -14,13 +14,14 @@ use File::Spec;
 use File::Temp qw();
 # use File::Which; # not mandatory but recommended; there are fallbacks
 # use Term::ANSIColor; # not mandatory but recommended: fallback to no color
+# use IO::Uncompress::Gunzip qw(gunzip); # if not available, flag ?/?? is ignored
 
 $|=1;
 
 my $name = 'squashmount';
 
 sub version {
-	print("$name 2.10\n");
+	print("$name 3.0\n");
 	exit(0)
 }
 
@@ -563,9 +564,10 @@ the array B<@dirs> with references to hashes; one hash for every tag.
 In addition, the array B<@order> can be filled with the available tools
 and the order in which they should be tried.
 Also the default variables $B<$lazy>, B<$squash_verbose>, and B<$locking>
-can be initialized. Here is an example for this file
-(actually, a different syntax is recommended, see the remarks at the
-end of this manpage):
+can be initialized. Here is an example for this file.
+(You can use this syntax if you do not have much knowledge about perl;
+if you know more about perl, a more convenient syntax is recommended,
+see the remarks at the end of this manpage.)
 
 =over 8
 
@@ -575,7 +577,7 @@ end of this manpage):
 
 =item $locking = 1;
 
-=item @order = ('overlayfs', 'aufs', 'unionfs-fuse', 'unionfs', 'funionfs');
+=item @order = qw(overlayfs? aufs! unionfs-fuse! unionfs??# funionfs??#);
 
 =item push(@mounts, {
 
@@ -690,31 +692,94 @@ Except for B<@mounts>, the meaning of the variables is easily explained:
 =item B<$lazy>
 
 This determines whether B<--lazy> or B<--no-lazy> is the default.
-If this variable is not specified the true value B<1> is chosen.
+This variable defaults to the value B<1> (true).
 
 =item B<$squash_verbose>
 
 This is the default if B<--squash-verbose> is not specified.
-If this variable is not specified the value B<1> is chosen.
+This variable defaults to the value B<1> (true).
 
 =item B<$locking>
 
 This determines whether B<--locking> or B<--no-locking> is the default.
-If this variable is not specified the true value B<1> is chosen.
+This variable defaults to the value B<1> (true).
+
+=item B<$locking>
+
+This determines whether B<--locking> or B<--no-locking> is the default.
+This variable defaults to the value B<1> (true).
+
+=item B<$modprobe_squash>
+
+This determines whether C<modprobe squashfs> is executed before the first
+squashfile is mounted.
+This variable defaults to the value B<1> (true).
 
 =item B<@order>
 
-This array determines in which order the overlayfs/aufs/... tools are tried.
+This array determines in which order the overlayfs/aufs/... tools are tried
+and/or whether it is attempted to modprobe them and on which conditions they
+are (tacitly) skipped.
+
 The first successful tool is chosen, and if all fail, B<mount --bind> is used.
-If not modified, this array defaults to
+The content of this array should be strings with one of the texts
 
 =over 16
 
-=item ('overlayfs', 'aufs', 'unionfs-fuse', 'unionfs', 'funionfs')
+=item overlayfs, aufs, unionfs-fuse, unionfs, funionfs
 
 =back
 
-These defaults contain all tools supported by B<squashmount>.
+for the corresponding tool. By default, it is attempted to B<modprobe> the
+corresponding module, and if that B<modprobe> fails, the corresponding tool
+is tacitly skipped. Optionally, you can append or prepend the following
+special flags to change this default behaviour:
+
+=over 16
+
+=item B<!> or B<!!>
+
+If this flag is used, a failure in the modprobe command is ignored;
+in case of B<!!> the modprobe is not even attempted.
+In particular you should use this if it might happen (or you know) that the
+corresponding tool is compiled directly into the kernel.
+
+=item B<?> or B<??>
+
+If this flag is used and the B<modprobe> failed (or if combined with B<!!>)
+the content of B</proc/config.gz> is checked for whether the corresponding tool
+appears available in the running linux kernel.
+If the tool appears unavailable it is tacitly skipped.
+For the case that B</proc/config.gz> cannot be read and the B<??> variant
+is used, the tool is considered as unavailable.
+Usage of this flag requires that the perl module B<IO::Uncompress::Gunzip>
+is available; the flag is tacitly ignored if this is not the case
+
+=item B<#>
+
+If this flag is used, it is checked whether the binary required to
+use the tool is available in your path. If it is unavailable, the tool is
+tacitly skipped. This flag is ignored if neither B<File::Which> nor the
+B<which> program are available.
+
+=back
+
+If B<squashmount> is used with a command for which the order is possibly needed
+(B<start>, B<restart>, B<mount>, B<remount>), this array defaults to
+
+=over 16
+
+=item qw(overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)
+
+=back
+
+This means that all modules are loaded as required with overlayfs being
+tacitly skipped if the running kernel does not provide support for it;
+all other tools are attempted in the order until the first succeeds,
+no matter whether the kernel provides support for it.
+
+If B<squashmount> is used with a different command, the default of this
+array is empty.
 
 =back
 
@@ -970,20 +1035,46 @@ take precedence over B<FILL> or B<FILLFUNC>.
 =item B<FILLFUNC>
 
 This is the analogue of B<SKIPFUNC>, but corresponding to B<FILL> instead of B<SKIP>.
-If the function returns a true value (e.g. 1) if the threshold should be considered as filled.
+If the function returns a true value (e.g. 1) the threshold is considered as filled.
 This function has no need to modify C<$File::Find::prune>.
 
 =back
 
-Note that F</etc/squashmount.pl> is ordinary perl code, so you can use
-perl e.g. to source other files at your discration.
-Moreover, you are not restricted to the syntax of the above example.
-In fact, to simplify filling hash references for typical usage, some functions
-are provided by B<squashmount> when F</etc/squashmount.pl> is parsed:
+It is intentional that F</etc/squashmount.pl> is ordinary perl code so that
+you can use all sort of perl features if you like.
+
+Here are some examples why this might be useful:
 
 =over 8
 
-=item B<&standard_mount(>I<tag>B<,> I<dir> I<...> B<)>
+=item B<(1)> You can source other config files/directories at your discretion.
+
+=item B<(2)> You can even interpret other config files in a format you prefer.
+
+=item B<(3)> You can make setups based on the existence of symlinks or dirs.
+
+=item B<(4)> You can use more complex code to setup B<@order>.
+
+=item B<(5)> You can use various shortcuts to setup "standard" mount-points.
+
+=item B<(6)> You can define some variables as "defaults" for all mount-points.
+
+=back
+
+In any case, it is recommended to not use B<too> much code since the code
+will be parsed/executed with every call of B<squashmount>.
+In particular, if you want some more complex code to setup B<@order> according
+to you system, it is recommended to enclose this code into C<if(@order)> so
+that this code is only executed if the value of B<@order> is really needed.
+
+To use some of the mentioned features you need some perl knowledge, of course.
+However, others are easy to use even without deep perl knowledge.
+In particular, concerning B<(5)> and B<(6)>, B<squashmount> provides two
+functions which make this task relatively easy:
+
+=over 8
+
+=item B<standard_mount(>I<tag>B<,> I<dir> I<...>B<)>
 
 This function returns a reference to a hash with the keys B<TAG> and B<DIR>
 filled according to the first two arguments.
@@ -993,11 +1084,17 @@ Moreover, if I<...> are references to hashes, they are added to the hash:
 Later hashes override earlier ones; setting a value to C<undef> in a sense
 cancels a previous definition.
 
-=item B<&added_hash(>I<hash_reference>B<,> I<hash_reference>B<,> ...B<)>
+=item B<added_hash(>I<hash_reference>B<,> I<hash_reference>B<,> ...B<)>
 
-This function returns a reference to a hash which adds all passed hashes,
-that is, it is like B<&standard_mount> except that it does not fill a
+This function returns a reference to a hash which merges all passed hashes,
+that is, it is like B<standard_mount()> except that it does not fill a
 hash with certain values first.
+The idea is that this function can be used to start with a "default" hash
+and override/modify/add some data at your descretion.
+
+For perl specialists: This function is practically the same as that provided
+by B<Hash::Merge::Simple>, but it does not require the existence of that
+perl module, and it does not work recursively.
 
 =back
 
@@ -1012,7 +1109,7 @@ B<THRESHOLD> option) in a shorter way:
 
 =over 16
 
-=item &standard_mount('portage, '/usr/portage', {
+=item standard_mount('portage, '/usr/portage', {
 
 =over 24
 
@@ -1022,7 +1119,7 @@ B<THRESHOLD> option) in a shorter way:
 
 =item }),
 
-=item &standard_mount('kernel', '/usr/src')
+=item standard_mount('kernel', '/usr/src')
 
 =back
 
@@ -1030,14 +1127,14 @@ B<THRESHOLD> option) in a shorter way:
 
 =back
 
-It is recommended to use a perl variable like B<$defaults> to contains
+It is recommended to use a perl variable like B<$defaults> to contain
 a reference to a hash with data which you want to specify for practically
 every mount-point like B<COMPRESSION> or B<TEMPDIR> and to add this
 variable to every point-mount.
 This way you can easily change the defaults without manipulating every
 mount-point entry manually. (You can still override $defaults
 for particular mount points at your discretion.)
-Here is such an example which also demonstrates the use of B<&added_hash>:
+Here is such an example which also demonstrates the use of B<added_hash()>:
 
 =over 8
 
@@ -1045,15 +1142,15 @@ Here is such an example which also demonstrates the use of B<&added_hash>:
 
 =item my $always = { COMPRESSION => 'gzip', THRESHOLD => '20m' };
 
-=item my $defaults = &added_hash($always, { BACKUP => 1 }, $tempdir);
+=item my $defaults =  added_hash($always, { BACKUP => 1 }, $tempdir);
 
 =item push(@mounts,
 
 =over 16
 
-=item &standard_mount('kernel', '/usr/src', $defaults),
+=item standard_mount('kernel', '/usr/src', $defaults),
 
-=item &standard_mount('games' '/usr/share/games', $defaults, {
+=item standard_mount('games', '/usr/share/games', $defaults, {
 
 =over 24
 
@@ -1118,10 +1215,12 @@ my $unionfs_fuse = undef;
 my $mksquashfs = undef;
 my $mount = undef;
 my $umount = undef;
+my $modprobe = undef;
 
 # Global/State variables:
 
 my $run_ro;             # handle /run/squashmount as readonly
+my $modprobe_squash;    # will modprobe squash
 my $lockfh = undef;
 my $stdoutterm = (-t STDOUT);
 my $stderrterm = undef;
@@ -1561,16 +1660,19 @@ sub mount_rw {
 		}
 	}
 	for my $i (@CFG::order) {
+		my $probemod = (($i =~ qr/\!/) ? (($i =~ qr/\!\!/) ? '' : -1) : 1);
+		my $check_bin = ($i =~ qr/\#/);
+		my $check_gz = (($i =~ qr/\?/) ? (($i =~ qr/\?\?/) ? -1 : 1) : '');
 		if($i =~ qr/overlay/i) {
-			return 'overlayfs' if(&mount_overlayfs($ro, $rw, $changes))
+			return 'overlayfs' if(&mount_overlayfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		} elsif($i =~ qr/aufs/i) {
-			return 'aufs' if(&mount_aufs($ro, $rw, $changes))
+			return 'aufs' if(&mount_aufs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		} elsif($i =~ qr/fuse/i) {
-			return 'unionfs-fuse' if(&mount_unionfs_fuse($ro, $rw, $changes))
+			return 'unionfs-fuse' if(&mount_unionfs_fuse($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		} elsif($i =~ qr/funion/i) {
-			return 'funionfs' if(&mount_funionfs($ro, $rw, $changes))
+			return 'funionfs' if(&mount_funionfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		} else { # ($i =~ qr/union/i)
-			return 'unionfs' if(&mount_unionfs($ro, $rw, $changes))
+			return 'unionfs' if(&mount_unionfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		}
 	}
 	&error('fallback to mount --bind');
@@ -1580,7 +1682,9 @@ sub mount_rw {
 # Mount with overlayfs:
 
 sub mount_overlayfs {
-	my ($ro, $rw, $changes) = @_;
+	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
+	return '' unless(&kernelprobe($probemod, $check_gz, 'overlayfs'));
+	return '' if($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_OVERLAYFS'},
 		['-o', 'noatime']);
 	return 1 if(&my_system(\$mount, 'mount', '-t', 'overlayfs', @options,
@@ -1593,7 +1697,9 @@ sub mount_overlayfs {
 # Mount with aufs:
 
 sub mount_aufs {
-	my ($ro, $rw, $changes) = @_;
+	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
+	return '' unless(&kernelprobe($probemod, $check_gz, 'aufs'));
+	return '' if($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_AUFS'},
 		['-o', 'noatime']);
 	$ro =~ s/([=:])/\\$1/g;
@@ -1607,13 +1713,16 @@ sub mount_aufs {
 # Mount with unionfs-fuse
 
 sub mount_unionfs_fuse {
-	my ($ro, $rw, $changes) = @_;
+	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
 	&push_ref(\my @options, $user_config->{'MOUNT_UNIONFS_FUSE'},
 		['-o', 'cow', '-o', 'allow_other', '-o', 'use_ino',
 		'-o', 'nonempty', '-o', 'noatime', '-o', 'hide_meta_files']);
 	$ro =~ s/([=:])/\\$1/g;
 	$changes =~ s/([=:])/\\$1/g;
-	&which_store(\$unionfs_fuse, 'unionfs', 'unionfs-fuse');
+	unless(&which_store(\$unionfs_fuse, 'unionfs', 'unionfs-fuse')) {
+		return '' if($check_bin)
+	}
+	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
 	push(@options, "${changes}\=RW\:${ro}\=RO", $rw);
 	return 1 if(&my_system(\$unionfs_fuse, 'unionfs', @options) == 0);
 	if(&which_which() eq '') { # We have no which
@@ -1632,7 +1741,9 @@ sub mount_unionfs_fuse {
 # Mount with unionfs
 
 sub mount_unionfs {
-	my ($ro, $rw, $changes) = @_;
+	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
+	return '' unless(&kernelprobe($probemod, $check_gz, 'unionfs'));
+	return '' if($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_UNIONFS'},
 		['-o', 'noatime']);
 	$ro =~ s/([=:])/\\$1/g;
@@ -1646,7 +1757,9 @@ sub mount_unionfs {
 # Mount with funionfs
 
 sub mount_funionfs {
-	my ($ro, $rw, $changes) = @_;
+	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
+	return '' if($check_bin && !&which_store(\$mount, 'mount'));
+	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
 	&push_ref(\my @options, $user_config->{'MOUNT_FUNIONFS'},
 		['-o', 'allow_other', '-o', 'nonempty']);
 	$ro =~ s/\=/\\\=/g;
@@ -1672,6 +1785,10 @@ sub mount_squash {
 	unless(-d $dir) {
 		&error("no directory $dir");
 		return ''
+	}
+	if($modprobe_squash) {
+		$modprobe_squash = '';
+		&my_modprobe('squashfs')
 	}
 	return 1 if(&my_system(\$mount, 'mount','-t', 'squashfs',
 		'-o', 'loop,ro,noatime', '--', $squashfile, $dir) == 0);
@@ -1740,6 +1857,74 @@ sub check_squash {
 	return ('', 0)
 }
 
+# Execute modprobe for the argument
+
+{ my %probed = (); # A closure static variable
+sub my_modprobe {
+	my ($module) = @_;
+	my $probed = $probed{$module};
+	return $probed if(defined($probed));
+	my ($oldout, $olderr);
+	$oldout = undef unless(open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', $devnull));
+	$olderr = undef unless(open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull));
+	$probed = ${probed{$module}} =
+		(&my_system(\$modprobe, 'modprobe', $module) == 0);
+	open(STDERR, '>&', $olderr) if(defined($olderr));
+	open(STDOUT, '>&', $oldout) if(defined($oldout));
+	return $probed
+}}
+
+# use IO::Uncompress::Gunzip qw(gunzip) and return whether successful
+
+{ my $gunzip = undef; # A closure static variable
+sub use_gunzip {
+	return $gunzip if(defined($gunzip));
+	eval {
+		require IO::Uncompress::Gunzip;
+		IO::Uncompress::Gunzip->import(qw(gunzip))
+	};
+	return ($gunzip = 1) unless($@);
+	return ($gunzip = '')
+}}
+
+# Assuming that use_gunzip() has previously been called with success,
+# read the kernel configuration. Return 1 on success.
+
+sub read_kernel_config {
+	my ($gz) = @_;
+	my $buffer;
+	return '' unless(gunzip('/proc/config.gz' => \$buffer));
+	$gz->{'overlayfs'} = 1 if($buffer =~ qr/^CONFIG_OVERLAYFS_FS/m);
+	$gz->{'aufs'} = 1 if($buffer =~ qr/^CONFIG_AUFS_FS/m);
+	$gz->{'unionfs'} = 1 if($buffer =~ qr/^CONFIG_UNION_?FS/m);
+	$gz->{'fuse'} = 1 if($buffer =~ qr/^CONFIG_FUSE_FS/m);
+	return 1
+}
+
+# Probe module and/or check the kernel configuration. Return 1 on success
+
+{ my $gz = undef; # A closure static variable
+sub kernelprobe {
+	my ($probemod, $check_gz, $module) = @_;
+	return 1 if($probemod && &my_modprobe($module) && ($probemod > 0));
+	return 1 unless($check_gz);
+	unless(defined($gz)) {
+		if(&use_gunzip()) {
+			$gz = {};
+			$gz = 1 unless(&read_kernel_config($gz))
+		} else {
+			$gz = ''
+		}
+	}
+	if(ref($gz) eq '') {
+		return 1 unless($gz);
+		return ($check_gz > 0)
+	}
+	my $ret = $gz->{$module};
+	return '' unless(defined($ret));
+	return $ret
+}}
+
 # The main function to read a configuration file:
 
 # The default config must be parsed before the function
@@ -1747,8 +1932,9 @@ sub check_squash {
 	package CFG;
 	our $lazy = 1;
 	our $squash_verbose = 1;
+	our $modprobe_squash = 1;
 	our $locking = 1;
-	our @order = ('overlayfs', 'aufs', 'unionfs-fuse', 'unionfs', 'funionfs');
+	our @order = ();
 	our @mounts = ();
 }
 
@@ -1766,7 +1952,7 @@ sub read_config_file {
 	our $locking;
 	our @order;
 	our @mounts;
-	sub standard_mount {
+	sub standard_mount($$@) {
 		my ($tag, $dir, @rest) = @_;
 		return &added_hash({
 			TAG => $tag,
@@ -1776,7 +1962,7 @@ sub read_config_file {
 			FILE => $dir . '.sqfs',
 		}, @rest)
 	}
-	sub added_hash {
+	sub added_hash(@) {
 		my $a = {};
 		for my $i (@_) {
 			for my $j (keys(%$i)) {
@@ -2571,12 +2757,14 @@ GetOptions(
 
 &fatal("$rundir is not an absolute path") unless(&is_abspath($rundir));
 for my $i (@configs) {
-	&fatal("config-file $i is not an absolute path") unless(&is_abspath($rundir))
+	&fatal("config-file $i is not an absolute path")
+		unless(&is_abspath($rundir))
 }
 
 # Postprocess options:
 
-@configs = (File::Spec->catfile($root, 'etc', 'squashmount.pl')) unless(@configs);
+@configs = (File::Spec->catfile($root, 'etc', 'squashmount.pl'))
+	unless(@configs);
 if($quiet < $verbose) {
 	$verbose -= $quiet; $quiet = 0
 } else {
@@ -2586,76 +2774,85 @@ $titleopt = join('', @title);
 undef(@title);
 $titleopt = undef if(($titleopt =~ qr/-/) || !$stdoutterm);
 
-# Determine $action, $fatalreturn, $run_ro and $star
+# Determine $action, $fatalreturn, $run_ro, $star, and @CFG::order
 
-$run_ro = '';
 my $action = shift(@ARGV);
-$action = '' unless(defined($action));
-if($action =~ /^p/i) {
-	$run_ro = 1;
-	if($action =~ /tag/i) {
-		$action = \&cmd_print_tag
-	} elsif($action =~ /dir/i) {
-		$action = \&cmd_print_dir
-	} elsif($action =~ /chan/i) {
-		$action = \&cmd_print_changes
-	} elsif($action =~ /read|ro/i) {
-		$action = \&cmd_print_readonly
-	} elsif($action =~ /fil/i) {
-		$action = \&cmd_print_file
-	} elsif($action =~ /typ/i) {
-		$action = \&cmd_print_type
-	} elsif($action =~ /new|mod/i) {
-		$action = \&cmd_print_new
-	} elsif($action =~ /will|sq|comp/i) {
-		$action = \&cmd_print_will_squash
-	} elsif($action =~ /thr/i) {
-		$action = \&cmd_print_threshold
-	} elsif($action =~ /kil/i) {
-		$action = \&cmd_print_kill
+{
+	$action = '' unless(defined($action));
+	my $order_needed = '';
+	$run_ro = '';
+	if($action =~ /^p/i) {
+		$run_ro = 1;
+		if($action =~ /tag/i) {
+			$action = \&cmd_print_tag
+		} elsif($action =~ /dir/i) {
+			$action = \&cmd_print_dir
+		} elsif($action =~ /chan/i) {
+			$action = \&cmd_print_changes
+		} elsif($action =~ /read|ro/i) {
+			$action = \&cmd_print_readonly
+		} elsif($action =~ /fil/i) {
+			$action = \&cmd_print_file
+		} elsif($action =~ /typ/i) {
+			$action = \&cmd_print_type
+		} elsif($action =~ /new|mod/i) {
+			$action = \&cmd_print_new
+		} elsif($action =~ /will|sq|comp/i) {
+			$action = \&cmd_print_will_squash
+		} elsif($action =~ /thr/i) {
+			$action = \&cmd_print_threshold
+		} elsif($action =~ /kil/i) {
+			$action = \&cmd_print_kill
+		}
+	} elsif($action =~ /^(stat|l)/i) {
+		$run_ro = 1;
+		$action = \&cmd_status
+	} elsif($action =~ /^mo/i) {
+		$order_needed = 1;
+		$action = \&cmd_mount
+	} elsif($action =~ /^star/i) {
+		$order_needed = 1;
+		$fatalreturn = 1 unless(defined($fatalreturn));
+		$action = \&cmd_start
+	} elsif($action =~ /^cr/i) {
+		$action = \&cmd_create
+	} elsif($action =~ /^ch/i) {
+		$run_ro = 1;
+		$lazy = '' unless(defined($lazy));
+		$action = \&cmd_check
+	} elsif($action =~ /set/i) {
+		if($action =~ /[ur]/i) {
+			$action = \&cmd_reset
+		} else {
+			$action = \&cmd_set
+		}
+	} elsif($action =~ /^u/i) {
+		$action = \&cmd_umount
+	} elsif($action =~ /^sto/i) {
+		$fatalreturn = 1 unless(defined($fatalreturn));
+		$action = \&cmd_stop
+	} elsif($action =~ /^rem/i) {
+		$order_needed = 1;
+		$action = \&cmd_remount
+	} elsif($action =~ /^rest/i) {
+		$fatalreturn = 1 unless(defined($fatalreturn));
+		$order_needed = 1;
+		$action = \&cmd_restart
+	} elsif($action =~ /^for/i) {
+		$action = \&cmd_forget
+	} elsif($action =~ /^m/i) {
+		pod2usage(-verbose => 2)
+	} elsif($action =~ /^h|\?/i) {
+		pod2usage(0)
 	}
-} elsif($action =~ /^(stat|l)/i) {
-	$run_ro = 1;
-	$action = \&cmd_status
-} elsif($action =~ /^mo/i) {
-	$action = \&cmd_mount
-} elsif($action =~ /^star/i) {
-	$fatalreturn = 1 unless(defined($fatalreturn));
-	$action = \&cmd_start
-} elsif($action =~ /^cr/i) {
-	$action = \&cmd_create
-} elsif($action =~ /^ch/i) {
-	$run_ro = 1;
-	$lazy = '' unless(defined($lazy));
-	$action = \&cmd_check
-} elsif($action =~ /set/i) {
-	if($action =~ /[ur]/i) {
-		$action = \&cmd_reset
-	} else {
-		$action = \&cmd_set
-	}
-} elsif($action =~ /^u/i) {
-	$action = \&cmd_umount
-} elsif($action =~ /^sto/i) {
-	$fatalreturn = 1 unless(defined($fatalreturn));
-	$action = \&cmd_stop
-} elsif($action =~ /^rem/i) {
-	$action = \&cmd_remount
-} elsif($action =~ /^rest/i) {
-	$fatalreturn = 1 unless(defined($fatalreturn));
-	$action = \&cmd_restart
-} elsif($action =~ /^for/i) {
-	$action = \&cmd_forget
-} elsif($action =~ /^m/i) {
-	pod2usage(-verbose => 2)
-} elsif($action =~ /^h|\?/i) {
-	pod2usage(0)
+	pod2usage(2) unless(ref($action) eq 'CODE');
+	$fatalreturn = '' unless(defined($fatalreturn));
+	$star = 1 # !$run_ro # Use this to make --no-star the default for infos
+		unless(defined($star));
+	$run_ro = '' if($force || $ignore_state);
+	@CFG::order = qw(overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)
+		if($order_needed)
 }
-pod2usage(2) unless(ref($action) eq 'CODE');
-$fatalreturn = '' unless(defined($fatalreturn));
-$star = 1 # !$run_ro # Use this to make --no-star the default for info commands
-	unless(defined($star));
-$run_ro = '' if($force || $ignore_state);
 
 # Read config files:
 
@@ -2668,6 +2865,7 @@ for my $file (@configs) {
 $squash_verbose = $CFG::squash_verbose unless(defined($squash_verbose));
 $lazy = $CFG::lazy unless(defined($lazy));
 $locking = $CFG::locking unless(defined($locking));
+$modprobe_squash = $CFG::modprobe_squash;
 
 # Fill the %tags array in the appropriate order.
 # As a side result calculate $taglen.

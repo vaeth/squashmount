@@ -1,9 +1,19 @@
 #!/usr/bin/perl (this is only for editors)
 
 # The tools which we have installed; if possible only the first in this list
-# is used, but the others are a fallback if that fails.
+# is used, but the others are successively a fallback if that fails.
+# The last fallback is automatically bind --mount
+#
+# We deviate from the defaults by changing some of the flags:
+# We skip unionfs and funionfs tacitly unless *surely* available.
+# (Note that if you compiled e.g. unionfs as a module but /proc/config.gz is
+# not available this means that unionfs is not used even it could be).
+#
+# We also skip overlayfs if the module cannot be loaded successfully.
+# Again, this means that overlayfs is skipped if compiled into the kernel.
+# Use "overlayfs?" instead if you want a more reliable check for that case.
 
-@order = ('overlayfs', 'aufs', 'unionfs-fuse', 'unionfs', 'funionfs');
+@order = qw(overlayfs aufs! unionfs-fuse! unionfs??# funionfs??#);
 
 # Even if we define following is empty it is convenient to use
 # this local variable throughout, so that we can simply change it:
@@ -13,7 +23,7 @@ my $defaults = {
 };
 
 push(@mounts,
-	&added_hash($defaults, {
+	added_hash($defaults, {
 		TAG => 'guest',
 		DIR => '/home/guest',
 		FILE => '/home/guest-skeleton.sqfs',
@@ -21,12 +31,12 @@ push(@mounts,
 		# If you want to cancel this KILL temporarily
 		# (e.g. to make modifications on guest-skeleton.sqsf)
 		# use something like "squashmount --nokill set"
-	}), &added_hash($defaults, {
+	}), added_hash($defaults, {
 		TAG => 'fixed',
 		DIR => '/fixed/dir',
 		FILE => '/fixed/content.sqfs',
 		READONLY => 1 # Do not use overlayfs/aufs/...
-	}), &added_hash($defaults, {
+	}), added_hash($defaults, {
 		TAG => 'db',
 		DIR => '/var/db',
 		FILE => '/var/db.sqfs',
@@ -55,27 +65,27 @@ push(@mounts,
 # Instead of specifying TAG, DIR, FILE, CHANGES explicitly,
 # we use now that they are specified analogously to the above example
 # with the standard_mount function.
-	&standard_mount('kernel', '/usr/src', $defaults),
+	standard_mount('kernel', '/usr/src', $defaults),
 # The above is actually equivalent to
 #	{ TAG => 'kernel', DIR => '/usr/src', FILE => '/usr/src.sqfs',
 #	CHANGES => '/usr/src.changes', READONLY => '/usr/src.readonly' },
 
 # We configure tex as in the "squashmount man" example:
-	&standard_mount('text', '/usr/share/texmf-dist', $defaults, {
+	standard_mount('text', '/usr/share/texmf-dist', $defaults, {
 		DIFF => [
 			qr{^ls-R$},
 			qr{^tex(/generic(/config(/language(\.(dat(\.lua)?|def)))?)?)?$}
 		]
 	}),
-	&standard_mount('portage', '/usr/portage', $defaults, {
+	standard_mount('portage', '/usr/portage', $defaults, {
 		THRESHOLD => '80m',
 		# Change in local (except .git, profiles, metadata) => resquash
 		FILL => qr{^local/(?!(\.git|profiles|metadata)(/|$))}
 	}),
-	&standard_mount('games', '/usr/share/games', $defaults, {
+	standard_mount('games', '/usr/share/games', $defaults, {
 		# games is huge: use the fastest compression algorithm for it.
 		# (Note that this overrides $defaults):
 		COMPRESSION => 'lzo'
 	}),
-	&standard_mount('office', '/usr/lib/libreoffice', $defaults)
+	standard_mount('office', '/usr/lib/libreoffice', $defaults)
 );
