@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 3.1\n");
+	print("$name 3.2\n");
 	exit(0)
 }
 
@@ -66,7 +66,6 @@ directories (not even configured temporary directories.)
 B<squashmount> keeps its current state in F</run/squashmount> (the path
 can be changed with B<--rundir>) in a format which may depend on tools used
 and which may also change in future versions of B<squashmount>.
-(The path F</run/squashmount> can be changed with an option.)
 B<squashmount> assumes that its data stored
 in F</run/squashmount> and the actually mounted directories coincide, that is,
 that they are not mounted/umounted without using B<squashmount> and, in
@@ -560,26 +559,41 @@ Last option
 =head1 F</etc/squashmount.pl>
 
 The file F</etc/squashmount.pl> can be any perl code which fills
-the array B<@dirs> with references to hashes; one hash for every tag.
-In addition, the array B<@order> can be filled with the available tools
-and the order in which they should be tried.
-Also the default variables $B<$lazy>, B<$squash_verbose>, and B<$locking>
-can be initialized. Here is an example for this file.
+the array B<@mounts> with references to hashes; one hash for every tag.
+In addition, the array B<@order> can be filled with the available tools,
+the order in which they should be tried, and flags whether modprobe should
+be called, how to test the existence of tools and what to do if tools appear
+unavailable.
+Also the default variables B<$lazy>, B<$squash_verbose>, B<$locking>,
+and B<$modprobe_squash> can be initialized: They are initialized to B<1>
+(perl interprets this as I<true>) or B<''> (I<false).
+
+Here is an example for this file.
 (You can use this syntax if you do not have much knowledge about perl;
 if you know more about perl, a more convenient syntax is recommended,
 see the remarks at the end of this manpage.)
 
 =over 8
 
-=item $lazy = 1;
+=item $lazy = 1; # unnecessary; this is the default
 
-=item $squash_verbose = 1;
+=item $squash_verbose = 1; # unnecessary; this is the default
 
-=item $locking = 1;
+=item $locking = 1; # unnecessary; this is the default
+
+=item $modprobe_squash = ''; # Differ from default: No modprobe squashfs
 
 =item @order = qw(overlayfs? aufs! unionfs-fuse! unionfs??# funionfs??#);
 
-=item push(@mounts, {
+=item # The main task is to set B<@mounts>. Use one of
+
+=item # @mounts = ( { ... }, { ...} );
+
+=item # push(@mounts, { ... }, { ... });
+
+=item # (The latter can be used successsively to append mount points...)
+
+=item @mounts = ( {
 
 =over 16
 
@@ -692,28 +706,23 @@ Except for B<@mounts>, the meaning of the variables is easily explained:
 =item B<$lazy>
 
 This determines whether B<--lazy> or B<--no-lazy> is the default.
-This variable defaults to the value B<1> (true).
+This variable defaults to the value B<1> (I<true>).
 
 =item B<$squash_verbose>
 
 This is the default if B<--squash-verbose> is not specified.
-This variable defaults to the value B<1> (true).
+This variable defaults to the value B<1> (I<true>).
 
 =item B<$locking>
 
 This determines whether B<--locking> or B<--no-locking> is the default.
-This variable defaults to the value B<1> (true).
-
-=item B<$locking>
-
-This determines whether B<--locking> or B<--no-locking> is the default.
-This variable defaults to the value B<1> (true).
+This variable defaults to the value B<1> (I<true>).
 
 =item B<$modprobe_squash>
 
 This determines whether C<modprobe squashfs> is executed before the first
 squashfile is mounted.
-This variable defaults to the value B<1> (true).
+This variable defaults to the value B<1> (I<true>).
 
 =item B<@order>
 
@@ -726,7 +735,7 @@ The content of this array should be strings with one of the texts
 
 =over 16
 
-=item overlayfs, aufs, unionfs-fuse, unionfs, funionfs
+=item B<overlayfs>, B<aufs>, B<unionfs-fuse>, B<unionfs>, B<funionfs>
 
 =back
 
@@ -743,6 +752,9 @@ If this flag is used, a failure in the modprobe command is ignored;
 in case of B<!!> the modprobe is not even attempted.
 In particular you should use this if it might happen (or you know) that the
 corresponding tool is compiled directly into the kernel.
+Note that B<overlayfs>, B<aufs>, B<unionfs> have their own kernel modules
+while B<unionfs-fuse> and B<funionfs> both require the B<fuse> module and
+need special userspace binaries.
 
 =item B<?> or B<??>
 
@@ -757,8 +769,10 @@ is available; the flag is tacitly ignored if this is not the case
 
 =item B<#>
 
-If this flag is used, it is checked whether the binary required to
-use the tool is available in your path. If it is unavailable, the tool is
+If this flag is used, it is checked whether the binary
+(B<mount> in case of B<overlayfs>, B<aufs>, or B<unionfs> or the special
+userspace binary for B<unionfs-fuse> or B<funionfs>, respectively)
+is available in your path. If it is unavailable, the tool is
 tacitly skipped. This flag is ignored if neither B<File::Which> nor the
 B<which> program are available.
 
@@ -769,7 +783,7 @@ If B<squashmount> is used with a command for which the order is possibly needed
 
 =over 16
 
-=item qw(overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)
+=item B<qw(overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)>
 
 =back
 
@@ -788,7 +802,8 @@ The first mount-point in the above example is the minimal data which
 has to be specified for a mount-point.
 However, typically you should also specify at least the keys B<CHANGES> and
 usually also B<READONLY> unless you have a special reason not to.
-The following keys are supported:
+The following keys are supported. If a key is undefined or not explicitly set,
+a default value is chosen in some cases.
 
 =over 8
 
@@ -796,31 +811,31 @@ The following keys are supported:
 
 A unique identifier:
 The B<TAG> is matched against the I<mask> entries on the command line.
-The content must be alphanumeric; only the symbols . - _ are allowed.
+The content must be alphanumeric; only the symbols B<.> B<-> B<_> are allowed.
 
 =item B<DIR>
 
 The absolute path of the main directory which you want to squash.
 
 Alternatively, B<DIR> can be a functin reference which returns a string to
-the directory or alternatively a File::Temp::Dir object.
+the directory or alternatively a B<File::Temp::Dir> object.
 This function is executed only once if B<DIR> is unknown and in this case
 it gets passed the tag as an argument.
 The intention is that this function can be used to return e.g. a temporary
 dirname by using something like as in the B<fancy_temporary> example above.
 
-Be aware that if this function uses File::Temp::newdir, it should pass
-C<CLEANUP => ''> to avoid that the directory is magically removed recursively:
+Be aware that if this function uses B<File::Temp::newdir>, it should pass
+B<CLEANUP =E<gt> ''> to avoid that the directory is magically removed recursively:
 Forgetting this can severly damage your data!
 
 As an exception, if the function returns the corresponding created object
-(and not only a filename as in the C<make_temporary_subdir> example above),
+(and not only a filename as in the B<make_temporary_subdir> example above),
 B<squashmount> will care about disabling B<CLEANUP> automatically.
-For this reason, we had lazily avoided C<CLEANUP => ''> in some places
+For this reason, we had lazily avoided B<CLEANUP =E<gt> ''> in some places
 in the above B<fancy_temporary> example when calling B<File::Temp::newdir>.
 
 If you use a temporary directory, you can find the actual used path with
-B<squashmount print-dir ...>.
+B<squashmount print-dir ...>
 
 =item B<FILE>
 
@@ -833,14 +848,14 @@ If B<CHANGES> is not specified then a temporary directory is created
 and used instead.
 
 The same rules as for B<DIR> hold, that is, you can also pass a function which
-explicitly calls File::Temp::newdir with appropriate data.
+explicitly calls B<File::Temp::newdir> with appropriate data.
 
 Note that using a temporary directory may be dangerous since if temporary
 directories are cleaned on boot this means that modifications to B<DIR>
 are lost if they are not (successfully) squashed on shutdown
 (e.g. due to option B<--keep>).
 If you use a temporary directory, you can find the actual path with
-B<squashmount print-changes ...>.
+B<squashmount print-changes ...>
 
 =item B<READONLY>
 
@@ -854,7 +869,7 @@ The same rules as for B<DIR> hold, that is, you can also pass a function which
 explicitly calls File::Temp::newdir with appropriate data.
 
 If you use a temporary directory, you can find the actual path with
-B<squashmount print-readonly ...>.
+B<squashmount print-readonly ...>
 
 =item B<THRESHOLD>
 
@@ -872,7 +887,7 @@ If true (nonempty and not 0) B<--kill> is active for that mount-point
 =item B<MKSQUASHFS>
 
 This should be a (possibly empty) string or a reference to an array of strings:
-These strings are used as additional options when calling mksquashfs.
+These strings are used as additional options when calling B<mksquashfs>.
 The option B<-noappend> is used automatically.
 Depending on B<$squashfs_verbose> and B<COMPRESSION> also the options
 B<-comp> or B<-no-progress> are appended automatically.
@@ -893,7 +908,7 @@ The default is B<['-o', 'noatime']>.
 
 This should be a (possibly empty) string or a reference to an array of strings:
 These strings are used as additional options when mounting with unionfs-fuse.
-The default is B<['-o', 'cow'. '-o', 'allow_other', '-o', 'use_ino',
+The default is B<['-o', 'cow', '-o', 'allow_other', '-o', 'use_ino',
 '-o', 'nonempty', '-o', 'noatime', '-o', 'hide_meta_files']>.
 
 =item B<MOUNT_UNIONFS>
@@ -916,7 +931,8 @@ typically B<xz>, B<lzma>, B<gzip>, B<lzo> are available
 (with B<xz> being the slowest but best in compression ratio).
 If the value is empty, no B<-compression> parameter is passed,
 that is, the default of the installed B<mksquashfs> is chosen.
-If B<COMPRESSION> is not explicitly set or undefined, the value B<xz> is used.
+The default of B<COMPRESSION> (that is, if undefined or not explicitly set)
+is B<xz>.
 
 =item B<BACKUP>
 
@@ -1018,7 +1034,7 @@ The function gets passed three parameters: The relative filename,
 the absolute filename, and the corresponding pathname in the READONLY directory.
 The function must return a true value (e.g. 1) if the file should not be
 considered as changed.
-If the function sets C<$File::Find::prune = 1> in case of a directory
+If the function sets B<$File::Find::prune = 1> in case of a directory
 then its content is not considered as changed, either.
 
 In the above B<fancy_temporary> example, this functions is used to ignore all
@@ -1036,7 +1052,7 @@ take precedence over B<FILL> or B<FILLFUNC>.
 
 This is the analogue of B<SKIPFUNC>, but corresponding to B<FILL> instead of B<SKIP>.
 If the function returns a true value (e.g. 1) the threshold is considered as filled.
-This function has no need to modify C<$File::Find::prune>.
+This function has no need to modify B<$File::Find::prune>.
 
 =back
 
@@ -1057,7 +1073,7 @@ Here are some examples why this might be useful:
 
 =item B<(5)> You can use various shortcuts to setup "standard" mount-points.
 
-=item B<(6)> You can define some variables as "defaults" for all mount-points.
+=item B<(6)> You can define some keys as "defaults" for all mount-points.
 
 =back
 
@@ -1065,7 +1081,9 @@ In any case, it is recommended to not use B<too> much code since the code
 will be parsed/executed with every call of B<squashmount>.
 In particular, if you want some more complex code to setup B<@order> according
 to you system, it is recommended to enclose this code into C<if(@order)> so
-that this code is only executed if the value of B<@order> is really needed.
+that this code is only executed if the value of B<@order> is really needed
+(recall that the default of B<@order> is nonempty only if B<squashmount> is
+used with a command for which it might be necessary to know its value.)
 
 To use some of the mentioned features you need some perl knowledge, of course.
 However, others are easy to use even without deep perl knowledge.
@@ -1147,6 +1165,8 @@ Here is such an example which also demonstrates the use of B<added_hash()>:
 =item push(@mounts,
 
 =over 16
+
+=item standard_mount('portage', '/usr/portage', $defaults),
 
 =item standard_mount('kernel', '/usr/src', $defaults),
 

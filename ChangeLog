@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-3.2
+	Martin Väth <martin at mvath.de>:
+	- Improve documentation
+
 *squashmount-3.1
 	Martin Väth <martin at mvath.de>:
 	- modprobe modules by default
