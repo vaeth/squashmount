@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 3.2\n");
+	print("$name 3.3\n");
 	exit(0)
 }
 
@@ -566,7 +566,7 @@ be called, how to test the existence of tools and what to do if tools appear
 unavailable.
 Also the default variables B<$lazy>, B<$squash_verbose>, B<$locking>,
 and B<$modprobe_squash> can be initialized: They are initialized to B<1>
-(perl interprets this as I<true>) or B<''> (I<false).
+(perl interprets this as I<true>) or B<''> (I<false>).
 
 Here is an example for this file.
 (You can use this syntax if you do not have much knowledge about perl;
