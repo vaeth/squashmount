@@ -21,7 +21,7 @@
 # Normally, this is not needed.
 # $lazy = '';
 # $squash_verbose = '';
-# $locking = '';
+# $locking = 1; # lock always, even for status and print-* commands
 # $modprobe_squash = '';
 
 # Even if we would not set anything in the following hash, it is recommended

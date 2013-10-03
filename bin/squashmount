@@ -470,8 +470,9 @@ Use perl's flock() to avoid simulatenous usage of the same mount-point.
 =item B<--no-locking> or B<--nolocking>
 
 This is the opposite of B<--locking>.
-Whether B<--locking> or B<--no-locking> is the default depends on
-F</etc/squashmount.pl>; if not specified there the default is B<--locking>.
+Whether B<--locking> or B<--no-locking> is the default depends on the
+variable B<$locking> in F</etc/squashmount.pl> (the default in the latter
+is true except if some of the commands B<status> or B<print-*> is used.)
 
 =item B<--threshold=>I<size> or B<-t> I<size>
 
@@ -579,7 +580,7 @@ see the remarks at the end of this manpage.)
 
 =item $squash_verbose = 1; # unnecessary; this is the default
 
-=item $locking = 1; # unnecessary; this is the default
+=item $locking = 1; # lock always, even for status and print-* commands
 
 =item $modprobe_squash = ''; # Differ from default: No modprobe squashfs
 
@@ -716,7 +717,9 @@ This variable defaults to the value B<1> (I<true>).
 =item B<$locking>
 
 This determines whether B<--locking> or B<--no-locking> is the default.
-This variable defaults to the value B<1> (I<true>).
+This variable defaults to the value B<''> (I<false>) when the commands
+B<status> or B<print-*> are used; for all other commands it defaults to
+B<1> (I<true>).
 
 =item B<$modprobe_squash>
 
@@ -1953,7 +1956,7 @@ sub kernelprobe {
 	our $lazy = 1;
 	our $squash_verbose = 1;
 	our $modprobe_squash = 1;
-	our $locking = 1;
+	our $locking;
 	our @order = ();
 	our @mounts = ();
 }
@@ -2794,7 +2797,7 @@ $titleopt = join('', @title);
 undef(@title);
 $titleopt = undef if(($titleopt =~ qr/-/) || !$stdoutterm);
 
-# Determine $action, $fatalreturn, $run_ro, $star, and @CFG::order
+# Determine $action, $fatalreturn, $run_ro, $star, $CFG::locking, @CFG::order
 
 my $action = shift(@ARGV);
 {
@@ -2870,6 +2873,7 @@ my $action = shift(@ARGV);
 	$star = 1 # !$run_ro # Use this to make --no-star the default for infos
 		unless(defined($star));
 	$run_ro = '' if($force || $ignore_state);
+	$CFG::locking = !$run_ro;
 	@CFG::order = qw(overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)
 		if($order_needed)
 }

@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-3.4
+	Martin Väth <martin at mvath.de>:
+	- No locking default for status and print-*
+	- zsh completion: Use --no-locking when calling squashmount
+
 *squashmount-3.3
 *squashmount-3.2
 	Martin Väth <martin at mvath.de>:

@@ -73,13 +73,13 @@ case $state in
 	then	_tags masks
 		_requested masks && {
 			local masks
-			masks=(${(f)"$(_call_program print-masks 'squashmount -q print-tag 2>/dev/null')"})
+			masks=(${(f)"$(_call_program print-masks 'squashmount --no-locking -q print-tag 2>/dev/null')"})
 			_description masks expl 'mask'
 			compadd "$expl[@]" - $masks
 			ret=?
 		}
 	else	local paths
-		paths=(${(f)"$(_call_program print-dirs 'squashmount -q print-dir 2>/dev/null')"})
+		paths=(${(f)"$(_call_program print-dirs 'squashmount --no-locking -q print-dir 2>/dev/null')"})
 		_canonical_paths -A paths directories 'mount point'
 		ret=$?
 	fi;;
