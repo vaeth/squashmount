@@ -1,4 +1,4 @@
-#! /usr/bin/env perl
+#!/usr/bin/env perl
 use strict;
 use warnings;
 use integer;
@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 3.3\n");
+	print("$name 3.5\n");
 	exit(0)
 }
 
