@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 3.5\n");
+	print("$name 3.6\n");
 	exit(0)
 }
 
@@ -616,6 +616,12 @@ see the remarks at the end of this manpage.)
 
 =item FILE => '/home/guest-skelton.sqfs'
 
+=item CHMOD => 0200, # squashfile readonly by user
+
+=item CHOWN => [ (getpwnam('guest'))[2], 1000 ], # uid/gid
+
+=item # CHOWN => '2000:1000' would also be possible
+
 =item KILL => 1 # Forget all changes when umounting
 
 =back
@@ -945,6 +951,27 @@ If the file B<BACKUP> already exists, it is removed.
 
 If B<BACKUP> is not an absolute path but nonempty, the path is that of
 B<FILE> with the string C<.bak> appended.
+
+=item B<CHMOD>
+
+If defined and nonempty this should be a number (if you want an octal number,
+do not enclose into quotes and start with a leading B<0>, or otherwise
+use perl's B<oct(>I<decimal number>B<)> function).
+The number defines the mode to which the squashfile is changed with B<chmod>
+whenever it is created.
+The empty string means that the mode remains B<0400>.
+If undefined (the default), the mode B<0644> is taken.
+
+=item B<CHOWN>
+
+If defined and nonempty this should be either an array reference B<[> I<uid>B<,> I<gid> B<]>
+or a string of the form I<uid>B<:>I<gid>; in this case, the user/group id of
+the file is changed to I<uid>/I<gid>, resepectively.
+Use the undefined or empty value or B<-1> to indicate that I<uid>/I<gid>
+should not be changed (typically remains B<0>).
+If you want to pass the user or group name (instead of the user or group id),
+you can use e.g. the perl construct B<(getpwnam('>I<username>B<'))[2]> or
+B<(getgrnam('>I<groupname>B<'))[2]>, respectively.
 
 =item B<TEMPDIR>
 
@@ -1430,6 +1457,12 @@ sub cmd_status {
 		$compression = 'xz'
 	}
 	push(@status, "COMPRESSION: $compression");
+	my $chmod = &get_chmod();
+	push(@status, 'CHMOD: ' . (($chmod eq '') ? 'unchanged (0400)' :
+		sprintf('%#o', $chmod)));
+	my ($uid, $gid) = &get_chown();
+	push(@status, 'CHOWN: ' .
+		(defined($uid) ? "$uid:$gid" : 'unchanged (0:0)'));
 	return &print_status(\@status)
 }
 
@@ -1596,6 +1629,7 @@ sub umount_main {
 			&error("failed moving tempfile to $squashfile");
 			return ''
 		}
+		&set_permissions($squashfile)
 	}
 	return 1 unless($will_remove);
 	my $changes = &get_abspath('CHANGES');
@@ -1668,8 +1702,58 @@ sub first_create {
 		"The squashed file $squashfile does not exist yet;",
 		"it will be initialized now from $dir") unless($quiet);
 	return '' unless(&mksquashfs($squashfile, $dir, 2));
+	&set_permissions($squashfile);
 	&info('cleaning original DIR') unless($quiet);
 	return &clean_directory($dir)
+}
+
+# Chmod and chown according to mountpoint defaults
+
+sub set_permissions {
+	my ($squashfile) = @_;
+	my $ret = 1;
+	my $chmod = &get_chmod();
+	unless($chmod eq '') {
+		unless(chmod($chmod, $squashfile)) {
+			my $octal = sprintf('%#o', $chmod);
+			&warning("chmod $octal $squashfile failed");
+			$ret = ''
+		}
+	}
+	my ($uid, $gid) = &get_chown();
+	return $ret unless(defined($uid));
+	unless(chown($uid, $gid, $squashfile)) {
+		&warning("chown $uid:$gid $squashfile failed");
+		$ret = ''
+	}
+	return $ret
+}
+
+# Return sanitized CHMOD value or empty
+
+sub get_chmod {
+	my $chmod = $user_config->{'CHMOD'};
+	return 0644 unless(defined($chmod));
+	return $chmod
+}
+
+# Return CHOWN values as array.
+
+sub get_chown {
+	my $chown = $user_config->{'CHOWN'};
+	my ($uid, $gid) = (undef, undef);
+	return (undef, undef) unless(defined($chown));
+	if(ref($chown) eq 'ARRAY') {
+		return (undef, undef) unless(@$chown);
+		($uid, $gid) = @$chown
+	} else {
+		return (undef, undef) if($chown eq '');
+		($uid, $gid) = split(/\D/, $chown)
+	}
+	$uid = -1 unless(defined($uid) && ($uid =~ /^\d+$/));
+	$gid = -1 unless(defined($gid) && ($gid =~ /^\d+$/));
+	return (undef, undef) if(($uid == -1) && ($gid == -1));
+	return ($uid, $gid)
 }
 
 # The main function to mount read-writable. Returns type or undef

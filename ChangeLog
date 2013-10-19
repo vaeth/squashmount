@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-3.6
+	Martin Väth <martin at mvath.de>:
+	- Introduce CHMOD, CHOWN; default to CHMOD = 0644
+
+*squashmount-3.5
 *squashmount-3.4
 	Martin Väth <martin at mvath.de>:
 	- No locking default for status and print-*

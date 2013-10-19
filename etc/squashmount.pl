@@ -50,6 +50,9 @@ my $defaults = {
 		TAG => 'guest',
 		DIR => '/home/guest',
 		FILE => '/home/guest-skeleton.sqfs',
+		CHMOD => 0400, # squashfile readonly by user
+		CHOWN => [ (getpwname('guest'))[2], # user and group of ...
+			(getgrname('guest'))[2] ], # ... squashfile owner
 		KILL => 1 # normally remove data on every umount/remount
 		# If you want to cancel this KILL temporarily
 		# (e.g. to make modifications on guest-skeleton.sqsf)
