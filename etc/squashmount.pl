@@ -1,5 +1,24 @@
 #!/usr/bin/perl (this is only for editors)
 
+# To use squashmount, remove this comment and the following "print()" and
+# "exit()" command from the file and write into the subsequent configuration
+# of the variables (in particular of @mounts) what is approrpriate for
+# your system!
+#
+# It is impossible to guess which mount-points you want and for which purpose;
+# this default file contains just some examples showing what *might* be useful
+# for you (and sometimes even only to demonstrate the syntax and some
+# possibilities).
+# Do not use it unchanged!
+#
+# Use "squashmount man" for further details and a full list of options
+# (only a few are used in this file).
+print(STDERR "The default /etc/squashmount.pl is only an example config!
+It must be configured first for the mount-points you are actually using!
+See 'squashmount man' and the comments in that file for how to do this.\n");
+exit(1);
+
+
 # First we specify the tools which we have (possibly) installed;
 # if possible, only the first in this list is used, but the others are
 # successively a fallback if that fails.
@@ -51,8 +70,8 @@ my $defaults = {
 		DIR => '/home/guest',
 		FILE => '/home/guest-skeleton.sqfs',
 		CHMOD => 0400, # squashfile readonly by user
-		CHOWN => [ (getpwname('guest'))[2], # user and group of ...
-			(getgrname('guest'))[2] ], # ... squashfile owner
+		CHOWN => [ (getpwnam('guest'))[2], # user and group of ...
+			(getgrnam('guest'))[2] ],  # ... new squashfile's owner
 		KILL => 1 # normally remove data on every umount/remount
 		# If you want to cancel this KILL temporarily
 		# (e.g. to make modifications on guest-skeleton.sqsf)

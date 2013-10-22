@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 3.6\n");
+	print("$name 3.7\n");
 	exit(0)
 }
 

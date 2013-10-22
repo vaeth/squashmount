@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-3.7
+	Martin Väth <martin at mvath.de>:
+	- Make clearer that etc/squashmount.pl is only an example
+	- Fix typo in getpwnam() getgrnam() calls in example configuration
+
 *squashmount-3.6
 	Martin Väth <martin at mvath.de>:
 	- Introduce CHMOD, CHOWN; default to CHMOD = 0644
