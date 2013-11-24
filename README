@@ -34,7 +34,7 @@ This approach is originally due to synss' script from
 	http://forums.gentoo.org/viewtopic-t-465367-highlight-.html
 In that forum thread you can also ask for help about this project.
 
-For some mount points different rules than "resquash and delete on umount"
+For some mount-points different rules than "resquash and delete on umount"
 might be desired (see the examples section below), and moreover,
 it might be necessary to override these rules temporarily.
 For such things a powerful user interface is provided.

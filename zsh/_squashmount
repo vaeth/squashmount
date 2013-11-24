@@ -9,6 +9,10 @@ _arguments -C -s -S -A '-*' : \
 '*'{'-q','--quiet'}'[be more quiet (accumulative)]' \
 {'*-c+','*--config='}'[CONFIGFILE (add CONFIGFILE to list)]:configfile:_files' \
 '--rundir=[DIR (runtime config dir /run/squash_dir)]:runtime config dir:_files -/' \
+'(--no-backup --nobackup -B '{'--backup)-b+','-b)--backup='}'[FILE_OR_APPENDIX (override BACKUP)]:file or appendix:_files' \
+'(--backup -b '{'--no-backup --nobackup)-B','--nobackup -B)--no-backup','--no-backup -B)--nobackup'}'[do not make a backup]' \
+{'(--tempdir)-D+','(-D)--tempdir='}'[DIR (override TEMPDIR)]:tempdir:_files -/' \
+{'(--compression --comp)-x','(--comp -x)--compression','(--compression -x)--comp'}'[MODE (override COMPRESSION)]:compression mode:(xz lzma gzip lzo)' \
 '(--squash --no-squash --nosquash -s -n '{'--threshold)-t+','-t)--threshold='}'[THRESHOLD (set threshold size)]:threshold size:(0 1m 10m 20m 30m 40m 500k 600k 700k 800k 900k "")' \
 '(--threshold --no-squash --nosquash -t -n '{'--squash)-s','-s)--squash'}'[do resquash\: -t 0]' \
 '(--threshold --squash -t -s '{'--no-squash --nosquash)-n','--nosquash -n)--no-squash','--no-squash -n)--nosquash'}'[no resquash\: -t -1]' \

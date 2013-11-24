@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 3.8\n");
+	print("$name 4.0\n");
 	exit(0)
 }
 
@@ -45,7 +45,7 @@ To get an extended help, type B<squashmount man>
 =head1 DESCRIPTION
 
 For each configured mount-point (resp. if I<mask1>, I<mask2>, ... are given,
-for all mount points whose tag matches at least one of the masks),
+for all mount-points whose tag matches at least one of the masks),
 the corresponding directory is mounted readonly using squash as a readonly
 filesystem and additionally using overlayfs/aufs/... as a writable filesystem.
 
@@ -173,15 +173,17 @@ You can use B<squashmount -f print-dir> in advance to force B<DIR> to be known.
 =item B<set>
 
 If combined with other options, modify the corresponding active state
-of B<--threshold> and B<--kill> in F</run/squashmount>.
+of B<--backup>, B<--tempdir>, B<--compression>, B<--threshold>, and B<--kill>
+in F</run/squashmount>.
 
 =item B<reset>
 
 Undo all effects of a previous B<set> commands for the corresponding
 mount-point, according to the current F</etc/squashmount.pl>.
 
-If you change B<THRESHOLD> or B<KILL> for a mount point in
-F</etc/squashmount.pl>, use B<squashmount reset> to active this new setting.
+If you change B<BACKUP>, B<TEMPDIR>, B<COMPRESSION>, B<THRESHOLD>, or B<KILL>
+for a mount-point in </etc/squashmount.pl>, use B<squashmount reset> to
+activate this new setting.
 For other changes on F</etc/squashmount.pl> see the description of the
 B<forget> command.
 
@@ -200,9 +202,8 @@ modify) and only then do your modification/upgrade F<squashmount>.
 
 If you shortcut this (e.g. because you forgot calling B<squashmount stop>
 in advance or because you cannot umount currently some reason) you have to
-know more details: Changes to B<BACKUP> become immediately active.
-All other changes get ignored; changes to B<THRESHOLD> or
-B<KILL> can be made active by using B<squashmount reset>.
+know more details: Changes to B<BACKUP>, B<TEMPDIR>, B<COMPRESSION>,
+B<THRESHOLD>, or B<KILL> can be made active by using B<squashmount reset>.
 (In case of a change of the B<squashmount> version the behavior is not defined.)
 With this knowledge you should be able to call B<squashmount stop> even
 after you made your changes.
@@ -411,6 +412,52 @@ so that this happens for all subsequent umounts/remounts.
 If used with B<status> or B<print*> act as if mount-point was correspondingly
 configured (without actually changing the configuration, of course).
 
+=item B<--backup>B<=>I<file_or_appendix> or B<-b> I<file_or_appendix>
+
+Override the value of B<BACKUP> for all specified mount-points.
+If nonempty and not an absolute path, the effective value is the current value
+of B<FILE> with the string C<appendix> appended.
+The empty value means no backup.
+For obvious reasons you should better not give an absolute path if
+using several mount-points.
+
+If used with B<set>, set the state in F</run/squashmount>
+so that this happens for all subsequent umounts/remounts.
+
+If used with B<status> or B<print*> act as if mount-point was correspondingly
+configured (without actually changing the configuration, of course).
+
+=item B<--no-backup> B<--nobackup> or B<-B>
+
+This is equivalent to specifying B<--backup> with an empty argument:
+For all specified mount-point no backup is made.
+
+If used with B<set>, set the state in F</run/squashmount>
+so that this happens for all subsequent umounts/remounts.
+
+If used with B<status> or B<print*> act as if mount-point was correspondingly
+configured (without actually changing the configuration, of course).
+
+=item B<--tempdir>B<=>I<tempdir> or B<-D> I<tempdir>
+
+Override the value of B<TEMPDIR> for all specified mount-points.
+
+If used with B<set>, set the state in F</run/squashmount>
+so that this happens for all subsequent umounts/remounts.
+
+If used with B<status> or B<print*> act as if mount-point was correspondingly
+configured (without actually changing the configuration, of course).
+
+=item B<--compression>B<=>I<mode> B<--comp>B<=>I<mode> or B<-x> I<mode>
+
+Override the value of B<COMPRESSION> for all specified mount-points.
+
+If used with B<set>, set the state in F</run/squashmount>
+so that this happens for all subsequent umounts/remounts.
+
+If used with B<status> or B<print*> act as if mount-point was correspondingly
+configured (without actually changing the configuration, of course).
+
 =item B<--reset> or B<-r>
 
 After umounting, reset the data changed with the B<set> command according
@@ -523,7 +570,7 @@ If at least one passed option is B<->, the title script is not used.
 
 =item B<--error> or B<-e>
 
-Do not process further mount points when an error occurs.
+Do not process further mount-points when an error occurs.
 
 =item B<--no-error> or B<--noerror> or B<-E>
 
@@ -592,7 +639,7 @@ see the remarks at the end of this manpage.)
 
 =item # push(@mounts, { ... }, { ... });
 
-=item # (The latter can be used successsively to append mount points...)
+=item # (The latter can be used successsively to append mount-points...)
 
 =item @mounts = ( {
 
@@ -938,7 +985,7 @@ Specifies the compression mode for B<mksquashfs>:
 The available values depend on the installed version of B<mksquashfs>;
 typically B<xz>, B<lzma>, B<gzip>, B<lzo> are available
 (with B<xz> being the slowest but best in compression ratio).
-If the value is empty, no B<-compression> parameter is passed,
+If the value is empty, no B<-comp> parameter is passed,
 that is, the default of the installed B<mksquashfs> is chosen.
 The default of B<COMPRESSION> (that is, if undefined or not explicitly set)
 is B<xz>.
@@ -950,7 +997,8 @@ a copy of the old version is moved to that path.
 If the file B<BACKUP> already exists, it is removed.
 
 If B<BACKUP> is not an absolute path but nonempty, the path is that of
-B<FILE> with the string C<.bak> appended.
+B<FILE> with the value of B<BACKUP> appended.
+If B<BACKUP> is empty, no backup is made.
 
 =item B<CHMOD>
 
@@ -1147,7 +1195,7 @@ perl module, and it does not work recursively.
 =back
 
 Here is an example how to use this to specify the portage mount-point from
-the above example and additionally a "standard" mount point (analogously
+the above example and additionally a "standard" mount-point (analogously
 to the portage mount-point but with different paths and without the
 B<THRESHOLD> option) in a shorter way:
 
@@ -1181,7 +1229,7 @@ every mount-point like B<COMPRESSION> or B<TEMPDIR> and to add this
 variable to every point-mount.
 This way you can easily change the defaults without manipulating every
 mount-point entry manually. (You can still override $defaults
-for particular mount points at your discretion.)
+for particular mount-points at your discretion.)
 Here is such an example which also demonstrates the use of B<added_hash()>:
 
 =over 8
@@ -1190,7 +1238,7 @@ Here is such an example which also demonstrates the use of B<added_hash()>:
 
 =item my $always = { COMPRESSION => 'gzip', THRESHOLD => '20m' };
 
-=item my $defaults =  added_hash($always, { BACKUP => 1 }, $tempdir);
+=item my $defaults =  added_hash($always, { BACKUP => '.bak' }, $tempdir);
 
 =item push(@mounts,
 
@@ -1248,6 +1296,9 @@ my $reset = '';
 my $interactive = '';
 my $opt_threshold = '';
 my $opt_kill = undef;
+my $opt_backup = undef;
+my $opt_tempdir = undef;
+my $opt_compression = undef;
 my $pass_dir = '';
 my $errorbreak = '';
 my $fatalreturn = undef;
@@ -1284,6 +1335,9 @@ my $printed_title = ''; # Have we printed a statusline?
 my $taglen;             # Length of the longest tag
 my $threshold;          # currently active threshold (integer)
 my $kill;               # currently active kill (boolean)
+my $backup;             # currently active backup (string)
+my $tempdir;            # currently active tempdir (string)
+my $compression;        # currently active compression (string)
 
 #
 # Commands
@@ -1364,6 +1418,9 @@ sub cmd_forget {
 }
 
 sub cmd_set {
+	$current->{'BACKUP'} = $backup;
+	$current->{'TEMPDIR'} = $tempdir;
+	$current->{'COMPRESSION'} = $compression;
 	$current->{'THRESHOLD'} = $threshold;
 	$current->{'KILL'} = $kill;
 	return 1
@@ -1441,22 +1498,15 @@ sub cmd_status {
 		unless(&is_valid_changes($force));
 	my $file = &get_abspath('FILE', $force);
 	push(@status, 'FILE: ' . $file) if(&is_abspath($file));
-	for my $i ('TEMPDIR', 'BACKUP') {
-		my $p = $user_config->{$i};
-		if($i eq 'TEMPDIR') {
-			next unless(&is_abspath($p));
-		} else {
-			next unless(&is_nonempty($p));
-		}
-		push(@status, "$i: $p");
-	}
-	my $compression = $user_config->{'COMPRESSION'};
-	if(defined($compression)) {
-		$compression = '(mksquashfs default)' if($compression eq '')
+	push(@status, "TEMPDIR: $tempdir") if(&is_abspath($tempdir));
+	push(@status, "BACKUP: $backup") if(&is_nonempty($backup));
+	my $comp = $compression;
+	if(defined($comp)) {
+		$comp = '(mksquashfs default)' if($comp eq '')
 	} else {
-		$compression = 'xz'
+		$comp = 'xz'
 	}
-	push(@status, "COMPRESSION: $compression");
+	push(@status, "COMPRESSION: $comp");
 	my $chmod = &get_chmod();
 	push(@status, 'CHMOD: ' . (($chmod eq '') ? 'unchanged (0400)' :
 		sprintf('%#o', $chmod)));
@@ -1585,7 +1635,6 @@ sub umount_main {
 	$dir = undef unless(&is_abspath($dir));
 	if($will_squash && defined($dir)) {
 		&info('squashing (this may take a while)') unless($quiet);
-		my $tempdir = $user_config->{'TEMPDIR'};
 		if(&is_abspath($tempdir)) {
 			$tempfile = File::Temp->new(DIR => $tempdir)
 		} else {
@@ -1609,14 +1658,13 @@ sub umount_main {
 	$ret = '' unless(&umount_readonly($message));
 	if($created) {
 		my $squashfile = &get_abspath('FILE', 1);
-		my $backup = $user_config->{'BACKUP'};
 		if(&is_nonempty($backup)) {
-			$backup = $squashfile . '.bak'
-				unless(&is_abspath($backup));
-			&info("$squashfile -> $backup") unless($quiet);
-			unlink($backup);
-			unless(move($squashfile, $backup)) {
-				&error("failed moving $squashfile to $backup");
+			my $file = (&is_abspath($backup) ? $backup :
+				$squashfile . $backup);
+			&info("$squashfile -> $file") unless($quiet);
+			unlink($file);
+			unless(move($squashfile, $file)) {
+				&error("failed moving $squashfile to $file");
 				return ''
 			}
 		}
@@ -2205,17 +2253,18 @@ sub settings_file {
 # Fill "global" variables according to options and $current state
 
 sub set_globals {
-	if($opt_threshold ne '') {
-		$threshold = &parse_threshold($opt_threshold)
-	} else {
-		$threshold = $current->{'THRESHOLD'}
-	}
+	$backup = (defined($opt_backup) ? $opt_backup :
+		$current->{'BACKUP'});
+	$tempdir = (defined($opt_tempdir) ? $opt_tempdir :
+		$current->{'TEMPDIR'});
+	$compression = (defined($opt_compression) ? $opt_compression :
+		$current->{'COMPRESSION'});
+	$threshold = (($opt_threshold ne '') ?
+		&parse_threshold($opt_threshold) : $current->{'THRESHOLD'});
 	if($threshold < 0) {
 		$kill = ''
-	} elsif(defined($opt_kill)) {
-		$kill = $opt_kill
 	} else {
-		$kill = $current->{'KILL'}
+		$kill = (defined($opt_kill) ? $opt_kill : $current->{'KILL'})
 	}
 }
 
@@ -2224,6 +2273,15 @@ sub set_globals {
 sub fill_current {
 	my ($force) = @_;
 	$force = '' unless(defined($force));
+	if($force || !exists($current->{'BACKUP'})) {
+		$current->{'BACKUP'} = $user_config->{'BACKUP'}
+	}
+	if($force || !exists($current->{'TEMPDIR'})) {
+		$current->{'TEMPDIR'} = $user_config->{'TEMPDIR'}
+	}
+	if($force || !exists($current->{'COMPRESSION'})) {
+		$current->{'COMPRESSION'} = $user_config->{'COMPRESSION'}
+	}
 	if($force || !exists($current->{'THRESHOLD'})) {
 		$current->{'THRESHOLD'} = &parse_threshold($user_config->{'THRESHOLD'})
 	}
@@ -2841,6 +2899,10 @@ GetOptions(
 	'squash|squash|s', sub { $opt_threshold = '0' },
 	'kill|k', \$opt_kill,
 	'no-kill|nokill|K', sub { $opt_kill = '' },
+	'compression|comp|x=s', \$opt_compression,
+	'tempdir|D=s', \$opt_tempdir,
+	'backup|b=s', \$opt_backup,
+	'no-backup|nobackup|B', sub { $opt_backup = '' },
 	'squash-verbose=i', \$squash_verbose,
 	'lazy!', \$lazy,
 	'locking!', \$locking,

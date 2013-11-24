@@ -90,8 +90,8 @@ my $defaults = {
 		TAG => 'db',
 		DIR => '/var/db',
 		FILE => '/var/db.sqfs',
-		BACKUP => 1, # keep a backup in /var/db.sqfs.bak
-		             # For a different path, we could have written:
+		BACKUP => '.bak', # keep a backup in /var/db.sqfs.bak
+		             # For an absolute path, we could have written:
 		             # BACKUP => '/backup-disk/db.sqfs'
 		CHANGES => '/var/db.changes',
 		READONLY => '/var/db.readonly',

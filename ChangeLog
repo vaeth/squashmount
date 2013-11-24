@@ -1,5 +1,11 @@
 # ChangeLog for squashmount
 
+*squashmount-4.0
+	Martin Väth <martin at mvath.de>:
+	- Introduce --backup, --no-backup, --tempdir, --compresssion
+	  for temporarily overriding configuration, e.g. with set/restore
+	- Treat BACKUP as appendix if not an absolute path
+
 *squashmount-3.7
 	Martin Väth <martin at mvath.de>:
 	- Make clearer that etc/squashmount.pl is only an example
