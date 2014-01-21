@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 4.1\n");
+	print("$name 4.2\n");
 	exit(0)
 }
 
@@ -725,7 +725,7 @@ see the remarks at the end of this manpage.)
 
 =item DIR => sub { return File::Temp::newdir() },
 
-=item CHANGES => sub { return File::Temp::newdir(undef, DIR = '/path/to/ramdisk') },
+=item CHANGES => sub { return File::Temp::newdir(undef, DIR => '/path/to/ramdisk') },
 
 =item READONLY => \&make_temporary_subdir,
 

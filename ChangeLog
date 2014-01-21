@@ -1,5 +1,13 @@
 # ChangeLog for squashmount
 
+*squashmount-4.2
+	Martin Väth <martin at mvath.de>:
+	- Fix severely misleading typo on manpage for File::Temp::newdir
+
+*squashmount-4.1
+	Martin Väth <martin at mvath.de>:
+	- Support $killpower (/etc/killpower) for fast emergency shutdown
+
 *squashmount-4.0
 	Martin Väth <martin at mvath.de>:
 	- Introduce --backup, --no-backup, --tempdir, --compresssion
