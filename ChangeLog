@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-4.3
+	Martin Väth <martin at mvath.de>:
+	- Add /etc/nosquash to $killpower default. Fix reference to --keep
+
 *squashmount-4.2
 	Martin Väth <martin at mvath.de>:
 	- Fix severely misleading typo on manpage for File::Temp::newdir
