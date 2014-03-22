@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-4.4
+	Martin Väth <martin at mvath.de>:
+	- Add sanity check before deleting DIR after first creation of
+	  squashfile, see http://github.com/vaeth/squashmount/issues/1
+
 *squashmount-4.3
 	Martin Väth <martin at mvath.de>:
 	- Add /etc/nosquash to $killpower default. Fix reference to --keep

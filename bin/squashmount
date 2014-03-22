@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 4.3\n");
+	print("$name 4.4\n");
 	exit(0)
 }
 
@@ -1778,6 +1778,17 @@ sub first_create {
 		"it will be initialized now from $dir") unless($quiet);
 	return '' unless(&mksquashfs($squashfile, $dir, 2));
 	&set_permissions($squashfile);
+	# Sanity check: do not wipe if e.g. kernel has no squashfs support
+	my $success = 1; {
+		my $tmp = File::Temp::newdir();
+		$success = '' unless(&mount_squash($squashfile, $tmp->dirname));
+		$success = '' unless(&umount_dir($tmp->dirname))
+	}
+	unless($success) {
+		&error('failed to mount generated squashfile ' . $squashfile,
+			'skipping deletion of original DIR ' . $dir);
+		return ''
+	}
 	&info('cleaning original DIR') unless($quiet);
 	return &clean_directory($dir)
 }
