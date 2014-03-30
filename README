@@ -6,7 +6,7 @@ everything with it except removing my name/copyright.
 Init and management script for mounting rewritable squashfs-compressed data
 
 This is the successor of the squash_dir project
-	http://github.com/vaeth/squash_dir/
+	https://github.com/vaeth/squash_dir/
 It is actually a ground-up rewrite of that project in perl with a
 highly improved control interface.
 
@@ -62,7 +62,7 @@ It is also strongly recommended to install the File::Which module
 (although there are some fallbacks if it is not available).
 
 If you want that the hard status line is set, also the title script from
-http://github.com/vaeth/runtitle (version >=2.3) is required in your path.
+https://github.com/vaeth/runtitle (version >=2.3) is required in your path.
 
 
 Installation
