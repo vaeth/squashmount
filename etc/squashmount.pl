@@ -153,7 +153,8 @@ my $defaults = {
 	standard_mount('games', '/usr/share/games', $defaults, {
 		# games is huge: use the fastest compression algorithm for it.
 		# (Note that this overrides $defaults):
-		COMPRESSION => 'lzo'
+		COMPRESSION => 'lz4',
+		MKSQUASHFS => '-Xhc'
 	}),
 	standard_mount('office', '/usr/lib/libreoffice', $defaults)
 );

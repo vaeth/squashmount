@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 4.5\n");
+	print("$name 5.0\n");
 	exit(0)
 }
 
@@ -298,7 +298,7 @@ Verbose output.
 
 =item B<--squash-verbose=>I<level>
 
-Determines how verbose mksquash is called.
+Determines how verbose B<mksquashfs> is called.
 The following I<level> values are available:
 
 =over 16
@@ -972,8 +972,9 @@ If true (nonempty and not 0) B<--kill> is active for that mount-point
 This should be a (possibly empty) string or a reference to an array of strings:
 These strings are used as additional options when calling B<mksquashfs>.
 The option B<-noappend> is used automatically.
-Depending on B<$squashfs_verbose> and B<COMPRESSION> also the options
-B<-comp> or B<-no-progress> are appended automatically.
+Depending on B<$squashfs_verbose>, B<COMPRESSION>, B<DEFAULT_FRAGMENTS>
+also the options B<-no-progress>, B<-comp>, or B<-always-use-fragments>
+are appended automatically.
 
 =item B<MOUNT_OVERLAYFS>
 
@@ -1010,12 +1011,20 @@ The default is B<['-o', 'allow_other', '-o', 'nonempty']>.
 
 Specifies the compression mode for B<mksquashfs>:
 The available values depend on the installed version of B<mksquashfs>;
-typically B<xz>, B<lzma>, B<gzip>, B<lzo> are available
+typically B<xz>, B<lzma>, B<gzip>, B<lzo>, B<lz4> are available
 (with B<xz> being the slowest but best in compression ratio).
 If the value is empty, no B<-comp> parameter is passed,
 that is, the default of the installed B<mksquashfs> is chosen.
 The default of B<COMPRESSION> (that is, if undefined or not explicitly set)
 is B<xz>.
+
+=item B<DEFAULT_FRAGMENTS>
+
+Unless this variable is a nonempty string,
+B<-always-use-fragments> is appended to the options of B<mksquashfs>
+which usually improves the compression ratio.
+You might need to set this variable (at the cost of slightly worse results)
+if you need compatibility with older versions of B<squashfs>.
 
 =item B<BACKUP>
 
@@ -1880,7 +1889,7 @@ sub mount_overlayfs {
 	return '' if($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_OVERLAYFS'},
 		['-o', 'noatime']);
-	return 1 if(&my_system(\$mount, 'mount', '-t', 'overlayfs', @options,
+	return 1 if(&my_system('', \$mount, 'mount', '-t', 'overlayfs', @options,
 		'-o', "upperdir\=${changes}", '-o', "lowerdir\=${ro}",
 		'--', 'overlayfs', $rw) == 0);
 	&warning('overlayfs failed') unless($quiet > 1);
@@ -1897,7 +1906,7 @@ sub mount_aufs {
 		['-o', 'noatime']);
 	$ro =~ s/([=:])/\\$1/g;
 	$changes =~ s/([=:])/\\$1/g;
-	return 1 if(&my_system(\$mount, 'mount', '-t', 'aufs', @options,
+	return 1 if(&my_system('', \$mount, 'mount', '-t', 'aufs', @options,
 		'-o', "br\:${changes}\=rw\:${ro}\=rr", '--', 'aufs', $rw) == 0);
 	&warning('aufs failed') unless($quiet > 1);
 	return ''
@@ -1917,11 +1926,11 @@ sub mount_unionfs_fuse {
 	}
 	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
 	push(@options, "${changes}\=RW\:${ro}\=RO", $rw);
-	return 1 if(&my_system(\$unionfs_fuse, 'unionfs', @options) == 0);
+	return 1 if(&my_system('', \$unionfs_fuse, 'unionfs', @options) == 0);
 	if(&which_which() eq '') { # We have no which
 		my $fuse = 'unionfs-fuse ';  # perhaps this will work
 		if($unionfs_fuse ne $fuse) { # unless we already tried
-			if(&my_system(\$fuse, $fuse, @options) == 0) {
+			if(&my_system('', \$fuse, $fuse, @options) == 0) {
 				$unionfs_fuse = $fuse; # remember: this is ok
 				return 1
 			}
@@ -1941,7 +1950,7 @@ sub mount_unionfs {
 		['-o', 'noatime']);
 	$ro =~ s/([=:])/\\$1/g;
 	$changes =~ s/([=:])/\\$1/g;
-	return 1 if(&my_system(\$mount, 'mount', '-t', 'unionfs', @options,
+	return 1 if(&my_system('', \$mount, 'mount', '-t', 'unionfs', @options,
 		'-o', "dirs\=${changes}\=rw\:${ro}\=ro", '--', 'unionfs', $rw) == 0);
 	&warning('unionfs failed') unless($quiet > 1);
 	return ''
@@ -1956,7 +1965,7 @@ sub mount_funionfs {
 	&push_ref(\my @options, $user_config->{'MOUNT_FUNIONFS'},
 		['-o', 'allow_other', '-o', 'nonempty']);
 	$ro =~ s/\=/\\\=/g;
-	return 1 if(&my_system(\$funionfs, 'funionfs', $changes, $rw, @options,
+	return 1 if(&my_system('', \$funionfs, 'funionfs', $changes, $rw, @options,
 		'-o', "dirs\=${ro}\=ro") == 0);
 	&warning('funionfs failed') unless($quiet > 1);
 	return ''
@@ -1966,7 +1975,7 @@ sub mount_funionfs {
 
 sub mount_bind {
 	my ($from, $to) = @_;
-	return 1 if(&my_system(\$mount, 'mount', '--bind', '--', $from, $to) == 0);
+	return 1 if(&my_system('', \$mount, 'mount', '--bind', '--', $from, $to) == 0);
 	&error('mount --bind failed');
 	return ''
 }
@@ -1983,7 +1992,7 @@ sub mount_squash {
 		$modprobe_squash = '';
 		&my_modprobe('squashfs')
 	}
-	return 1 if(&my_system(\$mount, 'mount','-t', 'squashfs',
+	return 1 if(&my_system('', \$mount, 'mount','-t', 'squashfs',
 		'-o', 'loop,ro,noatime', '--', $squashfile, $dir) == 0);
 	&error('failed to mount squashfile');
 	return ''
@@ -1999,18 +2008,16 @@ sub mksquashfs {
 	}
 	my @options = ('-noappend');
 	push(@options, '-no-progress') if($squash_verbose == 0);
+	push(@options, '-always-use-fragments') if(&is_nonempty($user_config->{'DEFAULT_FRAGMENTS'}));
 	my $compression = $user_config->{'COMPRESSION'};
 	$compression = 'xz' unless(defined($compression));
 	push(@options, '-comp', $compression) if($compression ne '');
 	&push_ref(\@options, $user_config->{'MKSQUASHFS'}, undef);
 	&title("$tag squashing");
 	my $oldout = undef;
-	if($squash_verbose != 2) {
-		$oldout = undef unless(open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', $devnull))
-	}
-	my $ret = (&my_system(\$mksquashfs, 'mksquashfs', $dir, $squashfile, @options) == 0);
-	open(STDOUT, '>&', $oldout) if(defined($oldout));
-	&error('mksquashfs failed') unless($ret);
+	my $ret = (&my_system(($squash_verbose != 2), \$mksquashfs, 'mksquashfs', $dir, $squashfile, @options) == 0);
+	&error($verbose ? 'failed: ' . &join_quoted($mksquashfs, $dir, $squashfile, @options)
+		: 'mksquashfs failed') unless($ret);
 	return $ret
 }
 
@@ -2018,21 +2025,17 @@ sub mksquashfs {
 
 sub umount_dir {
 	my ($dir) = @_;
-	my $oldout;
-	$oldout = undef unless(open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', $devnull));
-	my $ret = (&my_system(\$umount, 'umount', '--', $dir) == 0);
+	my $ret = (&my_system(1, \$umount, 'umount', '--', $dir) == 0);
 	unless($ret) {
 		if($lazy) {
 			&error('non-lazy umount failed,',
 				"using lazy umount of $dir") unless($quiet > 1);
-			$ret = (&my_system(\$umount, 'umount', '-l', '--', $dir) == 0);
-			&error("lazy umount failed: $dir")
-				unless($ret);
+			$ret = (&my_system(1, \$umount, 'umount', '-l', '--', $dir) == 0);
+			&error("lazy umount failed: $dir") unless($ret)
 		} else {
-			&error('non-lazy umount failed');
+			&error('non-lazy umount failed')
 		}
 	}
-	open(STDOUT, '>&', $oldout) if(defined($oldout));
 	return $ret
 }
 
@@ -2057,13 +2060,8 @@ sub my_modprobe {
 	my ($module) = @_;
 	my $probed = $probed{$module};
 	return $probed if(defined($probed));
-	my ($oldout, $olderr);
-	$oldout = undef unless(open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', $devnull));
-	$olderr = undef unless(open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull));
 	$probed = $probed{$module} =
-		(&my_system(\$modprobe, 'modprobe', $module) == 0);
-	open(STDERR, '>&', $olderr) if(defined($olderr));
-	open(STDOUT, '>&', $oldout) if(defined($oldout));
+		(&my_system(2, \$modprobe, 'modprobe', $module) == 0);
 	return $probed
 }}
 
@@ -2795,17 +2793,33 @@ sub print_status {
 	}
 }
 
-# Call to make_path followed by system. Print error if tool not found.
+# Call to which_store() followed by system(). Print error if tool not found.
+# The first argument is special:
+# '' or 0: Default mode
+# 1: suppress stdout
+# 2: suppress stdout and stderr
 
 sub my_system {
+	my $redirect = shift();
 	my $a = shift();
 	my $b = shift();
 	unless(&which_store($a, $b)) {
 		&error($b . ' not found in $PATH');
-		return ''
+		return 127
 	}
-	print("\'" . join("\' \'", $$a, @_) . "\'\n") if($verbose > 2);
-	return system($$a, @_);
+	print(&join_quoted($$a, @_), "\n") if($verbose > 2);
+	my $oldout = undef;
+	my $olderr = undef;
+	if($redirect) {
+		if($redirect > 1) {
+			$olderr = undef unless(open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull))
+		}
+		$oldout = undef unless(open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', $devnull))
+	}
+	my $ret = system($$a, @_);
+	open(STDERR, '>&', $olderr) if(defined($olderr));
+	open(STDOUT, '>&', $oldout) if(defined($oldout));
+	return $ret
 }
 
 # Store in the first argument the first successful "which" of the later.
@@ -2845,12 +2859,10 @@ sub which_which {
 		File::Which->import()
 	};
 	return ($which = ':') unless($@);
-	my ($oldout, $olderr);
-	$oldout = undef unless(open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', $devnull));
+	my $olderr;
 	$olderr = undef unless(open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull));
 	$which = `which which`;
 	open(STDERR, '>&', $olderr) if(defined($olderr));
-	open(STDOUT, '>&', $oldout) if(defined($oldout));
 	return ($which = '') unless(defined($which));
 	chomp($which);
 	return $which
@@ -2910,6 +2922,20 @@ sub push_ref {
 		return
 	}
 	push(@$arr, $s) if($s ne '')
+}
+
+# like join(' ', @_), but shell-quote arguments
+
+sub join_quoted {
+	my @r;
+	for my $i (@_) {
+		my $a = $i;
+		$a =~ s/\'/\'\\\'\'/go;
+		$a = "'" . $a . "'";
+		$a =~ s/(^|[^\\])\'([\da-zA-Z\_\-\,\.\:\/]*)\'/$1$2/g;
+		push(@r, ($a ne '') ? $a : "''")
+	}
+	return join(' ', @r)
 }
 
 # set $had_error and $exitstatus according to $errorbreak and $fatalreturn

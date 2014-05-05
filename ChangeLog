@@ -1,5 +1,13 @@
 # ChangeLog for squashmount
 
+*squashmount-5.0
+	Martin Väth <martin at mvath.de>:
+	- Use -always-use-fragments by default
+	- Introduce DEFAULT_FRAGMENTS to avoid -always-use-fragments
+	- Improve printed output of shell commands
+	- Fix treatment of redirects
+	- Provide example of special mksquash compression option
+
 *squashmount-4.5
 *squashmount-4.4
 	Martin Väth <martin at mvath.de>:
