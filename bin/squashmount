@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 5.0\n");
+	print("$name 6.0\n");
 	exit(0)
 }
 
@@ -976,6 +976,26 @@ Depending on B<$squashfs_verbose>, B<COMPRESSION>, B<DEFAULT_FRAGMENTS>
 also the options B<-no-progress>, B<-comp>, or B<-always-use-fragments>
 are appended automatically.
 
+=item B<MKSQUASHFS>, B<COMPOPT_{XZ,LZMA,GZIP,LZO,LZ4,}
+
+These should be a (possibly empty) strings or references arrays of strings:
+These strings are used as additional options when calling B<mksquashfs>
+(the latter only if the corresponding B<COMPRESSION> option is used;
+B<COMPOPT_> is used if B<COMPRESSION> is empty.)
+The option B<-noappend> is used automatically.
+Depending on B<$squashfs_verbose>, B<COMPRESSION>, B<DEFAULT_FRAGMENTS>
+also the options B<-no-progress>, B<-comp>, or B<-always-use-fragments>
+are appended automatically.
+If the corresponding variable is not defined, it is assumed to be empty
+with the following exception:
+
+=over 16
+
+=item B<COMPOPT_LZ4>: If undefined, defaults to C<'-Xhc'>.
+Set it to the empty string if you want fastest B<lz4> compression instead.
+
+=back
+
 =item B<MOUNT_OVERLAYFS>
 
 This should be a (possibly empty) string or a reference to an array of strings:
@@ -1012,11 +1032,13 @@ The default is B<['-o', 'allow_other', '-o', 'nonempty']>.
 Specifies the compression mode for B<mksquashfs>:
 The available values depend on the installed version of B<mksquashfs>;
 typically B<xz>, B<lzma>, B<gzip>, B<lzo>, B<lz4> are available
-(with B<xz> being the slowest but best in compression ratio).
+(ordered in increasing compression ratio, i.e. B<xz> is usually the slowest but
+best in compression ration while B<lz4> is the quickest).
 If the value is empty, no B<-comp> parameter is passed,
-that is, the default of the installed B<mksquashfs> is chosen.
+that is, the default of the installed B<mksquashfs> is chosen
+(which is usually B<gzip> but might depend on your version of B<mksquashfs>).
 The default of B<COMPRESSION> (that is, if undefined or not explicitly set)
-is B<xz>.
+is B<lz4>; not that in earlier versions of B<squashmount> this was B<xz>.
 
 =item B<DEFAULT_FRAGMENTS>
 
@@ -1536,13 +1558,8 @@ sub cmd_status {
 	push(@status, 'FILE: ' . $file) if(&is_abspath($file));
 	push(@status, "TEMPDIR: $tempdir") if(&is_abspath($tempdir));
 	push(@status, "BACKUP: $backup") if(&is_nonempty($backup));
-	my $comp = $compression;
-	if(defined($comp)) {
-		$comp = '(mksquashfs default)' if($comp eq '')
-	} else {
-		$comp = 'xz'
-	}
-	push(@status, "COMPRESSION: $comp");
+	&mksquashfs_options(\my @options);
+	push(@status, "mksquashfs options: " . &join_quoted(@options));
 	my $chmod = &get_chmod();
 	push(@status, 'CHMOD: ' . (($chmod eq '') ? 'unchanged (0400)' :
 		sprintf('%#o', $chmod)));
@@ -2006,19 +2023,30 @@ sub mksquashfs {
 		&error("no directory $dir");
 		return ''
 	}
-	my @options = ('-noappend');
-	push(@options, '-no-progress') if($squash_verbose == 0);
-	push(@options, '-always-use-fragments') if(&is_nonempty($user_config->{'DEFAULT_FRAGMENTS'}));
-	my $compression = $user_config->{'COMPRESSION'};
-	$compression = 'xz' unless(defined($compression));
-	push(@options, '-comp', $compression) if($compression ne '');
-	&push_ref(\@options, $user_config->{'MKSQUASHFS'}, undef);
+	&mksquashfs_options(\my @options);
 	&title("$tag squashing");
 	my $oldout = undef;
 	my $ret = (&my_system(($squash_verbose != 2), \$mksquashfs, 'mksquashfs', $dir, $squashfile, @options) == 0);
 	&error($verbose ? 'failed: ' . &join_quoted($mksquashfs, $dir, $squashfile, @options)
 		: 'mksquashfs failed') unless($ret);
 	return $ret
+}
+
+# Set array of options for mksquashfs:
+
+sub mksquashfs_options {
+	my ($options) = @_;
+	@$options = ('-noappend');
+	push(@$options, '-no-progress') if($squash_verbose == 0);
+	push(@$options, '-always-use-fragments') if(&is_nonempty($user_config->{'DEFAULT_FRAGMENTS'}));
+	my $comp = (defined($compression) ? lc($compression) : 'lz4');
+	my $compopt = $user_config->{'COMPOPT_' . uc($comp)};
+	unless(defined($compopt)) {
+		$compopt = '-Xhc' if($comp eq 'lz4')
+	}
+	push(@$options, '-comp', $comp) if($comp ne '');
+	&push_ref($options, $compopt, undef);
+	&push_ref($options, $user_config->{'MKSQUASHFS'}, undef)
 }
 
 # Umount the directoy, possibly lazily:

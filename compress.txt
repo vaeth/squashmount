@@ -1,0 +1,76 @@
+Comparison of some size/time:
+Sorting is by size, if size is equal by time
+
+                           MB Core2 I3   Athlon
+
+/usr/lib/libreoffice:
+
+uncompressed              292
+xz -Xbcj x86               92 3:02
+xz                         97 1:29
+lzma                       97 1:22
+gzip                      114   38
+lzo -Xcompression-level 9 125 1:04
+lzo                       125   52
+lz4 -Xhc                  134   10
+lz4                       157    2
+
+portage and some overlays:
+
+uncompressed              332
+xz                         77 2:01
+xz -Xbcj x86               77 3:20
+lzma                       77 1:45
+gzip                       90   53
+lzo -Xcompression-level 9 105 1:03
+lzo                       105   59
+lz4 -Xhc                  112   53
+lz4                       137   51
+
+/var/db:
+
+uncompressed               78
+xz -Xbcj x86               44 2:51 1:46 6:46
+xz                         44 3:50 1:48 4:44
+lzma                       44 3:11 1:47 4:24
+gzip                       46   18    9   55
+lzo -Xcompression-level 9  48   11    6   55
+lzo                        48   11    6   54
+lz4 -Xhc                   49    6    3   27
+lz4                        51    4    3   22
+
+Kernel sources with some .o files:
+
+uncompressed              796
+xz -Xbcj x86              151 7:59 3:29
+xz                        151 4:13 1:44
+lzma                      153 5:39 1:25
+gzip                      181 1:24   39
+lzo -Xcompression-level 9 203 2:15 1:06
+lzo                       204 1:49   52
+lz4 -Xhc                  214   34   13
+lz4                       282   18    6
+
+/usr/share/texmf-dist:
+
+uncompressed              2053
+xz -Xbcj x86              1349     7:41
+xz                        1349     4:11
+lzma                      1351     3:20
+gzip                      1397       49
+lzo -Xcompression-level 9 1425     1:37
+lzo                       1425     1:33
+lz4 -Xhc                  1443       31
+lz4                       1506       11
+
+/usr/share/games:
+
+uncompressed              749
+xz -Xbcj x86              502      2:51
+xz                        502      1:20
+lzma                      502      1:11
+gzip                      521        31
+lzo -Xcompression-level 9 536        54
+lzo                       536        44
+lz4 -Xhc                  543        16
+lz4                       570         6

@@ -48,7 +48,12 @@ exit(1);
 # can be changed without modifying every mountpoint manually.
 
 my $defaults = {
-	COMPRESSION => 'xz' # We could actually omit this line as xz is default
+	COMPRESSION => 'lz4', # We could omit this line as  lz4 is default
+	COMPOPT_LZ4 => '-Xhc', # We could omit this line as -Xhc is default
+	COMPOPT_XZ => ['-Xbcj', 'x86'] # Use this in case COMPRESSION => 'xz'
+};
+my $non_binary = {
+	COMPOPT_XZ => undef # "-Xbcj x86" is slower for pure text archives
 };
 
 # We use here the @mounts = ( ... ); syntax (do not forget the semicolon!)
@@ -86,7 +91,7 @@ my $defaults = {
 	#	KILL => 1
 	# },
 	# because added_hash() "adds" our values to that from $defaults.
-	added_hash($defaults, {
+	added_hash($defaults, $non_binary,  {
 		TAG => 'db',
 		DIR => '/var/db',
 		FILE => '/var/db.sqfs',
@@ -137,13 +142,13 @@ my $defaults = {
 #	},
 
 # We configure tex as in the "squashmount man" example:
-	standard_mount('tex', '/usr/share/texmf-dist', $defaults, {
+	standard_mount('tex', '/usr/share/texmf-dist', $defaults, $non_binary, {
 		DIFF => [
 			qr{^ls-R$},
 			qr{^tex(/generic(/config(/language(\.(dat(\.lua)?|def)))?)?)?$}
 		]
 	}),
-	standard_mount('portage', '/usr/portage', $defaults, {
+	standard_mount('portage', '/usr/portage', $defaults, $non_binary, {
 		THRESHOLD => '80m',
 		# Any change in the local/ subdirectory (except in .git,
 		# profiles, metadata) should lead to a resquash, even if
@@ -153,8 +158,10 @@ my $defaults = {
 	standard_mount('games', '/usr/share/games', $defaults, {
 		# games is huge: use the fastest compression algorithm for it.
 		# (Note that this overrides $defaults):
-		COMPRESSION => 'lz4',
-		MKSQUASHFS => '-Xhc'
+		COMPOPT_LZ4 => ''
 	}),
-	standard_mount('office', '/usr/lib/libreoffice', $defaults)
+	standard_mount('office', '/usr/lib/libreoffice', $defaults, {
+		# Use the algorithm with best compression ratio.
+		COMPRESSION => 'xz',
+	})
 );

@@ -1,5 +1,13 @@
 # ChangeLog for squashmount
 
+*squashmount-6.0
+	Martin Väth <martin at mvath.de>:
+	- Support COMPOPT_* to allow setting algorithm-specific option.
+	- Default to COMPRESSION=lz4 (this is the reason for new major version)
+	- Default to COMPOPT_LZ4=-Xhc
+	- squashmount -vv list now outputs effective mksquashfs options
+	- Fix handling of mksquash compression option.
+
 *squashmount-5.0
 	Martin Väth <martin at mvath.de>:
 	- Use -always-use-fragments by default
