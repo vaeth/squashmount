@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 6.0\n");
+	print("$name 6.0a\n");
 	exit(0)
 }
 
@@ -1038,7 +1038,7 @@ If the value is empty, no B<-comp> parameter is passed,
 that is, the default of the installed B<mksquashfs> is chosen
 (which is usually B<gzip> but might depend on your version of B<mksquashfs>).
 The default of B<COMPRESSION> (that is, if undefined or not explicitly set)
-is B<lz4>; not that in earlier versions of B<squashmount> this was B<xz>.
+is B<xz>; in future versions of B<squashmount> this might change to B<lz4>.
 
 =item B<DEFAULT_FRAGMENTS>
 
@@ -2039,7 +2039,7 @@ sub mksquashfs_options {
 	@$options = ('-noappend');
 	push(@$options, '-no-progress') if($squash_verbose == 0);
 	push(@$options, '-always-use-fragments') if(&is_nonempty($user_config->{'DEFAULT_FRAGMENTS'}));
-	my $comp = (defined($compression) ? lc($compression) : 'lz4');
+	my $comp = (defined($compression) ? lc($compression) : 'xz');
 	my $compopt = $user_config->{'COMPOPT_' . uc($comp)};
 	unless(defined($compopt)) {
 		$compopt = '-Xhc' if($comp eq 'lz4')

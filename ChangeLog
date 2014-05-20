@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-6.0a
+	Martin Väth <martin at mvath.de>:
+	- Revert to COMPRESSION=xz default until lz4 is supported by
+	  mainstream kernel
+
 *squashmount-6.0
 	Martin Väth <martin at mvath.de>:
 	- Support COMPOPT_* to allow setting algorithm-specific option.

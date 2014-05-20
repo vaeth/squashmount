@@ -48,7 +48,8 @@ exit(1);
 # can be changed without modifying every mountpoint manually.
 
 my $defaults = {
-	COMPRESSION => 'lz4', # We could omit this line as  lz4 is default
+	COMPRESSION => 'xz', # We could omit this line as xz is default.
+	                     # However, this might change in the future
 	COMPOPT_LZ4 => '-Xhc', # We could omit this line as -Xhc is default
 	COMPOPT_XZ => ['-Xbcj', 'x86'] # Use this in case COMPRESSION => 'xz'
 };
@@ -158,10 +159,11 @@ my $non_binary = {
 	standard_mount('games', '/usr/share/games', $defaults, {
 		# games is huge: use the fastest compression algorithm for it.
 		# (Note that this overrides $defaults):
+		COMPRESSION => 'lz4',
 		COMPOPT_LZ4 => ''
 	}),
 	standard_mount('office', '/usr/lib/libreoffice', $defaults, {
-		# Use the algorithm with best compression ratio.
-		COMPRESSION => 'xz',
+		# Make sure to use the algorithm with best compression ratio
+		COMPRESSION => 'xz'
 	})
 );
