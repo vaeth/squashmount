@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-6.1
+	Martin Väth <martin at mvath.de>:
+	- Change meaning of squash_verbose.
+	  Default prefers mksquashfs -quiet if available
+
 *squashmount-6.0a
 	Martin Väth <martin at mvath.de>:
 	- Revert to COMPRESSION=xz default until lz4 is supported by

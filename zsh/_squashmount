@@ -17,7 +17,7 @@ _arguments -C -s -S -A '-*' : \
 '(--threshold --no-squash --nosquash -t -n '{'--squash)-s','-s)--squash'}'[do resquash\: -t 0]' \
 '(--threshold --squash -t -s '{'--no-squash --nosquash)-n','--nosquash -n)--no-squash','--no-squash -n)--nosquash'}'[no resquash\: -t -1]' \
 {'(--separator)-S+','(-S)--separator='}'[SEP (separator for print-...)]:separator' \
-'--squash-verbose=[LEVEL (verbosity of mksquash)]:verbosity:(0 1 2)' \
+'--squash-verbose=[LEVEL (verbosity of mksquash)]:verbosity:(-1 1 2 3 4 5 6)' \
 '--pass-dir[Args are paths]' \
 {'(--interactive)-i','(-i)--interactive'}'[ask before cleaning directories]' \
 '(--no-kill --nokill -K '{'--kill)-k','-k)--kill'}'[clean without resquashing]' \

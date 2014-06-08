@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 6.0a\n");
+	print("$name 6.1\n");
 	exit(0)
 }
 
@@ -303,16 +303,32 @@ The following I<level> values are available:
 
 =over 16
 
-=item B<0>:
+=item B<1>:
 Redirect stdout of B<mksquashfs> to F</dev/null> and use B<-no-progress>
 
-=item B<1> (or anything else than B<0> and B<2>):
-Redirect stdout of B<mksquashfs> to F</dev/null>.
-You might want to apply a patch for B<mksquashfs> to redirect the progress bar
-to stderr: This produces the nicest output with no redundant information.
-
 =item B<2>:
-Call B<mksquashfs> without additional options or redirections.
+No redirection for B<mksquashfs>, but use B<-quiet> and B<-no-progress>.
+Note that option B<-quiet> requires a patched version of B<mksquashfs>.
+
+=item B<3>:
+No redirection for B<mksquashfs>, but use B<-no-progress>.
+
+=item B<4>:
+Redirect stdout of B<mksquashfs> to F</dev/null>.
+This was recommended in earlier version together with a patch of B<mksquashfs>
+to redirect the progress bar to stderr.
+However, the better way is to patch B<-quiet> instead.
+
+=item B<5>:
+No redirection for B<mksquashfs>, but use B<-quiet>.
+Note that option B<-quiet> requires a patched version of B<mksquashfs>.
+
+=item B<6> or larger:
+No redirection for B<mksquashfs> and no additional options.
+
+=item any other value (default):
+Autochoose between B<5> and B<6> depending on whether the output of
+B<mksquashfs> contains the phrase B<-quiet>.
 
 =back
 
@@ -627,7 +643,7 @@ see the remarks at the end of this manpage.)
 
 =item $nosquash = '/etc/killpower'; # ignore /etc/nosquash
 
-=item $squash_verbose = 1; # unnecessary; this is the default
+=item $squash_verbose = 4; # quicker if we know mksquash -quiet works
 
 =item $locking = 1; # lock always, even for status and print-* commands
 
@@ -792,7 +808,7 @@ the series of reboots is finished.
 =item B<$squash_verbose>
 
 This is the default if B<--squash-verbose> is not specified.
-This variable defaults to the value B<1> (I<true>).
+This variable defaults to B<0>.
 
 =item B<$locking>
 
@@ -1693,7 +1709,7 @@ sub umount_main {
 		} else {
 			$tempfile = File::Temp->new();
 		}
-		return '' unless(&mksquashfs($tempfile->filename, $dir, $squash_verbose));
+		return '' unless(&mksquashfs($tempfile->filename, $dir));
 		$created = 1
 	}
 	&info('umounting...') unless($quiet);
@@ -1802,7 +1818,7 @@ sub first_create {
 	&info('It seems this is mounted for the first time:',
 		"The squashed file $squashfile does not exist yet;",
 		"it will be initialized now from $dir") unless($quiet);
-	return '' unless(&mksquashfs($squashfile, $dir, 2));
+	return '' unless(&mksquashfs($squashfile, $dir));
 	&set_permissions($squashfile);
 	# Sanity check: do not wipe if e.g. kernel has no squashfs support
 	my $success = 1; {
@@ -2018,26 +2034,42 @@ sub mount_squash {
 # Create the squash file:
 
 sub mksquashfs {
-	my ($squashfile, $dir, $squash_verbose) = @_;
+	my ($squashfile, $dir) = @_;
 	unless(-d $dir) {
 		&error("no directory $dir");
 		return ''
 	}
-	&mksquashfs_options(\my @options);
+	my $redirect = &mksquashfs_options(\my @options);
 	&title("$tag squashing");
 	my $oldout = undef;
-	my $ret = (&my_system(($squash_verbose != 2), \$mksquashfs, 'mksquashfs', $dir, $squashfile, @options) == 0);
+	my $ret = (&my_system($redirect, \$mksquashfs, 'mksquashfs', $dir, $squashfile, @options) == 0);
 	&error($verbose ? 'failed: ' . &join_quoted($mksquashfs, $dir, $squashfile, @options)
 		: 'mksquashfs failed') unless($ret);
 	return $ret
 }
 
-# Set array of options for mksquashfs:
+# Set array of options for mksquashfs, and return 1 if redirection is required.
+# Also set $squash_verbose to a defined value.
 
 sub mksquashfs_options {
 	my ($options) = @_;
 	@$options = ('-noappend');
-	push(@$options, '-no-progress') if($squash_verbose == 0);
+	$squash_verbose = 0 unless(defined($squash_verbose));
+	unless($squash_verbose > 0) {
+		my $good = '';
+		if(open(my $fh, 'mksquashfs 2>&1 |')) {
+			while(<$fh>) {
+				if(/\-quiet/) {
+					$good = 1;
+					last
+				}
+			}
+			close($fh)
+		}
+		$squash_verbose = ( $good ? 5 : 6)
+	}
+	push(@$options, '-quiet') if(($squash_verbose == 5) || ($squash_verbose == 2));
+	push(@$options, '-no-progress') if($squash_verbose <= 3);
 	push(@$options, '-always-use-fragments') if(&is_nonempty($user_config->{'DEFAULT_FRAGMENTS'}));
 	my $comp = (defined($compression) ? lc($compression) : 'xz');
 	my $compopt = $user_config->{'COMPOPT_' . uc($comp)};
@@ -2046,7 +2078,8 @@ sub mksquashfs_options {
 	}
 	push(@$options, '-comp', $comp) if($comp ne '');
 	&push_ref($options, $compopt, undef);
-	&push_ref($options, $user_config->{'MKSQUASHFS'}, undef)
+	&push_ref($options, $user_config->{'MKSQUASHFS'}, undef);
+	return (($squash_verbose == 1) || ($squash_verbose == 4))
 }
 
 # Umount the directoy, possibly lazily:
@@ -2151,7 +2184,7 @@ sub kernelprobe {
 	package CFG;
 	our $lazy = 1;
 	our $killpower = [ '/etc/killpower', '/etc/nosquash' ];
-	our $squash_verbose = 1;
+	our $squash_verbose = 0;
 	our $modprobe_squash = 1;
 	our $locking;
 	our @order = ();

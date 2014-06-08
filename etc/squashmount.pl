@@ -18,6 +18,8 @@ It must be configured first for the mount-points you are actually using!
 See 'squashmount man' and the comments in that file for how to do this.\n");
 exit(1);
 
+# use 5 if mksquash has been patched to support -quiet, otherwise use 1 or 6:
+$squashmount_verbose = 5;
 
 # First we specify the tools which we have (possibly) installed;
 # if possible, only the first in this list is used, but the others are
