@@ -1,5 +1,12 @@
 # ChangeLog for squashmount
 
+*squashmount-6.2
+	Martin Väth <martin at mvath.de>:
+	- Use the flexible $mksquash_verbose, --mksquash-verbose strings
+	  instead of the previous $squash_verbose, --squash-verbose numbers.
+	  To ease transition for users, currently an error is reported if
+	  the now unsupported $squash_verbose is still set.
+
 *squashmount-6.1
 	Martin Väth <martin at mvath.de>:
 	- Change meaning of squash_verbose.

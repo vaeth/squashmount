@@ -18,8 +18,12 @@ It must be configured first for the mount-points you are actually using!
 See 'squashmount man' and the comments in that file for how to do this.\n");
 exit(1);
 
-# use 5 if mksquash has been patched to support -quiet, otherwise use 1 or 6:
-$squashmount_verbose = 5;
+# Do not override the default of $squashmount_quiet for a flexible config.
+# For quicker execution, specify which version of mksquashfs is installed:
+# $squashmount_quiet = 'qn-'; # if mksquashfs knows about -quiet
+# $squashmount_quiet = 'rn+'; # if mksquashfs redirects progress to stderr
+# $squashmount_quiet = 'n-';  # if <=mksquashfs-4.3 is unpatched
+# $squashmount_quiet = 'r-n-r+n+';# for silent output only on terminals
 
 # First we specify the tools which we have (possibly) installed;
 # if possible, only the first in this list is used, but the others are

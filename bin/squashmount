@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 6.1\n");
+	print("$name 6.2\n");
 	exit(0)
 }
 
@@ -296,44 +296,88 @@ Display extended help as a manpage.
 
 Verbose output.
 
-=item B<--squash-verbose=>I<level>
+=item B<--mksquash-verbose=>I<string>
 
-Determines how verbose B<mksquashfs> is called.
-The following I<level> values are available:
+Determines options and redirections for B<mksquashfs> relevant for verbosity.
+It can be a combination of symbols, possibly followed by flags.
+Later symbols/flags combinations override earlier ones.
+Unknown symbols/flag combinations are tacitly ignored.
+The following symbols do exist:
 
 =over 16
 
-=item B<1>:
-Redirect stdout of B<mksquashfs> to F</dev/null> and use B<-no-progress>
+=item B<i>:
+Pass option B<-info>
 
-=item B<2>:
-No redirection for B<mksquashfs>, but use B<-quiet> and B<-no-progress>.
-Note that option B<-quiet> requires a patched version of B<mksquashfs>.
+=item B<n>:
+Pass option B<-no-progress>
 
-=item B<3>:
-No redirection for B<mksquashfs>, but use B<-no-progress>.
+=item B<p>:
+Pass option B<-progress>
 
-=item B<4>:
-Redirect stdout of B<mksquashfs> to F</dev/null>.
-This was recommended in earlier version together with a patch of B<mksquashfs>
-to redirect the progress bar to stderr.
-However, the better way is to patch B<-quiet> instead.
+=item B<q>:
+Pass option B<-quiet>.
 
-=item B<5>:
-No redirection for B<mksquashfs>, but use B<-quiet>.
-Note that option B<-quiet> requires a patched version of B<mksquashfs>.
+=item B<r>:
+Redirect stdout to F</dev/null>.
 
-=item B<6> or larger:
-No redirection for B<mksquashfs> and no additional options.
-
-=item any other value (default):
-Autochoose between B<5> and B<6> depending on whether the output of
-B<mksquashfs> contains the phrase B<-quiet>.
+=item B<I>, B<N>, B<P>, B<Q>, B<R>
+Ignore earlier respective symbol B<i>, B<n>, B<p>, B<q>, B<r>
+if there was some. For instance, B<iqI>, B<qI>, or B<q> are all equivalent.
+(These symbols are useful only when combined with flags.)
 
 =back
 
-The default I<level> is user-specified in F</etc/squashmount.pl>;
-if not specified there the default is B<1>.
+The following flags do exist which can be appended to a symbol
+to make the previous symbols act only conditionally.
+
+For instance, B<mksquash> does not necessarily support B<-quiet>,
+so you might want to use a flag to check whether this is the case.
+
+Using flags makes the configuration more flexible, but costs running time,
+of course, since the checks have to be executed.
+However, B<squashmount> caches the results of checks, so that the checks
+are made at most once per call of B<squaashmount>.
+
+=over 16
+
+=item B<1>
+
+Use the symbol only if B<stdout> B<is> a terminal.
+
+=item B<->
+
+Use the symbol only if B<stdout> is B<not> a terminal.
+
+=item B<2>
+
+Use the symbol only if B<stderr> B<is> a terminal.
+
+=item B<+>
+
+Use the symbol only if B<stderr> is B<not> a terminal.
+
+=item B<?>
+
+Use the symbol only if the output of B<mksquash> contains B<-quiet>.
+
+=item B<!>
+
+Use the symbol only if the output of B<mksquash> does B<not> contain B<-quiet>.
+
+=back
+
+The default I<string> is user-specified in F</etc/squashmount.pl>;
+if not specified there, the default is B<q?n-n+!> which means that the
+B<-quiet> option is used if it is supported, and B<-no-progress> is used
+if either stdout is not a terminal or if stderr is not a terminal and
+the B<-quiet> option is unknown (because there were patches for such
+B<mksquashfs> versions which output the progress bar to stderr).
+
+As an artificial complex example, B<q1q2r12Q!> would mean:
+if stdout or stderr is a terminal, use B<-quiet>, and if stdout and
+stdout are both terminals, redirect stdout to F</dev/null>; however,
+do not use B<-quiet> if B<mksquash> does not know this option.
 
 =item B<--quiet> or B<-q> (accumulative)
 
@@ -628,9 +672,11 @@ In addition, the array B<@order> can be filled with the available tools,
 the order in which they should be tried, and flags whether modprobe should
 be called, how to test the existence of tools and what to do if tools appear
 unavailable.
-Also the default variables B<$lazy>, B<$squash_verbose>, B<$locking>,
-and B<$modprobe_squash> can be initialized: They are initialized to B<1>
+Also the default variables B<$lazy>, B<$locking>, B<$modprobe_squash>,
+and B<$mksquash_verbose> can be initialized: They are initialized to B<1>
 (perl interprets this as I<true>) or B<''> (I<false>).
+B<$mksquash_verbose> is the default string if B<--mksquash-verbose>
+is not passed.
 
 Here is an example for this file.
 (You can use this syntax if you do not have much knowledge about perl;
@@ -643,11 +689,11 @@ see the remarks at the end of this manpage.)
 
 =item $nosquash = '/etc/killpower'; # ignore /etc/nosquash
 
-=item $squash_verbose = 4; # quicker if we know mksquash -quiet works
-
 =item $locking = 1; # lock always, even for status and print-* commands
 
 =item $modprobe_squash = ''; # Differ from default: No modprobe squashfs
+
+=item $mksquash_verbose = 'qn-'; # quicker if we know mksquash -quiet works
 
 =item @order = qw(overlayfs? aufs! unionfs-fuse! unionfs??# funionfs??#);
 
@@ -805,11 +851,6 @@ Therefore the file F</etc/nosquash> can be generated to keep this information
 across reboots; of course, one should not forget to remove this file once
 the series of reboots is finished.
 
-=item B<$squash_verbose>
-
-This is the default if B<--squash-verbose> is not specified.
-This variable defaults to B<0>.
-
 =item B<$locking>
 
 This determines whether B<--locking> or B<--no-locking> is the default.
@@ -822,6 +863,12 @@ B<1> (I<true>).
 This determines whether C<modprobe squashfs> is executed before the first
 squashfile is mounted.
 This variable defaults to the value B<1> (I<true>).
+
+=item B<$mksquash_verbose>
+
+This is the default string if B<--squash-verbose> is not specified.
+This variable defaults to B<q?n-n+!>
+(if not overridden in B</etc/squashmount.pl>)
 
 =item B<@order>
 
@@ -1359,7 +1406,7 @@ my $devnull = File::Spec->devnull();
 my @title = ();
 my $verbose = 0;
 my $quiet = 0;
-my $squash_verbose = undef;
+my $mksquash_verbose = undef;
 my $opt_color = undef;
 my $star = undef;
 my $lazy = undef;
@@ -1397,8 +1444,10 @@ my $modprobe = undef;
 my $run_ro;             # handle /run/squashmount as readonly
 my $modprobe_squash;    # will modprobe squash
 my $lockfh = undef;
-my $stdoutterm = (-t STDOUT);
-my $stderrterm = undef;
+my $stdoutterm = (-t STDOUT); # whether stdout is a terminal
+my $stderrterm = undef; # whether stderr is a terminal
+my $know_quiet = undef; # whether mksquash contains -quiet
+my $mksquash_symbols = undef;
 my $exitstatus = 0;
 my $had_error = '';
 my $current = undef;    # current configuration in /run/squashmount
@@ -2048,28 +2097,18 @@ sub mksquashfs {
 	return $ret
 }
 
-# Set array of options for mksquashfs, and return 1 if redirection is required.
-# Also set $squash_verbose to a defined value.
+# Set array of options for mksquashfs and return redirection for &my_system()
+# Defines/uses $mksquash_symbols for the calculation, using $mksquash_verbose.
 
 sub mksquashfs_options {
 	my ($options) = @_;
 	@$options = ('-noappend');
-	$squash_verbose = 0 unless(defined($squash_verbose));
-	unless($squash_verbose > 0) {
-		my $good = '';
-		if(open(my $fh, 'mksquashfs 2>&1 |')) {
-			while(<$fh>) {
-				if(/\-quiet/) {
-					$good = 1;
-					last
-				}
-			}
-			close($fh)
-		}
-		$squash_verbose = ( $good ? 5 : 6)
-	}
-	push(@$options, '-quiet') if(($squash_verbose == 5) || ($squash_verbose == 2));
-	push(@$options, '-no-progress') if($squash_verbose <= 3);
+	$mksquash_symbols = &calc_mksquash_symbols($mksquash_verbose)
+		unless(defined($mksquash_symbols));
+	push(@$options, '-quiet') if(defined($mksquash_symbols->{'q'}));
+	push(@$options, '-no-progress') if(defined($mksquash_symbols->{'n'}));
+	push(@$options, '-info') if(defined($mksquash_symbols->{'i'}));
+	push(@$options, '-progress') if(defined($mksquash_symbols->{'p'}));
 	push(@$options, '-always-use-fragments') if(&is_nonempty($user_config->{'DEFAULT_FRAGMENTS'}));
 	my $comp = (defined($compression) ? lc($compression) : 'xz');
 	my $compopt = $user_config->{'COMPOPT_' . uc($comp)};
@@ -2079,7 +2118,49 @@ sub mksquashfs_options {
 	push(@$options, '-comp', $comp) if($comp ne '');
 	&push_ref($options, $compopt, undef);
 	&push_ref($options, $user_config->{'MKSQUASHFS'}, undef);
-	return (($squash_verbose == 1) || ($squash_verbose == 4))
+	return defined($mksquash_symbols->{'r'})
+}
+
+# Return $mksquash_symbols according to $mksquash_verbose argument:
+
+sub calc_mksquash_symbols {
+	my ($squash_verbose) = @_;
+	$squash_verbose = 'q?n-n+!' unless(defined($squash_verbose));
+	my $squash_symbols = {};
+	while($squash_verbose =~ s/([inpqrINPQR])([12\-\+\?\!]*)//) {
+		my ($symbol, $flags) = ($1, $2);
+		if($flags =~ /[1\-]/) {
+			next if(((!$stdoutterm) && ($flags =~ /1/)) ||
+				($stdoutterm && ($flags =~ /\-/)))
+		}
+		if($flags =~ /[2\+]/) {
+			$stderrterm = (-t STDERR) unless(defined($stderrterm));
+			next if(((!$stderrterm) && ($flags =~ /2/)) ||
+				($stderrterm && ($flags =~ /\+/)))
+		}
+		if($flags =~ /[\?\!]/) {
+			&set_know_quiet() unless(defined($know_quiet));
+			next if(((!$know_quiet) && ($flags =~ /\?/)) ||
+				($know_quiet && ($flags =~ /\!/)))
+		}
+		if($symbol =~ /[[:upper:]]/) {
+			delete($squash_symbols->{lc($symbol)})
+		} else {
+			$squash_symbols->{$symbol} = 1
+		}
+	}
+	return $squash_symbols
+}
+
+# Set $know_quiet:
+
+sub set_know_quiet {
+	$know_quiet = '';
+	open(my $fh, 'mksquashfs 2>&1 |') || return;
+	while(<$fh>) {
+		$know_quiet = 1	if(/\-quiet/)
+	}
+	close($fh)
 }
 
 # Umount the directoy, possibly lazily:
@@ -2184,7 +2265,8 @@ sub kernelprobe {
 	package CFG;
 	our $lazy = 1;
 	our $killpower = [ '/etc/killpower', '/etc/nosquash' ];
-	our $squash_verbose = 0;
+	our $mksquash_verbose = 'q?n-n+!';
+	our $squash_verbose = undef;
 	our $modprobe_squash = 1;
 	our $locking;
 	our @order = ();
@@ -2202,6 +2284,7 @@ sub read_config_file {
 	package CFG;
 	our $lazy;
 	our $killpower;
+	our $mksquash_verbose;
 	our $squash_verbose;
 	our $locking;
 	our @order;
@@ -2766,7 +2849,7 @@ sub output {
 		unless(defined($use_color)) {
 			$use_color = $stdoutterm;
 			if($to_stderr) {
-				$stderrterm = (-t STDOUT) unless(defined($stderrterm));
+				$stderrterm = (-t STDERR) unless(defined($stderrterm));
 				$use_color = $stderrterm
 			}
 		}
@@ -3037,7 +3120,7 @@ GetOptions(
 	'tempdir|D=s', \$opt_tempdir,
 	'backup|b=s', \$opt_backup,
 	'no-backup|nobackup|B', sub { $opt_backup = '' },
-	'squash-verbose=i', \$squash_verbose,
+	'mksquash-verbose=s', \$mksquash_verbose,
 	'lazy!', \$lazy,
 	'locking!', \$locking,
 	'force|f', \$force,
@@ -3166,7 +3249,10 @@ for my $file (@configs) {
 
 # Modify options according to config:
 
-$squash_verbose = $CFG::squash_verbose unless(defined($squash_verbose));
+&fatal('Obsolete $squash_verbose is set in the configuration.',
+'Do not define $squash_verbose; set $mksquash_verbose instead.')
+	if(defined($CFG::squash_verbose));
+$mksquash_verbose = $CFG::mksquash_verbose unless(defined($mksquash_verbose));
 $lazy = $CFG::lazy unless(defined($lazy));
 $locking = $CFG::locking unless(defined($locking));
 $modprobe_squash = $CFG::modprobe_squash;
