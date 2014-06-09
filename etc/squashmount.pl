@@ -18,13 +18,6 @@ It must be configured first for the mount-points you are actually using!
 See 'squashmount man' and the comments in that file for how to do this.\n");
 exit(1);
 
-# Do not override the default of $squashmount_quiet for a flexible config.
-# For quicker execution, specify which version of mksquashfs is installed:
-# $squashmount_quiet = 'qn-'; # if mksquashfs knows about -quiet
-# $squashmount_quiet = 'rn+'; # if mksquashfs redirects progress to stderr
-# $squashmount_quiet = 'n-';  # if <=mksquashfs-4.3 is unpatched
-# $squashmount_quiet = 'r-n-r+n+';# for silent output only on terminals
-
 # First we specify the tools which we have (possibly) installed;
 # if possible, only the first in this list is used, but the others are
 # successively a fallback if that fails.
@@ -48,6 +41,21 @@ exit(1);
 # $squash_verbose = '';
 # $locking = 1; # lock always, even for status and print-* commands
 # $modprobe_squash = '';
+
+# Do not override the default of $squashmount_quiet for a flexible config.
+# For quicker execution, specify which version of mksquashfs is installed:
+# $squashmount_quiet = 'qn-'; # if mksquashfs knows about -quiet
+# $squashmount_quiet = 'rn+'; # if mksquashfs redirects progress to stderr
+# $squashmount_quiet = 'n-';  # if <=mksquashfs-4.3 is unpatched
+# $squashmount_quiet = 'r-n-r+n+';# for silent output only on terminals
+
+# Unless you have a particular reason, it is wise to leave the choice
+# of -processes and -mem to mksquashfs. So the default is '':
+# $processors = '';
+# $mem = '';
+
+# The following is the default: If these files exist, we do not squash
+# $killpower = [ '/etc/killpower', '/etc/nosquash' ]
 
 # Even if we would not set anything in the following hash, it is recommended
 # to use this local variable throughout, so that "defaults" for all mountpoints

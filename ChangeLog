@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-6.3
+	Martin Väth <martin at mvath.de>:
+	- Introduce -p/--processors, -m/--mem and $processors, $mem defaults
+
 *squashmount-6.2
 	Martin Väth <martin at mvath.de>:
 	- Use the flexible $mksquash_verbose, --mksquash-verbose strings

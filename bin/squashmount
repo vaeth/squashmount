@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 6.2\n");
+	print("$name 6.3\n");
 	exit(0)
 }
 
@@ -590,6 +590,19 @@ respectively.)
 A negative number is equivalent to B<--no-squash>.
 If I<size> is empty the value configured from F</etc/squashmount.pl> is taken.
 
+=item B<--processors=>I<num> or B<-p> I<num>
+
+Call B<mksquashfs> with the option B<-processors> I<num>.
+If I<num> is empty or consists only of spaces, the option is not passed,
+meaning that all available processors are used.
+
+=item B<--mem=>I<bytes> or B<-m> I<bytes>
+
+Call B<mksquashfs> with the option B<-mem> I<bytes>.
+If I<bytes> is empty or consists only of spaces, the option is not passed.
+In this case, the size depends on the B<mksquashfs> version;
+some versions of B<mksquashfs> use in this case B<1954M>
+
 =item B<--separator=>I<sep> or B<-S> I<sep>
 
 When using B<check> or B<print-...> with option B<-q>,
@@ -672,11 +685,12 @@ In addition, the array B<@order> can be filled with the available tools,
 the order in which they should be tried, and flags whether modprobe should
 be called, how to test the existence of tools and what to do if tools appear
 unavailable.
-Also the default variables B<$lazy>, B<$locking>, B<$modprobe_squash>,
-and B<$mksquash_verbose> can be initialized: They are initialized to B<1>
+Also the default variables B<$lazy>, B<$locking>, B<$modprobe_squash>
+can be initialized: They are initialized to B<1>
 (perl interprets this as I<true>) or B<''> (I<false>).
-B<$mksquash_verbose> is the default string if B<--mksquash-verbose>
-is not passed.
+Finally, also the variables B<$mksquash_verbose>,
+B<$processors>, B<$mem> can specify the default values
+if the corresponding options are not passed.
 
 Here is an example for this file.
 (You can use this syntax if you do not have much knowledge about perl;
@@ -694,6 +708,10 @@ see the remarks at the end of this manpage.)
 =item $modprobe_squash = ''; # Differ from default: No modprobe squashfs
 
 =item $mksquash_verbose = 'qn-'; # quicker if we know mksquash -quiet works
+
+=item $processors = ''; # unnecessary; this is the default
+
+=item $mem = ''; # unnecessary; this is the default
 
 =item @order = qw(overlayfs? aufs! unionfs-fuse! unionfs??# funionfs??#);
 
@@ -869,6 +887,16 @@ This variable defaults to the value B<1> (I<true>).
 This is the default string if B<--squash-verbose> is not specified.
 This variable defaults to B<q?n-n+!>
 (if not overridden in B</etc/squashmount.pl>)
+
+=item B<$processors>
+
+This is the default string if B<--processors> is not specified.
+If not set, the default is the empty string.
+
+=item B<$mem>
+
+This is the default string if B<--mem> is not specified.
+If not set, the default is the empty string.
 
 =item B<@order>
 
@@ -1407,6 +1435,8 @@ my @title = ();
 my $verbose = 0;
 my $quiet = 0;
 my $mksquash_verbose = undef;
+my $processors = undef;
+my $mem = undef;
 my $opt_color = undef;
 my $star = undef;
 my $lazy = undef;
@@ -2103,6 +2133,8 @@ sub mksquashfs {
 sub mksquashfs_options {
 	my ($options) = @_;
 	@$options = ('-noappend');
+	push(@$options, '-processors', $processors) if($processors ne '');
+	push(@$options, '-mem', $mem) if($mem ne '');
 	$mksquash_symbols = &calc_mksquash_symbols($mksquash_verbose)
 		unless(defined($mksquash_symbols));
 	push(@$options, '-quiet') if(defined($mksquash_symbols->{'q'}));
@@ -2267,6 +2299,8 @@ sub kernelprobe {
 	our $killpower = [ '/etc/killpower', '/etc/nosquash' ];
 	our $mksquash_verbose = 'q?n-n+!';
 	our $squash_verbose = undef;
+	our $processors = '';
+	our $mem = '';
 	our $modprobe_squash = 1;
 	our $locking;
 	our @order = ();
@@ -3121,6 +3155,8 @@ GetOptions(
 	'backup|b=s', \$opt_backup,
 	'no-backup|nobackup|B', sub { $opt_backup = '' },
 	'mksquash-verbose=s', \$mksquash_verbose,
+	'processors|p=s', \$processors,
+	'mem|m=s', \$mem,
 	'lazy!', \$lazy,
 	'locking!', \$locking,
 	'force|f', \$force,
@@ -3249,13 +3285,17 @@ for my $file (@configs) {
 
 # Modify options according to config:
 
+$lazy = $CFG::lazy unless(defined($lazy));
+$locking = $CFG::locking unless(defined($locking));
+$modprobe_squash = $CFG::modprobe_squash;
 &fatal('Obsolete $squash_verbose is set in the configuration.',
 'Do not define $squash_verbose; set $mksquash_verbose instead.')
 	if(defined($CFG::squash_verbose));
 $mksquash_verbose = $CFG::mksquash_verbose unless(defined($mksquash_verbose));
-$lazy = $CFG::lazy unless(defined($lazy));
-$locking = $CFG::locking unless(defined($locking));
-$modprobe_squash = $CFG::modprobe_squash;
+$processors = $CFG::processors unless(defined($processors));
+$processors = '' unless(defined($processors) && !($processors =~ /^\s+$/));
+$mem = $CFG::mem unless(defined($mem));
+$mem = '' unless(defined($mem) && !($mem =~ /^\s+$/));
 if(defined($CFG::killpower)) {
 	if(ref($CFG::killpower) eq 'ARRAY') {
 		for my $i (@$CFG::killpower) {

@@ -18,6 +18,8 @@ _arguments -C -s -S -A '-*' : \
 '(--threshold --squash -t -s '{'--no-squash --nosquash)-n','--nosquash -n)--no-squash','--no-squash -n)--nosquash'}'[no resquash\: -t -1]' \
 {'(--separator)-S+','(-S)--separator='}'[SEP (separator for print-...)]:separator' \
 '--squash-verbose=[SYMBOLS (verbosity of mksquash)]:symbols [inpqrINPQR], flags (1-2+?!):(q nq ip pi r)' \
+{'(--processors)-p+','(-p)--processors='}'[NUM (mksquashfs -processors)]:processors:(\  1 2 3 4 5 6 7 8 9)' \
+{'(--mem)-m+','(-m)--mem='}'[SIZE (mksquashfs -mem)]:memory:(\  210M 466M 1954M 3054M 7054M)' \
 '--pass-dir[Args are paths]' \
 {'(--interactive)-i','(-i)--interactive'}'[ask before cleaning directories]' \
 '(--no-kill --nokill -K '{'--kill)-k','-k)--kill'}'[clean without resquashing]' \
