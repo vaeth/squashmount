@@ -1,5 +1,13 @@
 # ChangeLog for squashmount
 
+*squashmount-7.0
+	Martin Väth <martin at mvath.de>:
+	- WARNING: The meaning of &standard_mount() has changed!
+	  Paths are now  dir/changes dir/workdir dir/readonly dir/dir.sfs
+	  You should reorganize your directory structure to reflect that!
+	  The reason is that WORKDIR is mandatory with new overlayfs.
+	- Support current overlayfs (WORKDIR)
+
 *squashmount-6.3
 	Martin Väth <martin at mvath.de>:
 	- Introduce -p/--processors, -m/--mem and $processors, $mem defaults

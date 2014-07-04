@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 6.3\n");
+	print("$name 7.0\n");
 	exit(0)
 }
 
@@ -108,8 +108,8 @@ for the first time.
 
 Umount all configured mount-points, resquashing if data was changed
 (and has reached a configured threshold).
-Moreover, the modified data in the CHANGES directory is removed
-(the directory is "cleaned").
+Moreover, the modified data in the CHANGES and WORKDIR directory is removed
+(the directories are "cleaned").
 This command keeps the local setting made with B<quashmount set>
 unless the option B<-r> (B<--reset>) is used.
 
@@ -233,6 +233,12 @@ For usage in scripts, combine this with B<-q>/B<-S> and pass a tag.
 =item B<print-changes>
 
 Output the effective B<CHANGES> directory in which the modified data is stored.
+The result is undefined if the mount-point is configured to be non-writable.
+For usage in scripts, combine this with B<-q>/B<-S> and pass a tag.
+
+=item B<print-workdir>
+
+Output the effective B<WORKDIR> directory in which the modified data is stored.
 The result is undefined if the mount-point is configured to be non-writable.
 For usage in scripts, combine this with B<-q>/B<-S> and pass a tag.
 
@@ -685,8 +691,8 @@ In addition, the array B<@order> can be filled with the available tools,
 the order in which they should be tried, and flags whether modprobe should
 be called, how to test the existence of tools and what to do if tools appear
 unavailable.
-Also the default variables B<$lazy>, B<$locking>, B<$modprobe_squash>
-can be initialized: They are initialized to B<1>
+Also the default variables B<$lazy>, B<$locking>, B<$modprobe_squash>,
+B<$obsolete_overlayfs> can be initialized: They are initialized to B<1>
 (perl interprets this as I<true>) or B<''> (I<false>).
 Finally, also the variables B<$mksquash_verbose>,
 B<$processors>, B<$mem> can specify the default values
@@ -713,6 +719,8 @@ see the remarks at the end of this manpage.)
 
 =item $mem = ''; # unnecessary; this is the default
 
+=item $obsolete_overlayfs = ''; # unnecessary; this is the default
+
 =item @order = qw(overlayfs? aufs! unionfs-fuse! unionfs??# funionfs??#);
 
 =item # The main task is to set B<@mounts>. Use one of
@@ -731,7 +739,7 @@ see the remarks at the end of this manpage.)
 
 =item DIR => '/usr/local',
 
-=item FILE => '/usr/local.sqfs',
+=item FILE => '/usr/local.sfs',
 
 =back
 
@@ -743,7 +751,7 @@ see the remarks at the end of this manpage.)
 
 =item DIR => '/home/guest'
 
-=item FILE => '/home/guest-skelton.sqfs'
+=item FILE => '/home/guest-skelton.sfs'
 
 =item CHMOD => 0200, # squashfile readonly by user
 
@@ -763,11 +771,13 @@ see the remarks at the end of this manpage.)
 
 =item DIR => '/usr/share/texmf-dist',
 
-=item FILE => '/usr/share/texmf-dist.sqfs',
+=item FILE => '/usr/share/texmf-dist.mount/texmf-dist.sfs',
 
-=item CHANGES => '/usr/share/texmf-dist.changes',
+=item CHANGES => '/usr/share/texmf-dist.mount/changes',
 
-=item READONLY => '/use/share/texmf-dist.readonly',
+=item WORKDIR => '/usr/share/texmf-dist.mount/workdir',
+
+=item READONLY => '/use/share/texmf-dist.mount/readonly',
 
 =item DIFF => [ qr{^ls-R$},
 
@@ -783,11 +793,13 @@ see the remarks at the end of this manpage.)
 
 =item DIR => '/usr/portage,
 
-=item FILE => '/usr/portage.sqfs',
+=item FILE => '/usr/portage.mount/portage.sfs',
 
-=item CHANGES => '/usr/portage.changes',
+=item CHANGES => '/usr/portage.mount/changes',
 
-=item READONLY => '/usr/portage.readonly',
+=item WORKDIR => '/usr/portage.mount/workdir',
+
+=item READONLY => '/usr/portage.mount/readonly',
 
 =item THRESHOLD => '40m', # resquash on umount if 40 MB changed, or
 
@@ -807,9 +819,11 @@ see the remarks at the end of this manpage.)
 
 =item CHANGES => sub { return File::Temp::newdir(undef, DIR => '/path/to/ramdisk') },
 
+=item WORKDIR => sub { return File::Temp::newdir(undef, DIR => '/path/to/ramdisk') },
+
 =item READONLY => \&make_temporary_subdir,
 
-=item FILE => '/just/a/crazy/example.sqfs',
+=item FILE => '/just/a/crazy/example.sfs',
 
 =item SKIP => '^\.', # A string is also possible
 
@@ -875,6 +889,19 @@ This determines whether B<--locking> or B<--no-locking> is the default.
 This variable defaults to the value B<''> (I<false>) when the commands
 B<status> or B<print-*> are used; for all other commands it defaults to
 B<1> (I<true>).
+
+=item B<$obsolete_overlayfs>
+
+When this perl variable is B<''> (I<false>), which is the default,
+then it is attempted to mount overlayfs with the new B<workdir> option,
+and only if this fails, it is attempted to mount overlayfs without this option.
+Set this variable to B<1> (I<true>) if you have an obsolete version of
+overlayfs (linux kernel less than 3.15): In this case, it is first attempted
+to mount overlayfs without the new B<workdir> option, and the B<workdir>
+option is only attempted as a fallback if the former fails.
+
+Not setting this variable correctly should not cause any problems, but it might
+lead to undesired warning/kernel messages.
 
 =item B<$modprobe_squash>
 
@@ -974,8 +1001,8 @@ array is empty.
 The array B<@mounts> defines the various mount-points.
 The first mount-point in the above example is the minimal data which
 has to be specified for a mount-point.
-However, typically you should also specify at least the keys B<CHANGES> and
-usually also B<READONLY> unless you have a special reason not to.
+However, typically you should also specify at least the keys B<CHANGES>,
+B<WORKDIR> and usually also B<READONLY> unless you have a special reason not to.
 The following keys are supported. If a key is undefined or not explicitly set,
 a default value is chosen in some cases.
 
@@ -1030,6 +1057,13 @@ are lost if they are not (successfully) squashed on shutdown
 (e.g. due to option B<--no-squash>).
 If you use a temporary directory, you can find the actual path with
 B<squashmount print-changes ...>
+
+=item B<WORKDIR>
+
+The working directory required by overlayfs, set according the the same rules
+as for B<CHANGES>.
+If you want to use current versions of overlayfs (kernel 3.15 or newer)
+this must be defined, and it B<must> be on the same filesystem as B<CHANGES>.
 
 =item B<READONLY>
 
@@ -1198,9 +1232,9 @@ If the file matches, it is not considered as being changed.
 This is useful to avoid squashing only because e.g. a known temporary
 file has changed in this directory which you do not care about.
 
-When all changes are skipped during umounting, the B<CHANGES> directory is
-cleaned anyway, i.e. skipping a file means that changes to this file are
-usually lost (unless the directory is ressquashed anyway).
+When all changes are skipped during umounting, the B<CHANGES> and B<WORKDIR>A
+directories are cleaned anyway, i.e. skipping a file means that changes to
+this file are usually lost (unless the directory is ressquashed anyway).
 
 If a file you want to skip resides in a subdirectory (not in the root
 of B<CHANGES>) you probably also want to skip all parent directories,
@@ -1213,7 +1247,7 @@ However, to be more careful you might want skip them with B<DIFF>
 This is similar to B<SKIP>, but only for directories; moreover, also the
 whole content of matching directories is being considered as unchanged.
 
-If you want to B<SKIPDIR> a directory lying not in the root, of B<CHANGES>
+If you want to B<SKIPDIR> a directory lying not in the root of B<CHANGES>,
 you will probably want to include its parent directories to B<DIFF>
 (or to B<SKIP> if you are less careful).
 
@@ -1241,7 +1275,7 @@ the files
 
 =back
 
-you must also ignore that the corresponding parends are created in CHANGES.
+you must also ignore that the corresponding parents are created in B<CHANGES>.
 Therefore, in the example file above (in TAG tex), the regular expression
 in B<DIFF> not only matches the above files but also their parent directories.
 
@@ -1323,11 +1357,15 @@ functions which make this task relatively easy:
 
 This function returns a reference to a hash with the keys B<TAG> and B<DIR>
 filled according to the first two arguments.
-In addition, the values for the keys B<CHANGES>, B<READONLY>, and B<FILE>
-are generated by just appending C<.changes>, C<.readonly>, C<.sqfs> to I<dir>.
+In addition, the values for the keys B<CHANGES>, B<WORKDIR>, B<READONLY>,
+and B<FILE> are generated by just appending B<.mount/changes>,
+B<.mount/workdir>, B<.mount/readonly>, B<.mount/>I<dirname>B<.sfs>.
 Moreover, if I<...> are references to hashes, they are added to the hash:
 Later hashes override earlier ones; setting a value to C<undef> in a sense
 cancels a previous definition.
+If the variable B<$no_workdir> is true then B<WORKDIR> is not initialized.
+Note that if B<WORKDIR> is uninitialized, it is not possible to mount the
+filesystem with current versions of overlayfs (with kernel 3.15 or newer).
 
 =item B<added_hash(>I<hash_reference>B<,> I<hash_reference>B<,> ...B<)>
 
@@ -1648,7 +1686,9 @@ sub cmd_status {
 	my $readonly = &get_abspath('READONLY', $force, '');
 	push(@status, 'READONLY: ' . $readonly) if(&is_nonempty($readonly));
 	push(@status, 'CHANGES: ' . &get_abspath('CHANGES', $force, 1))
-		unless(&is_valid_changes($force));
+		if(&is_valid_changedir('CHANGES', $force));
+	push(@status, 'WORKDIR: ' . &get_abspath('WORKDIR', $force, 1))
+		if(&is_valid_changedir('WORKDIR', $force));
 	my $file = &get_abspath('FILE', $force);
 	push(@status, 'FILE: ' . $file) if(&is_abspath($file));
 	push(@status, "TEMPDIR: $tempdir") if(&is_abspath($tempdir));
@@ -1677,8 +1717,13 @@ sub cmd_print_readonly {
 }
 
 sub cmd_print_changes {
-	return &do_print(undef) unless(&is_valid_changes($force));
+	return &do_print(undef) unless(&is_valid_changedir('CHANGES', $force));
 	return &do_print(&get_abspath('CHANGES', $force, 1))
+}
+
+sub cmd_print_workdir {
+	return &do_print(undef) unless(&is_valid_changedir('WORKDIR', $force));
+	return &do_print(&get_abspath('WORKDIR', $force, 1))
 }
 
 sub cmd_print_file {
@@ -1690,14 +1735,14 @@ sub cmd_print_type {
 }
 
 sub cmd_print_new {
-	return &do_print(undef) unless(&is_valid_changes($force));
+	return &do_print(undef) unless(&is_valid_changedir('CHANGES', $force));
 	my ($will_squash, undef) = &check_squash(0, '');
 	my $result = $will_squash ? '1' : '';
 	return &do_print($quiet ? $result : ('NEW: ' . $result))
 }
 
 sub cmd_print_will_squash {
-	return &do_print(undef) unless(&is_valid_changes($force));
+	return &do_print(undef) unless(&is_valid_changedir('CHANGES', $force));
 	my ($will_squash, undef) = &check_squash($threshold, $kill);
 	my $result = $will_squash ? '1' : '';
 	return &do_print($quiet ? $result : ('WILL_SQUASH: ' . $result))
@@ -1741,6 +1786,7 @@ sub mount_main {
 		return '' unless(&mount_squash($squashfile, $dir));
 		$current->{'TYPE'} = 'readonly';
 		delete($current->{'CHANGES'});
+		delete($current->{'WORKDIR'});
 		return 1
 	}
 	my $dir_ro = $current->{'READONLY'};
@@ -1762,7 +1808,8 @@ sub mount_main {
 		}
 	}
 	return '' unless(&create_dir('CHANGES', 1));
-	my $type = &mount_rw($dir_ro, $dir, $current->{'CHANGES'});
+	return '' unless(&create_dir('WORKDIR', 1));
+	my $type = &mount_rw($dir_ro, $dir, $current->{'CHANGES'}, $current->{'WORKDIR'});
 	return '' unless(defined($type));
 	$current->{'TYPE'} = $type;
 	return $ret
@@ -1827,11 +1874,15 @@ sub umount_main {
 		}
 		&set_permissions($squashfile)
 	}
-	return 1 unless($will_remove);
-	my $changes = &get_abspath('CHANGES');
+	return $ret unless($will_remove);
 	&title("$tag cleaning");
 	&info('cleaning changes...') unless($quiet);
-	return &clean_directory($changes)
+	$ret = '' unless(&clean_directory(&get_abspath('CHANGES')));
+	my $workdir = &get_abspath('WORKDIR');
+	if(&is_abspath($workdir)) {
+		$ret = '' unless(&clean_directory($workdir))
+	}
+	return $ret
 }
 
 # Umount readonly directory if mounted. Print argument if umounting
@@ -1966,19 +2017,23 @@ sub get_chown {
 # The main function to mount read-writable. Returns type or undef
 
 sub mount_rw {
-	my ($ro, $rw, $changes) = @_;
+	my ($ro, $rw, $changes, $workdir) = @_;
 	for my $i ($ro, $rw, $changes) {
 		unless(-d $i) {
 			&error("no directory $i");
 			return ''
 		}
 	}
+	if(&is_abspath($workdir) && !(-d $workdir)) {
+		&error("no directory $workdir");
+		return ''
+	}
 	for my $i (@CFG::order) {
 		my $probemod = (($i =~ qr/\!/) ? (($i =~ qr/\!\!/) ? '' : -1) : 1);
 		my $check_bin = ($i =~ qr/\#/);
 		my $check_gz = (($i =~ qr/\?/) ? (($i =~ qr/\?\?/) ? -1 : 1) : '');
 		if($i =~ qr/overlay/i) {
-			return 'overlayfs' if(&mount_overlayfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
+			return 'overlayfs' if(&mount_overlayfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes, $workdir))
 		} elsif($i =~ qr/aufs/i) {
 			return 'aufs' if(&mount_aufs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		} elsif($i =~ qr/fuse/i) {
@@ -1996,14 +2051,24 @@ sub mount_rw {
 # Mount with overlayfs:
 
 sub mount_overlayfs {
-	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
+	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes, $workdir) = @_;
 	return '' unless(&kernelprobe($probemod, $check_gz, 'overlayfs'));
 	return '' if($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_OVERLAYFS'},
 		['-o', 'noatime']);
-	return 1 if(&my_system('', \$mount, 'mount', '-t', 'overlayfs', @options,
-		'-o', "upperdir\=${changes}", '-o', "lowerdir\=${ro}",
-		'--', 'overlayfs', $rw) == 0);
+	my @systemargs1 = ('', \$mount, 'mount', '-t', 'overlayfs', @options,
+		'-o', "upperdir\=${changes}", '-o', "lowerdir\=${ro}");
+	my @systemargs2 = ('--', 'overlayfs', $rw);
+	if($CFG::obsolete_overlayfs) {
+		return 1 if(&my_system(@systemargs1, @systemargs2) == 0)
+	}
+	if(&is_abspath($workdir)) {
+		return 1 if(&my_system(@systemargs1,
+			'-o', "workdir\=${workdir}", @systemargs2) == 0)
+	}
+	unless($CFG::obsolete_overlayfs) {
+		return 1 if(&my_system(@systemargs1, @systemargs2) == 0)
+	}
 	&warning('overlayfs failed') unless($quiet > 1);
 	return ''
 }
@@ -2303,8 +2368,10 @@ sub kernelprobe {
 	our $mem = '';
 	our $modprobe_squash = 1;
 	our $locking;
+	our $overlayfs = '';
 	our @order = ();
 	our @mounts = ();
+	our $no_workdir = '';
 }
 
 sub read_config_file {
@@ -2320,18 +2387,26 @@ sub read_config_file {
 	our $killpower;
 	our $mksquash_verbose;
 	our $squash_verbose;
+	our $processors;
+	our $mem;
+	our $modprobe_squash;
 	our $locking;
+	our $overlayfs;
 	our @order;
 	our @mounts;
+	our $no_workdir;
 	sub standard_mount($$@) {
 		my ($tag, $dir, @rest) = @_;
 		return &added_hash({
 			TAG => $tag,
 			DIR => $dir,
-			CHANGES => $dir . '.changes',
-			READONLY => $dir . '.readonly',
-			FILE => $dir . '.sqfs',
-		}, @rest)
+			CHANGES => File::Spec->catdir($dir . '.mount', 'changes'),
+			READONLY => File::Spec->catdir($dir . '.mount', 'readonly'),
+			FILE => File::Spec->catfile($dir . '.mount',
+				((File::Spec->splitpath($dir))[2]) . '.sfs')
+		}, ((defined($no_workdir) && $no_workdir) ? () : {
+			WORKDIR => File::Spec->catdir($dir . '.mount', 'workdir')
+		}), @rest)
 	}
 	sub added_hash(@) {
 		my $a = {};
@@ -2555,6 +2630,7 @@ sub find_pass_dir {
 	for my $i (
 		$hash->{'DIR'},
 		$hash->{'CHANGES'},
+		$hash->{'WORKDIR'},
 		$hash->{'READONLY'}) {
 		return 1 if(exists($pass_dir->{$i}))
 	}
@@ -2608,17 +2684,18 @@ sub create_dirname {
 	return abs_path($temp)
 }
 
-# Return whether CHANGES makes sense and is a directory.
+# Return whether CHANGES/WORKDIR makes sense and is a directory.
 # With $create_dir, create it if necessary.
 
-sub is_valid_changes {
-	my ($create_dir) = @_;
+sub is_valid_changedir {
+	my ($changedir, $create_dir) = @_;
 	my $result = &is_resquash_type();
 	return 1 if($result);
 	return '' if($result ne '');
 	return '' unless(&is_abspath(&get_abspath('READONLY', $create_dir, '')));
-	return &is_abspath(&get_abspath('CHANGES', $create_dir, 1));
+	return &is_abspath(&get_abspath($changedir, $create_dir, 1));
 }
+
 
 # Return absolute path from $current or $user_config.
 # With $create_dir and $required_dir call &create_dir(..., $required_dir).
@@ -3211,6 +3288,8 @@ my $action = shift(@ARGV);
 			$action = \&cmd_print_dir
 		} elsif($action =~ /chan/i) {
 			$action = \&cmd_print_changes
+		} elsif($action =~ /wor/i) {
+			$action = \&cmd_print_workdir
 		} elsif($action =~ /read|ro/i) {
 			$action = \&cmd_print_readonly
 		} elsif($action =~ /fil/i) {

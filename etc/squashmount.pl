@@ -34,6 +34,12 @@ exit(1);
 
 @order = qw(overlayfs aufs! unionfs-fuse! unionfs??# funionfs??#);
 
+# Set $obsolete_overlayfs = 1 if you normally use a kernel older than 3.15:
+#$obsolete_overlayfs = 1;
+
+# Set $no_workdir = 1 if you plan to never use overlayfs of >=kernel-3.15:
+#$no_workdir = 1;
+
 # The following variables all default to 1 (true).
 # Uncomment the corresponding line if you want to have different defaults.
 # Normally, this is not needed.
@@ -81,14 +87,14 @@ my $non_binary = {
 	{
 		TAG => 'fixed',
 		DIR => '/fixed/dir',
-		FILE => '/fixed/content.sqfs',
+		FILE => '/fixed/content.sfs',
 		READONLY => 1 # Do not use overlayfs/aufs/...
 	},
 	# To make $defaults effective, we use the added_hash() function:
 	added_hash($defaults, {
 		TAG => 'guest',
 		DIR => '/home/guest',
-		FILE => '/home/guest-skeleton.sqfs',
+		FILE => '/home/guest-skeleton.sfs',
 		CHMOD => 0400, # squashfile readonly by user
 		CHOWN => [ (getpwnam('guest'))[2], # user and group of ...
 			(getgrnam('guest'))[2] ],  # ... new squashfile's owner
@@ -102,19 +108,20 @@ my $non_binary = {
 	#	COMPRESSION => 'xz',
 	#	TAG => 'guest',
 	#	DIR => '/home/guest',
-	#	FILE => '/home/guest-skeleton.sqfs',
+	#	FILE => '/home/guest-skeleton.sfs',
 	#	KILL => 1
 	# },
 	# because added_hash() "adds" our values to that from $defaults.
 	added_hash($defaults, $non_binary,  {
 		TAG => 'db',
 		DIR => '/var/db',
-		FILE => '/var/db.sqfs',
-		BACKUP => '.bak', # keep a backup in /var/db.sqfs.bak
+		FILE => '/var/db.mount/db.sfs',
+		BACKUP => '.bak', # keep a backup in /var/db.mount/db.sfs.bak
 		             # For an absolute path, we could have written:
-		             # BACKUP => '/backup-disk/db.sqfs'
-		CHANGES => '/var/db.changes',
-		READONLY => '/var/db.readonly',
+		             # BACKUP => '/backup-disk/db.sfs'
+		CHANGES => '/var/db.mount/changes',
+		WORKDIR => '/var/db.mount/workdir',
+		READONLY => '/var/db.mount/readonly',
 
 		# If /var is on a separate partition, you want probably that
 		# the squashfile is first generated in /var/tmp so that it
@@ -142,19 +149,22 @@ my $non_binary = {
 #	added_hash({
 #		TAG => 'kernel',
 #		DIR => '/usr/src',
-#		FILE => '/usr/src.sqfs',
-#		CHANGES => '/usr/src.changes',
-#		READONLY => '/usr/src.readonly'
+#		FILE => '/usr/src.mount/src.sfs',
+#		CHANGES => '/usr/src.mount/changes',
+#		WORKDIR => '/usr/src.mount/workdir',
+#		READONLY => '/usr/src.mount/readonly'
 #	}, $defaults),
 # which in turn is effectively equivalent to
 #	{
 #		TAG => 'kernel',
 #		DIR => '/usr/src',
-#		FILE => '/usr/src.sqfs',
-#		CHANGES => '/usr/src.changes',
-#		READONLY => '/usr/src.readonly',
+#		FILE => '/usr/src.mount/src.sfs',
+#		CHANGES => '/usr/src.mount/changes',
+#		WORKDIR => '/usr/src.mount/workdir',
+#		READONLY => '/usr/src.mount/readonly',
 #		COMPRESSION => 'xz'
 #	},
+# (the WORKDIR is omitted if $no_workdir = 1 is set)
 
 # We configure tex as in the "squashmount man" example:
 	standard_mount('tex', '/usr/share/texmf-dist', $defaults, $non_binary, {
