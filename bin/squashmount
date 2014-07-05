@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 7.0\n");
+	print("$name 7.1\n");
 	exit(0)
 }
 
@@ -250,8 +250,8 @@ For usage in scripts, combine this with B<-q>/B<-S> and pass a tag.
 =item B<print-type>
 
 Output the tool actually used for mounting.
-Possible output is C<overlayfs>, C<aufs>, C<unionfs-fuse>, C<unionfs>,
-C<funionfs>, C<bind>, or C<readonly>.
+Possible output is C<overlayfs>, C<overlayfs-obsolete>, C<aufs>,
+C<unionfs-fuse>, C<unionfs>, C<funionfs>, C<bind>, or C<readonly>.
 For usage in scripts, combine this with B<-q> and pass a tag.
 
 =item B<print-new>
@@ -719,7 +719,7 @@ see the remarks at the end of this manpage.)
 
 =item $mem = ''; # unnecessary; this is the default
 
-=item $obsolete_overlayfs = ''; # unnecessary; this is the default
+=item $obsolete_overlayfs = undef; # no fallback: require >=kernel-3.15
 
 =item @order = qw(overlayfs? aufs! unionfs-fuse! unionfs??# funionfs??#);
 
@@ -895,13 +895,17 @@ B<1> (I<true>).
 When this perl variable is B<''> (I<false>), which is the default,
 then it is attempted to mount overlayfs with the new B<workdir> option,
 and only if this fails, it is attempted to mount overlayfs without this option.
-Set this variable to B<1> (I<true>) if you have an obsolete version of
-overlayfs (linux kernel less than 3.15): In this case, it is first attempted
-to mount overlayfs without the new B<workdir> option, and the B<workdir>
-option is only attempted as a fallback if the former fails.
+Undefine this variable if you do not want the latter.
+In contrast, set this variable to B<1> (I<true>) if you have an obsolete
+version of overlayfs (linux kernel less than 3.15): In this case, it is
+first attempted to mount overlayfs without the new B<workdir> option,
+and the B<workdir> option is only attempted as a fallback if the former fails.
 
-Not setting this variable correctly should not cause any problems, but it might
-lead to undesired warning/kernel messages.
+If  you never want to use overlayfs with >=kernel-3.15, set
+B<$obsolete_overlayfs = 'force'>,
+
+Not setting B<$obsolete_overlayfs> correctly should not cause any problems,
+but it might lead to undesired warning/kernel messages.
 
 =item B<$modprobe_squash>
 
@@ -1060,10 +1064,11 @@ B<squashmount print-changes ...>
 
 =item B<WORKDIR>
 
-The working directory required by overlayfs, set according the the same rules
+The working directory required by overlayfs, set according to the same rules
 as for B<CHANGES>.
 If you want to use current versions of overlayfs (kernel 3.15 or newer)
-this must be defined, and it B<must> be on the same filesystem as B<CHANGES>.
+this B<must> be on the same filesystem as B<CHANGES>.
+If you do not want to use B<WORKDIR>, set B<$obsolete_overlayfs = 'force'>.
 
 =item B<READONLY>
 
@@ -1232,8 +1237,8 @@ If the file matches, it is not considered as being changed.
 This is useful to avoid squashing only because e.g. a known temporary
 file has changed in this directory which you do not care about.
 
-When all changes are skipped during umounting, the B<CHANGES> and B<WORKDIR>A
-directories are cleaned anyway, i.e. skipping a file means that changes to
+When all changes are skipped during umounting, the B<CHANGES> directory
+is cleaned anyway, i.e. skipping a file means that changes to
 this file are usually lost (unless the directory is ressquashed anyway).
 
 If a file you want to skip resides in a subdirectory (not in the root
@@ -1363,9 +1368,6 @@ B<.mount/workdir>, B<.mount/readonly>, B<.mount/>I<dirname>B<.sfs>.
 Moreover, if I<...> are references to hashes, they are added to the hash:
 Later hashes override earlier ones; setting a value to C<undef> in a sense
 cancels a previous definition.
-If the variable B<$no_workdir> is true then B<WORKDIR> is not initialized.
-Note that if B<WORKDIR> is uninitialized, it is not possible to mount the
-filesystem with current versions of overlayfs (with kernel 3.15 or newer).
 
 =item B<added_hash(>I<hash_reference>B<,> I<hash_reference>B<,> ...B<)>
 
@@ -1686,9 +1688,9 @@ sub cmd_status {
 	my $readonly = &get_abspath('READONLY', $force, '');
 	push(@status, 'READONLY: ' . $readonly) if(&is_nonempty($readonly));
 	push(@status, 'CHANGES: ' . &get_abspath('CHANGES', $force, 1))
-		if(&is_valid_changedir('CHANGES', $force));
+		if(&is_valid_changes($force));
 	push(@status, 'WORKDIR: ' . &get_abspath('WORKDIR', $force, 1))
-		if(&is_valid_changedir('WORKDIR', $force));
+		if(&is_valid_workdir($force));
 	my $file = &get_abspath('FILE', $force);
 	push(@status, 'FILE: ' . $file) if(&is_abspath($file));
 	push(@status, "TEMPDIR: $tempdir") if(&is_abspath($tempdir));
@@ -1717,12 +1719,12 @@ sub cmd_print_readonly {
 }
 
 sub cmd_print_changes {
-	return &do_print(undef) unless(&is_valid_changedir('CHANGES', $force));
+	return &do_print(undef) unless(&is_valid_changes($force));
 	return &do_print(&get_abspath('CHANGES', $force, 1))
 }
 
 sub cmd_print_workdir {
-	return &do_print(undef) unless(&is_valid_changedir('WORKDIR', $force));
+	return &do_print(undef) unless(&is_valid_workdir($force));
 	return &do_print(&get_abspath('WORKDIR', $force, 1))
 }
 
@@ -1735,14 +1737,14 @@ sub cmd_print_type {
 }
 
 sub cmd_print_new {
-	return &do_print(undef) unless(&is_valid_changedir('CHANGES', $force));
+	return &do_print(undef) unless(&is_valid_changes($force));
 	my ($will_squash, undef) = &check_squash(0, '');
 	my $result = $will_squash ? '1' : '';
 	return &do_print($quiet ? $result : ('NEW: ' . $result))
 }
 
 sub cmd_print_will_squash {
-	return &do_print(undef) unless(&is_valid_changedir('CHANGES', $force));
+	return &do_print(undef) unless(&is_valid_changes($force));
 	my ($will_squash, undef) = &check_squash($threshold, $kill);
 	my $result = $will_squash ? '1' : '';
 	return &do_print($quiet ? $result : ('WILL_SQUASH: ' . $result))
@@ -1807,9 +1809,7 @@ sub mount_main {
 			$current->{'MOUNT_RO'} = 1
 		}
 	}
-	return '' unless(&create_dir('CHANGES', 1));
-	return '' unless(&create_dir('WORKDIR', 1));
-	my $type = &mount_rw($dir_ro, $dir, $current->{'CHANGES'}, $current->{'WORKDIR'});
+	my $type = &mount_rw($dir_ro, $dir);
 	return '' unless(defined($type));
 	$current->{'TYPE'} = $type;
 	return $ret
@@ -1819,8 +1819,9 @@ sub mount_main {
 # $will_squash and $will_remove will be calculated if they are not passed
 
 sub umount_main {
+	my $type = $current->{'TYPE'};
 	return &umount_readonly($quiet ? '' : 'umounting READONLY')
-		unless($ignore_state || &is_nonempty($current->{'TYPE'}));
+		unless($ignore_state || &is_nonempty($type));
 	my ($will_squash, $will_remove) = @_;
 	($will_squash, $will_remove) = &check_squash($threshold, $kill)
 		unless(defined($will_squash) && defined($will_remove));
@@ -1847,6 +1848,13 @@ sub umount_main {
 		&warning('presuming umount was succesful due to -fI') unless($quiet > 1);
 		$ret = '';
 		$message = 'umounting READONLY' unless($quiet)
+	}
+	if($type eq 'overlayfs') {
+		my $workdir = &get_abspath('WORKDIR');
+		if(&is_abspath($workdir)) {
+			&info('cleaning workdir...') unless($quiet);
+			$ret = '' unless(&clean_directory($workdir))
+		}
 	}
 	delete($current->{'TYPE'});
 	&reset_main(!$quiet) if($reset);
@@ -1875,12 +1883,11 @@ sub umount_main {
 		&set_permissions($squashfile)
 	}
 	return $ret unless($will_remove);
-	&title("$tag cleaning");
-	&info('cleaning changes...') unless($quiet);
-	$ret = '' unless(&clean_directory(&get_abspath('CHANGES')));
-	my $workdir = &get_abspath('WORKDIR');
-	if(&is_abspath($workdir)) {
-		$ret = '' unless(&clean_directory($workdir))
+	my $changes = &get_abspath('CHANGES');
+	if(&is_abspath($changes)) {
+		&title("$tag cleaning");
+		&info('cleaning changes...') unless($quiet);
+		$ret = '' unless(&clean_directory($changes))
 	}
 	return $ret
 }
@@ -2017,23 +2024,22 @@ sub get_chown {
 # The main function to mount read-writable. Returns type or undef
 
 sub mount_rw {
-	my ($ro, $rw, $changes, $workdir) = @_;
+	my ($ro, $rw) = @_;
+	return undef unless(&create_dir('CHANGES', 1));
+	my $changes = $current->{'CHANGES'};
 	for my $i ($ro, $rw, $changes) {
 		unless(-d $i) {
 			&error("no directory $i");
-			return ''
+			return undef
 		}
-	}
-	if(&is_abspath($workdir) && !(-d $workdir)) {
-		&error("no directory $workdir");
-		return ''
 	}
 	for my $i (@CFG::order) {
 		my $probemod = (($i =~ qr/\!/) ? (($i =~ qr/\!\!/) ? '' : -1) : 1);
 		my $check_bin = ($i =~ qr/\#/);
 		my $check_gz = (($i =~ qr/\?/) ? (($i =~ qr/\?\?/) ? -1 : 1) : '');
 		if($i =~ qr/overlay/i) {
-			return 'overlayfs' if(&mount_overlayfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes, $workdir))
+			my $type = &mount_overlayfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes);
+			return $type if($type ne '')
 		} elsif($i =~ qr/aufs/i) {
 			return 'aufs' if(&mount_aufs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		} elsif($i =~ qr/fuse/i) {
@@ -2048,10 +2054,11 @@ sub mount_rw {
 	return (&mount_bind($ro, $rw) ? 'bind' : undef)
 }
 
-# Mount with overlayfs:
+# Mount with overlayfs.
+# Returns 'overlayfs', 'overlayfs-obsolete', or '' (failure)
 
 sub mount_overlayfs {
-	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes, $workdir) = @_;
+	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
 	return '' unless(&kernelprobe($probemod, $check_gz, 'overlayfs'));
 	return '' if($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_OVERLAYFS'},
@@ -2059,17 +2066,35 @@ sub mount_overlayfs {
 	my @systemargs1 = ('', \$mount, 'mount', '-t', 'overlayfs', @options,
 		'-o', "upperdir\=${changes}", '-o', "lowerdir\=${ro}");
 	my @systemargs2 = ('--', 'overlayfs', $rw);
-	if($CFG::obsolete_overlayfs) {
-		return 1 if(&my_system(@systemargs1, @systemargs2) == 0)
+	if(&is_nonempty($CFG::obsolete_overlayfs)) {
+		return 'overlayfs-obsolete'
+			if(&my_system(@systemargs1, @systemargs2) == 0)
 	}
-	if(&is_abspath($workdir)) {
-		return 1 if(&my_system(@systemargs1,
-			'-o', "workdir\=${workdir}", @systemargs2) == 0)
+	unless(defined($CFG::obsolete_overlayfs) && ($CFG::obsolete_overlayfs eq 'force')) {
+		my $workdir = &create_workdir();
+		return 'overlayfs' if(($workdir ne '') &&
+			(&my_system(@systemargs1, '-o', "workdir\=${workdir}",
+				@systemargs2) == 0))
 	}
-	unless($CFG::obsolete_overlayfs) {
-		return 1 if(&my_system(@systemargs1, @systemargs2) == 0)
+	if(defined($CFG::obsolete_overlayfs) && ($CFG::obsolete_overlayfs eq '')) {
+		return 'overlayfs-obsolete'
+			if(&my_system(@systemargs1, @systemargs2) == 0)
 	}
 	&warning('overlayfs failed') unless($quiet > 1);
+	return ''
+}
+
+# Return $workdir, creating it if necessary. Return '' if not successful.
+
+sub create_workdir {
+	my $success = &create_dir('WORKDIR', 1);
+	my $workdir = (($success && ($success > 0)) ? $current->{'WORKDIR'} : '');
+	unless(&is_abspath($workdir)) {
+		&error('failed to create workdir');
+		return ''
+	}
+	return $workdir if(-d $workdir);
+	&error("no directory $workdir");
 	return ''
 }
 
@@ -2371,7 +2396,6 @@ sub kernelprobe {
 	our $overlayfs = '';
 	our @order = ();
 	our @mounts = ();
-	our $no_workdir = '';
 }
 
 sub read_config_file {
@@ -2394,7 +2418,6 @@ sub read_config_file {
 	our $overlayfs;
 	our @order;
 	our @mounts;
-	our $no_workdir;
 	sub standard_mount($$@) {
 		my ($tag, $dir, @rest) = @_;
 		return &added_hash({
@@ -2402,11 +2425,10 @@ sub read_config_file {
 			DIR => $dir,
 			CHANGES => File::Spec->catdir($dir . '.mount', 'changes'),
 			READONLY => File::Spec->catdir($dir . '.mount', 'readonly'),
+			WORKDIR => File::Spec->catdir($dir . '.mount', 'workdir'),
 			FILE => File::Spec->catfile($dir . '.mount',
 				((File::Spec->splitpath($dir))[2]) . '.sfs')
-		}, ((defined($no_workdir) && $no_workdir) ? () : {
-			WORKDIR => File::Spec->catdir($dir . '.mount', 'workdir')
-		}), @rest)
+		}, @rest)
 	}
 	sub added_hash(@) {
 		my $a = {};
@@ -2646,7 +2668,7 @@ sub create_dir {
 		return (&is_abspath($current->{$i}) ? 1 : -1)
 	}
 	my $dir = &create_dirname($user_config->{$i});
-	unless(is_nonempty($dir)) {
+	unless(&is_nonempty($dir)) {
 		&error("failed to create $i");
 		return ''
 	}
@@ -2684,16 +2706,29 @@ sub create_dirname {
 	return abs_path($temp)
 }
 
-# Return whether CHANGES/WORKDIR makes sense and is a directory.
+# Return whether CHANGES makes sense and is a directory.
 # With $create_dir, create it if necessary.
 
-sub is_valid_changedir {
-	my ($changedir, $create_dir) = @_;
+sub is_valid_changes {
+	my ($create_dir) = @_;
 	my $result = &is_resquash_type();
 	return 1 if($result);
 	return '' if($result ne '');
 	return '' unless(&is_abspath(&get_abspath('READONLY', $create_dir, '')));
-	return &is_abspath(&get_abspath($changedir, $create_dir, 1));
+	return &is_abspath(&get_abspath('CHANGES', $create_dir, 1));
+}
+
+
+# Return whether WORKDIR makes sense and is a directory.
+# With $create_dir, create it if necessary.
+
+sub is_valid_workdir {
+	my ($create_dir) = @_;
+	my $result = &is_workdir_type();
+	return 1 if($result);
+	return '' if($result ne '');
+	return '' unless(&is_valid_changes($create_dir));
+	return &is_abspath(&get_abspath('WORKDIR', $create_dir, 1));
 }
 
 
@@ -2722,6 +2757,17 @@ sub is_resquash_type {
 	return '' unless(defined($type) && ($type ne ''));
 	return 0 if(($type eq 'readonly') || ($type =~ qr/bind/));
 	return 1
+}
+
+# Test if type needs a WORKDIR.
+# Result is 1 (yes) or 0 (no) or the empty string if it is not known
+
+sub is_workdir_type {
+	return 0 if(defined($CFG::obsolete_overlayfs) && ($CFG::obsolete_overlayfs eq 'force'));
+	my $type  = $current->{'TYPE'};
+	return '' unless(defined($type) && ($type ne ''));
+	return 1 if($type eq 'overlayfs');
+	return 0
 }
 
 # Check whether dir is empty. Returns 1 or '', or 0 in case of error

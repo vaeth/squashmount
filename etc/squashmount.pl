@@ -34,11 +34,13 @@ exit(1);
 
 @order = qw(overlayfs aufs! unionfs-fuse! unionfs??# funionfs??#);
 
-# Set $obsolete_overlayfs = 1 if you normally use a kernel older than 3.15:
+# Set $obsolete_overlayfs = 1 if you normally use a kernel older than 3.15.
+# Set $obsolete_overlayfs = undef if you only use >=kernel-3.15
+# Set $obsolete_overlayfs = 'force' if you never use overlayfs or
+# never use >=kernel-3.15
+# Leave the default ($obsolete_overlayfs = '') if you sometimes use overalayfs,
+# usually with >=kernel-3.15 but with a fallback for other kernels
 #$obsolete_overlayfs = 1;
-
-# Set $no_workdir = 1 if you plan to never use overlayfs of >=kernel-3.15:
-#$no_workdir = 1;
 
 # The following variables all default to 1 (true).
 # Uncomment the corresponding line if you want to have different defaults.

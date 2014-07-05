@@ -1,5 +1,13 @@
 # ChangeLog for squashmount
 
+*squashmount-7.1
+	Martin Väth <martin at mvath.de>:
+	- Use type 'overlayfs-obsolete' for old overlayfs (without workdir)
+	- Clean WORKDIR on every umount of an overlayfs (and only then)
+	- Create WORKDIR only if really required
+	- Introduce $obsolete_overlayfs = 'force' to skip creation of WORKDIR
+	- Remove $no_workdir (unwisely introduced in squashmount-7.0)
+
 *squashmount-7.0
 	Martin Väth <martin at mvath.de>:
 	- WARNING: The meaning of &standard_mount() has changed!
@@ -21,7 +29,7 @@
 
 *squashmount-6.1
 	Martin Väth <martin at mvath.de>:
-	- Change meaning of squash_verbose.
+	- Change meaning of squash_verbose
 	  Default prefers mksquashfs -quiet if available
 
 *squashmount-6.0a
