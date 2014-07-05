@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-7.2
+	Martin Väth <martin at mvath.de>:
+	- treat undefined args in &added_hash() and &standard_mount()
+	  compatible with >=perl-5.20
+
 *squashmount-7.1
 	Martin Väth <martin at mvath.de>:
 	- Use type 'overlayfs-obsolete' for old overlayfs (without workdir)
@@ -11,7 +16,7 @@
 *squashmount-7.0
 	Martin Väth <martin at mvath.de>:
 	- WARNING: The meaning of &standard_mount() has changed!
-	  Paths are now  dir/changes dir/workdir dir/readonly dir/dir.sfs
+	  Paths are now dir/changes dir/workdir dir/readonly dir/dir.sfs
 	  You should reorganize your directory structure to reflect that!
 	  The reason is that WORKDIR is mandatory with new overlayfs.
 	- Support current overlayfs (WORKDIR)

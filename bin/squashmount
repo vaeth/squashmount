@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 7.1\n");
+	print("$name 7.2\n");
 	exit(0)
 }
 
@@ -2433,6 +2433,7 @@ sub read_config_file {
 	sub added_hash(@) {
 		my $a = {};
 		for my $i (@_) {
+			next unless(defined($i));
 			for my $j (keys(%$i)) {
 				$a->{$j} = $i->{$j}
 			}
