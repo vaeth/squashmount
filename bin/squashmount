@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 7.2\n");
+	print("$name 7.3\n");
 	exit(0)
 }
 
@@ -2420,6 +2420,16 @@ sub read_config_file {
 	our @mounts;
 	sub standard_mount($$@) {
 		my ($tag, $dir, @rest) = @_;
+		unless(defined($tag) && (ref(\$tag) eq 'SCALAR') && ($tag ne '')) {
+			print(STDERR 'error: first argument of &standard_mount() should be a (nonempty) tag', "\n");
+			exit(2)
+		}
+		# Checking for -d $dir might be wrong: the config might use
+		# this as a flag and not add the result to @mounts later on
+		unless(defined($dir) && (ref(\$dir) eq 'SCALAR') && ($dir ne '')) {
+			print(STDERR 'error: second argument of &standard_mount() should be a directory', "\n");
+			exit(2)
+		}
 		return &added_hash({
 			TAG => $tag,
 			DIR => $dir,
@@ -2433,7 +2443,13 @@ sub read_config_file {
 	sub added_hash(@) {
 		my $a = {};
 		for my $i (@_) {
-			next unless(defined($i));
+			unless(defined($i) && (ref($i) eq 'HASH')) {
+				print(STDERR
+					'warning: wrong argument in &added_hash() or &standard_mount():',
+					"\n", (' ' x 9),
+					'hash reference expected', "\n");
+				next
+			}
 			for my $j (keys(%$i)) {
 				$a->{$j} = $i->{$j}
 			}

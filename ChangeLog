@@ -1,9 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-7.3
 *squashmount-7.2
 	Martin Väth <martin at mvath.de>:
-	- treat undefined args in &added_hash() and &standard_mount()
-	  compatible with >=perl-5.20
+	- check args in &added_hash() and &standard_mount() (>=perl-5.20)
 
 *squashmount-7.1
 	Martin Väth <martin at mvath.de>:
