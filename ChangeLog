@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-7.4
+	Martin Väth <martin at mvath.de>:
+	- fix behaviour if directories with nonexisting parents are specified
+
 *squashmount-7.3
 *squashmount-7.2
 	Martin Väth <martin at mvath.de>:

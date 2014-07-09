@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 7.3\n");
+	print("$name 7.4\n");
 	exit(0)
 }
 
@@ -2401,6 +2401,10 @@ sub kernelprobe {
 sub read_config_file {
 	my ($file) = @_;
 	$file = abs_path($file);
+	unless(defined($file)) {
+		&warning('skipping config file ' . $_[0] . ' (not a valid path)') unless($quiet);
+		return
+	}
 	unless(-f $file) {
 		&warning("skipping config file $file (not a file)") unless($quiet);
 		return
@@ -2761,7 +2765,7 @@ sub get_abspath {
 	return $ret if(defined($ret));
 	$ret = $user_config->{$i};
 	return '' unless(defined($ret) || (ref($ret) ne ''));
-	$ret = abs_path($ret) if(&is_abspath($ret));
+	$ret = &good_abs_path($ret) if(&is_abspath($ret));
 	$current->{$i} = $ret if($create_dir);
 	return $ret
 }
@@ -3270,6 +3274,32 @@ sub file_exists {
 	return(defined($f) && (ref(\$f) eq 'SCALAR') && ($f ne '') && (-e $f))
 }
 
+# abs_path('DIR/subdir/file') returns undef() if subdir does not exist in DIR.
+# &good_abs_path() is abs_path() with this "bug" being fixed:
+# It always returns a valid path. (Assumption: argument &is_abspath())
+
+sub good_abs_path {
+	my ($f) = @_;
+	my $r = abs_path($f);
+	return $r if(defined($r));
+	my ($vol, $head, $file) = File::Spec->splitpath($f);
+	my @head = File::Spec->splitdir($head);
+	my @tail = ();
+	while(@head) {
+		my $currdir = pop(@head);
+		$r = abs_path(File::Spec->catpath($vol,
+			File::Spec->catdir(@head), $currdir));
+		if(defined($r)) {
+			($vol, $head, $currdir) = File::Spec->splitpath($r);
+			@head = (File::Spec->splitdir($head), $currdir);
+			last
+		}
+		unshift(@tail, $currdir)
+	}
+	return File::Spec->catpath($vol,
+		File::Spec->catdir(@head, @tail), $file)
+}
+
 #
 # Now the main program:
 #
@@ -3509,7 +3539,7 @@ my %pass_dir = ();
 if($pass_dir) {
 	for my $i (@ARGV) {
 		$pass_dir{$i} = 1 if(&is_abspath($i));
-		my $j = abs_path($i);
+		my $j = &good_abs_path($i);
 		$pass_dir{$j} = 1 if(&is_abspath($j))
 	}
 } else {
