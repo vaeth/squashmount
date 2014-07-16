@@ -172,7 +172,7 @@ my $non_binary = {
 	standard_mount('tex', '/usr/share/texmf-dist', $defaults, $non_binary, {
 		DIFF => [
 			qr{^ls-R$},
-			qr{^tex(/generic(/config(/language(\.(dat(\.lua)?|def)))?)?)?$}
+			qr{^tex(?:/generic(?:/config(?:/language(?:\.(?:dat(?:\.lua)?|def)))?)?)?$}
 		]
 	}),
 	standard_mount('portage', '/usr/portage', $defaults, $non_binary, {
@@ -180,7 +180,7 @@ my $non_binary = {
 		# Any change in the local/ subdirectory (except in .git,
 		# profiles, metadata) should lead to a resquash, even if
 		# the threshold is not reached:
-		FILL => qr{^local/(?!(\.git|profiles|metadata)(/|$))}
+		FILL => qr{^local/(?!(?:\.git|profiles|metadata)(?:/|$))}
 	}),
 	standard_mount('games', '/usr/share/games', $defaults, {
 		# games is huge: use the fastest compression algorithm for it.

@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 7.4\n");
+	print("$name 7.5\n");
 	exit(0)
 }
 
@@ -781,7 +781,7 @@ see the remarks at the end of this manpage.)
 
 =item DIFF => [ qr{^ls-R$},
 
-=item qr{^tex(/generic(/config(/language(\.(dat(\.lua)?|def)))?)?)?$} ]
+=item qr{^tex(?:/generic(?:/config(?:/language(?:\.(?:dat(?:\.lua)?|def)))?)?)?$} ]
 
 =back
 
@@ -805,7 +805,7 @@ see the remarks at the end of this manpage.)
 
 =item # if local/* (with * not .git, profiles, metadata) changed:
 
-=item FILL => qr{^local/(?!(\.git|profiles|metadata)(/|$))}
+=item FILL => qr{^local/(?!(?:\.git|profiles|metadata)(?:/|$))}
 
 =back
 
@@ -827,7 +827,7 @@ see the remarks at the end of this manpage.)
 
 =item SKIP => '^\.', # A string is also possible
 
-=item SKIPDIR => qr{(^|/)tmp}i, # tmp* Tmp* TMP*
+=item SKIPDIR => qr{(?:^|/)tmp}i, # tmp* Tmp* TMP*
 
 =item SKIPFUNC => sub { my ($rel, $abs, $ro) = @_; return (-d $abs) }
 
@@ -2840,7 +2840,7 @@ sub threshold_dir {
 	push(@$skip, qr/^\._funionfs/); # if($type eq 'funionfs')
 	push(@$skipdir, qr/^\.unionfs/);# if($type =~ qr/^unionfs/)
 	push(@$skip, qr/^\.wh\.\.wh\.aufs$/) &&
-	push(@$skipdir, qr/^\.wh\.\.wh\.((pli?nk)|(\.tmp)|orph)/);# if($type eq 'aufs')
+	push(@$skipdir, qr/^\.wh\.\.wh\.(?:pli?nk|\.tmp|orph)/);# if($type eq 'aufs')
 
 	my @compare = (); # postponed file content comparison...
 	find({
@@ -3252,9 +3252,9 @@ sub join_quoted {
 	my @r;
 	for my $i (@_) {
 		my $a = $i;
-		$a =~ s/\'/\'\\\'\'/go;
+		$a =~ s/\'/\'\\\'\'/g;
 		$a = "'" . $a . "'";
-		$a =~ s/(^|[^\\])\'([\da-zA-Z\_\-\,\.\:\/]*)\'/$1$2/g;
+		$a =~ s/(\A|[^\\])\'([\da-zA-Z\_\-\,\.\:\/]*)\'/$1$2/gm;
 		push(@r, ($a ne '') ? $a : "''")
 	}
 	return join(' ', @r)

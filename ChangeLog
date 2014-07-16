@@ -1,13 +1,17 @@
 # ChangeLog for squashmount
 
+*squashmount-7.5
+	Martin Väth <martin at mvath.de>:
+	- Improve/fix some regexes; quote newlines correctly
+
 *squashmount-7.4
 	Martin Väth <martin at mvath.de>:
-	- fix behaviour if directories with nonexisting parents are specified
+	- Fix behaviour if directories with nonexisting parents are specified
 
 *squashmount-7.3
 *squashmount-7.2
 	Martin Väth <martin at mvath.de>:
-	- check args in &added_hash() and &standard_mount() (>=perl-5.20)
+	- Check args in &added_hash() and &standard_mount() (>=perl-5.20)
 
 *squashmount-7.1
 	Martin Väth <martin at mvath.de>:
