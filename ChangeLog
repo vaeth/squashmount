@@ -1,5 +1,12 @@
 # ChangeLog for squashmount
 
+*squashmount-7.6
+	Martin Väth <martin at mvath.de>:
+	- Interpret strings as multiline regexp
+	- More compatible directory handling in threshold_dir
+	- Consistent regexp syntax: m{}, qr{}, or s{}{}
+	- Slight speedup by avoiding redundant return statements
+
 *squashmount-7.5
 	Martin Väth <martin at mvath.de>:
 	- Improve/fix some regexes; quote newlines correctly
