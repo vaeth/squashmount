@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 7.6\n");
+	print("$name 7.7\n");
 	exit(0)
 }
 
@@ -2398,7 +2398,7 @@ sub kernelprobe {
 
 sub read_config_file {
 	my ($file) = @_;
-	$file = abs_path($file);
+	$file = &bad_abs_path($file);
 	unless(defined($file)) {
 		&warning('skipping config file ' . $_[0] . ' (not a valid path)') unless($quiet);
 		return
@@ -2432,6 +2432,7 @@ sub read_config_file {
 			print(STDERR 'error: second argument of &standard_mount() should be a directory', "\n");
 			exit(2)
 		}
+		$dir = File::Spec->canonpath($dir);
 		return &added_hash({
 			TAG => $tag,
 			DIR => $dir,
@@ -2721,7 +2722,7 @@ sub create_dirname {
 	unless(-d $temp) {
 		return undef unless &make_directory($temp);
 	}
-	abs_path($temp)
+	&bad_abs_path($temp)
 }
 
 # Return whether CHANGES makes sense and is a directory.
@@ -2812,7 +2813,7 @@ sub threshold_dir {
 	my ($to_find) = @_;
 	my $dir = &get_abspath('CHANGES');
 	my ($dirv, @dir) = &split_dir($dir);
-	&pop_empty(\@dir);
+	&shift_empty(\@dir);
 	my ($readonlyv, @readonly) = &split_dir(&get_abspath('READONLY'));
 	my $found = ''; # Flag whether there is at least some data
 	my $blocksize;
@@ -2854,7 +2855,7 @@ sub threshold_dir {
 			return
 		}
 		my ($pathv, @path) = &split_dir($_);
-		&pop_empty(\@path);
+		&shift_empty(\@path);
 		splice(@path, 0, scalar(@dir)) if(($pathv eq $dirv) &&
 			&starts_with(\@path, \@dir));
 		my $path = &cat_dir($pathv, @path);
@@ -3249,9 +3250,9 @@ sub starts_with {
 
 # If the first string in an array is empty, pop it.
 
-sub pop_empty {
+sub shift_empty {
 	my ($a) = @_;
-	(@$a && ($a->[0] eq '')) || pop(@$a)
+	(@$a && ($a->[0] eq '')) && shift(@$a)
 }
 
 # push string or reference to array of strings. If $s is undefined use $t
@@ -3301,13 +3302,13 @@ sub file_exists {
 
 sub good_abs_path {
 	my ($f) = @_;
-	my $r = abs_path($f);
+	my $r = &bad_abs_path($f);
 	return $r if(defined($r));
 	my ($vol, @head) = &split_dir($f);
 	my @tail = ();
 	while(@head) {
 		unshift(@tail, pop(@head));
-		$r = abs_path(&cat_dir($vol, @head));
+		$r = &bad_abs_path(&cat_dir($vol, @head));
 		if(defined($r)) {
 			($vol, @head) = &split_dir($r);
 			last
@@ -3316,25 +3317,33 @@ sub good_abs_path {
 	&cat_dir($vol, @head, @tail)
 }
 
+# bad_abs_path() acts like abs_path but returns a normalized filename
+
+sub bad_abs_path {
+	my ($f) = @_;
+	return undef unless(defined($f) && ($f ne ''));
+	$f = abs_path($f);
+	return undef unless(defined($f) && ($f ne ''));
+	$f = File::Spec->canonpath($f);
+	&is_abspath($f) ? $f : undef
+}
+
 # split dir into volume and directory components
 
 sub split_dir {
-#	my ($vol, $dir, $file) = File::Spec->splitpath($_[0]);
-#	if($file eq '') {
-#		($vol, File::Spec->splitdir($dir))
-#	} else {
-#		($vol, File::Spec->splitdir($dir), $file)
-#	}
-	('', File::Spec->splitdir($_[0]))
+	my ($vol, $dir, $file) = File::Spec->splitpath(File::Spec->canonpath($_[0]));
+	my @dir = File::Spec->splitdir($dir);
+	pop(@dir) if(@dir && $dir[$#dir] eq '');
+	push(@dir, $file) if($file ne '');
+	($vol, @dir)
 }
 
 # compose dir/file from volume and directory components
 
 sub cat_dir {
 	my $vol = shift;
-#	my $file = pop;
-#	File::Spec->catpath($vol, File::Spec->catdir(@_), $file)
-	File::Spec->catdir(@_)
+	my $file = pop;
+	File::Spec->catpath($vol, File::Spec->catdir(@_), $file)
 }
 
 #
@@ -3343,7 +3352,7 @@ sub cat_dir {
 
 # Parse Options:
 
-$Getopt::Long::bundling = 1;
+Getopt::Long::Configure(qw(bundling gnu_compat permute));
 GetOptions(
 	'help|h', sub { pod2usage(1) },
 	'man|?', sub { pod2usage(-verbose => 2) },
@@ -3632,3 +3641,5 @@ for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 	last if($firstmatch || $had_error)
 }
 exit($exitstatus);
+
+sub print_arr { for my $i (@_) {print "'$i' "} print "\n"; }
