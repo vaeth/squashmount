@@ -176,6 +176,10 @@ my $non_binary = {
 		]
 	}),
 	standard_mount('portage', '/usr/portage', $defaults, $non_binary, {
+		# We know that no hardlinks or similar "tricky" things are used
+		# in the portage tree, hence we can omit the umount helpers
+		# of e.g. aufs. Use with care!
+		UMOUNT => '-i',
 		THRESHOLD => '80m',
 		# Any change in the local/ subdirectory (except in .git,
 		# profiles, metadata) should lead to a resquash, even if

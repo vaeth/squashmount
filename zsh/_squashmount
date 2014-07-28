@@ -8,6 +8,8 @@ _arguments -C -s -S -A '-*' : \
 '*'{'-v','--verbose'}'[be more verbose (accumulative)]' \
 '*'{'-q','--quiet'}'[be more quiet (accumulative)]' \
 {'*-c+','*--config='}'[CONFIGFILE (add CONFIGFILE to list)]:configfile:_files' \
+{'*-u+','*--umount='}'[OPT (add OPT to umount DIR)]:umount option:("-r")' \
+{'*-U+','*--umount-ro='}'[OPT (add OPT to umount ro dir)]:umount option:("-r")' \
 '--rundir=[DIR (runtime config dir /run/squash_dir)]:runtime config dir:_files -/' \
 '(--no-backup --nobackup -B '{'--backup)-b+','-b)--backup='}'[FILE_OR_APPENDIX (override BACKUP)]:file or appendix:_files' \
 '(--backup -b '{'--no-backup --nobackup)-B','--nobackup -B)--no-backup','--no-backup -B)--nobackup'}'[do not make a backup]' \

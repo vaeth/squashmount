@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 7.7\n");
+	print("$name 7.8\n");
 	exit(0)
 }
 
@@ -400,6 +400,23 @@ Print version number and exit
 Using I<file> instead of B</etc/squashmount.pl> as a config file.
 If this option is repeated, all passed B<file>s are parsed in the given order.
 
+=item B<--umount>B<=>I<opt> or B<-u> I<opt> (accumulative)
+
+Add option I<opt> to the default B<@umount> array.
+If this option is repeated, all passed options are added to the array.
+By default, this means that the option are used in the call to B<umount DIR>.
+There might be code in B</etc/squashmount.pl> which treats this array value
+differently (for examples, see the description of B<@umount> and B<UMOUNT>).
+
+=item B<--umount-ro>B<=>I<opt> or B<-U> I<opt> (accumulative)
+
+Add option I<opt> to the default B<@umount> array.
+If this option is repeated, all passed options are added to the array.
+By default, this means that the option are used in the call to B<umount>
+when umounting a readonly directory.
+There might be code in B</etc/squashmount.pl> which treats this array value
+differently (for examples, see the description of B<@umount> and B<UMOUNT>).
+
 =item B<--rundir=>I<dir>
 
 Using I<file> instead of B</run/squashmount>.
@@ -694,6 +711,8 @@ unavailable.
 Also the default variables B<$lazy>, B<$locking>, B<$modprobe_squash>,
 B<$obsolete_overlayfs> can be initialized: They are initialized to B<1>
 (perl interprets this as I<true>) or B<''> (I<false>).
+The arrays B<@umount> or B<@umount_ro> can carry default values for
+B<UMOUNT> and B<UMOUNT_RO>, respectively.
 Finally, also the variables B<$mksquash_verbose>,
 B<$processors>, B<$mem> can specify the default values
 if the corresponding options are not passed.
@@ -718,6 +737,10 @@ see the remarks at the end of this manpage.)
 =item $processors = ''; # unnecessary; this is the default
 
 =item $mem = ''; # unnecessary; this is the default
+
+=item @umount = ('-i'); # default to UMOUNT => [ '-i' ], ignoring --umount
+
+=item @umount_ro = (); # ignore option --umount-ro
 
 =item $obsolete_overlayfs = undef; # no fallback: require >=kernel-3.15
 
@@ -928,6 +951,26 @@ If not set, the default is the empty string.
 
 This is the default string if B<--mem> is not specified.
 If not set, the default is the empty string.
+
+=item B<@umount>
+
+This array determiness the default for the values B<UMOUNT> if the
+latter is not defined. Note that the default for B<@umount> in turn
+is defined by the option B<--umount>.
+In particular, if you set B<@umount> to a fixed value like C<@umount = ('-i');>,
+the option B<--umount> will have no effect. You can use perl-code to combine
+the option. For instance, when you use instead C<push(@umount, '-i');>,
+the option B<-i> will be added to the options specified by B<--umount>.
+Similarly, you can make a case destinction like
+C<@umount = ('-i') unless(@umount);> in which case the option B<-i> will be
+only used if no option was specified with B<--umount>.
+
+=item B<@umount_ro>
+
+This array determiness the default for the values B<UMOUNT_RO> if the
+latter is not defined. Note that the default for B<@umount_ro> in turn
+is defined by the option B<--umount-ro>.
+See the description of B<@umount> on the consequences of this.
 
 =item B<@order>
 
@@ -1156,6 +1199,28 @@ The default is B<['-o', 'noatime']>.
 This should be a (possibly empty) string or a reference to an array of strings:
 These strings are used as additional options when mounting with funionfs.
 The default is B<['-o', 'allow_other', '-o', 'nonempty']>.
+
+=item B<UMOUNT>
+
+This should be a (possibly empty) string or a reference to an array of strings:
+These strings are used as additional options when umounting B<DIR>.
+If nothing is specified, the value of B<@umount> is used whose default in
+turn is set by the option B<--umount>.
+Note that if this value is specified, the values of B<@umount> (and thus
+the option B<--umount>) is completely ignored. You can use perl-code if you
+do not want this. For instance, C<UMOUNT => [ @umount, '-r' ]> will add
+the option B<-r> to that specified through B<@umount>. Similarly,
+C<UMOUNT => ((@umount) ? '-r' : undef)> will use the option B<-r> if
+nothing was specified in B<@umount> (or through the option B<--umount>),
+otherwise, it will use the default (i.e. the value of B<@umount>).
+
+=item B<UMOUNT_RO>
+
+This should be a (possibly empty) string or a reference to an array of strings:
+These strings are used as additional options when umounting a readonly
+directory. If nothing is specified, the value of B<@umount_ro> is used whose
+default in turn is set by the option B<--umount_ro>.
+See the description of B<UMOUNT> on the consequences of this.
 
 =item B<COMPRESSION>
 
@@ -1899,7 +1964,7 @@ sub umount_readonly {
 	my ($message) = @_;
 	&info($message) if(defined($message) && ($message ne ''));
 	my $dir_ro = &get_abspath('READONLY');
-	return '' unless(&is_abspath($dir_ro) && &umount_dir($dir_ro));
+	return '' unless(&is_abspath($dir_ro) && &umount_dir($dir_ro, 1));
 	delete($current->{'MOUNT_RO'});
 	1
 }
@@ -1961,7 +2026,7 @@ sub first_create {
 	my $success = 1; {
 		my $tmp = File::Temp::newdir();
 		$success = '' unless(&mount_squash($squashfile, $tmp->dirname));
-		$success = '' unless(&umount_dir($tmp->dirname))
+		$success = '' unless(&umount_dir($tmp->dirname, 1))
 	}
 	unless($success) {
 		&error('failed to mount generated squashfile ' . $squashfile,
@@ -2288,13 +2353,20 @@ sub set_know_quiet {
 # Umount the directoy, possibly lazily:
 
 sub umount_dir {
-	my ($dir) = @_;
-	my $ret = (&my_system(1, \$umount, 'umount', '--', $dir) == 0);
+	my ($dir, $readwritable) = @_;
+	my @addopt = ();
+	my $addopt = $user_config->{$readwritable ? 'UMOUNT' : 'UMOUNT_RO'};
+	if(defined($addopt)) {
+		push(@addopt, ref($addopt eq 'ARRAY') ? @$addopt : $addopt)
+	} else {
+		push(@addopt, ($readwritable ? @CFG::umount : @CFG::umount_ro))
+	}
+	my $ret = (&my_system(1, \$umount, 'umount', @addopt, '--', $dir) == 0);
 	unless($ret) {
 		if($lazy) {
 			&error('non-lazy umount failed,',
 				"using lazy umount of $dir") unless($quiet > 1);
-			$ret = (&my_system(1, \$umount, 'umount', '-l', '--', $dir) == 0);
+			$ret = (&my_system(1, \$umount, 'umount', '-l', @addopt, '--', $dir) == 0);
 			&error("lazy umount failed: $dir") unless($ret)
 		} else {
 			&error('non-lazy umount failed')
@@ -2394,6 +2466,8 @@ sub kernelprobe {
 	our $overlayfs = '';
 	our @order = ();
 	our @mounts = ();
+	our @umount = ();
+	our @umount_ro = ();
 }
 
 sub read_config_file {
@@ -2420,6 +2494,8 @@ sub read_config_file {
 	our $overlayfs;
 	our @order;
 	our @mounts;
+	our @umount;
+	our @umount_ro;
 	sub standard_mount($$@) {
 		my ($tag, $dir, @rest) = @_;
 		unless(defined($tag) && (ref(\$tag) eq 'SCALAR') && ($tag ne '')) {
@@ -3358,6 +3434,8 @@ GetOptions(
 	'man|?', sub { pod2usage(-verbose => 2) },
 	'version|V', \&version,
 	'config|c=s', \@configs,
+	'umount|u=s', \@CFG::umount,
+	'umount-ro|U=s', \@CFG::umount_ro,
 	'rundir=s', \$rundir,
 	'separator|S=s', \$separator,
 	'interactice|i', \$interactive,
@@ -3642,4 +3720,5 @@ for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 }
 exit($exitstatus);
 
-sub print_arr { for my $i (@_) {print "'$i' "} print "\n"; }
+# Auxiliary functions which are convenient to have when debugging:
+sub print_arr { for my $i (@_) {print "'$i' "} print "\n" }

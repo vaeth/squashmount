@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-7.8
+	Martin Väth <martin at mvath.de>:
+	- Introduce UMOUNT{,_RO}, @umount{,_ro}, --umount{,-ro}
+
 *squashmount-7.7
 	Martin Väth <martin at mvath.de>:
 	- Fix wrong cutting of directories (regression of squashmount-7.6)
