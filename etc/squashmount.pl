@@ -62,6 +62,12 @@ exit(1);
 # $processors = '';
 # $mem = '';
 
+# The following is only needed if you want/need to hack umount options.
+# The following lines add option -i unless something was passed by
+# --umount or --umount-ro, respectively (in which case nothing is added).
+# push(@umount, '-i') unless(@umount);
+# push(@umount_ro, '-i') unless(@umount_ro);
+
 # The following is the default: If these files exist, we do not squash
 # $killpower = [ '/etc/killpower', '/etc/nosquash' ]
 
@@ -177,9 +183,16 @@ my $non_binary = {
 	}),
 	standard_mount('portage', '/usr/portage', $defaults, $non_binary, {
 		# We know that no hardlinks or similar "tricky" things are used
-		# in the portage tree, hence we can omit the umount helpers
-		# of e.g. aufs. Use with care!
-		UMOUNT => '-i',
+		# in the portage tree, hence we "can" omit the umount helpers
+		# of e.g. aufs. (This is only an example! Use this only if you
+		# have problems and understand what you are doing; usually,
+		# there is no reason to omit the umount helpers!)
+		# In the following example, we use -i if nothing is passed
+		# through --umount (or through the setting of @umount above).
+		# *If* --umount is specified, we do not define UMOUNT, i.e.
+		# the default value (the passed options) is chosen.
+		UMOUNT => ((@umount) ? undef : '-i'),
+		# It is reasonable to not recompress the directory always:
 		THRESHOLD => '80m',
 		# Any change in the local/ subdirectory (except in .git,
 		# profiles, metadata) should lead to a resquash, even if

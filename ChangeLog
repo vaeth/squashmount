@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-7.9
+	Martin Väth <martin at mvath.de>:
+	- Include @umount{,_ro} in examples
+
 *squashmount-7.8
 	Martin Väth <martin at mvath.de>:
 	- Introduce UMOUNT{,_RO}, @umount{,_ro}, --umount{,-ro}
