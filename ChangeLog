@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-7.10
+	Martin Väth <martin at mvath.de>:
+	- Fix @umount{,_ro} and UMOUNT{,_RO} (they had swapped their meaning)
+
 *squashmount-7.9
 	Martin Väth <martin at mvath.de>:
 	- Include @umount{,_ro} in examples

@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 7.9\n");
+	print("$name 7.10\n");
 	exit(0)
 }
 
@@ -402,7 +402,7 @@ If this option is repeated, all passed B<file>s are parsed in the given order.
 
 =item B<--umount>B<=>I<opt> or B<-u> I<opt> (accumulative)
 
-Add option I<opt> to the default B<@umount> array.
+Add option I<opt> to the default B<@umount> array (see also B<--umount-ro>).
 If this option is repeated, all passed options are added to the array.
 By default, this means that the option are used in the call to B<umount DIR>.
 There might be code in B</etc/squashmount.pl> which treats this array value
@@ -1203,7 +1203,8 @@ The default is B<['-o', 'allow_other', '-o', 'nonempty']>.
 =item B<UMOUNT>
 
 This should be a (possibly empty) string or a reference to an array of strings:
-These strings are used as additional options when umounting B<DIR>.
+These strings are used as additional options when umounting B<DIR>
+(see also B<UMOUNT_RO>).
 If nothing is specified, the value of B<@umount> is used whose default in
 turn is set by the option B<--umount>.
 Note that if this value is specified, the values of B<@umount> (and thus
@@ -2353,13 +2354,13 @@ sub set_know_quiet {
 # Umount the directoy, possibly lazily:
 
 sub umount_dir {
-	my ($dir, $readwritable) = @_;
+	my ($dir, $readonly) = @_;
 	my @addopt = ();
-	my $addopt = $user_config->{$readwritable ? 'UMOUNT' : 'UMOUNT_RO'};
+	my $addopt = $user_config->{$readonly ? 'UMOUNT_RO' : 'UMOUNT'};
 	if(defined($addopt)) {
 		push(@addopt, ref($addopt eq 'ARRAY') ? @$addopt : $addopt)
 	} else {
-		push(@addopt, ($readwritable ? @CFG::umount : @CFG::umount_ro))
+		push(@addopt, ($readonly ? @CFG::umount_ro : @CFG::umount))
 	}
 	my $ret = (&my_system(1, \$umount, 'umount', @addopt, '--', $dir) == 0);
 	unless($ret) {
