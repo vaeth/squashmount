@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 7.10\n");
+	print("$name 7.11\n");
 	exit(0)
 }
 
@@ -1859,7 +1859,7 @@ sub mount_main {
 	}
 	my $dir_ro = $current->{'READONLY'};
 	my $ret = 1;
-	unless(defined($skip_ro_mounting) && $skip_ro_mounting) {
+	unless($skip_ro_mounting // '') {
 		my $mount_ro = 1;
 		if(&is_nonempty($current->{'MOUNT_RO'})) {
 			&warning("have mounted READONLY $dir_ro")
@@ -1963,7 +1963,7 @@ sub umount_main {
 sub umount_readonly {
 	return 1 unless($ignore_state || &is_nonempty($current->{'MOUNT_RO'}));
 	my ($message) = @_;
-	&info($message) if(defined($message) && ($message ne ''));
+	&info($message) if(($message // '') ne '');
 	my $dir_ro = &get_abspath('READONLY');
 	return '' unless(&is_abspath($dir_ro) && &umount_dir($dir_ro, 1));
 	delete($current->{'MOUNT_RO'});
@@ -2136,13 +2136,13 @@ sub mount_overlayfs {
 		return 'overlayfs-obsolete'
 			if(&my_system(@systemargs1, @systemargs2) == 0)
 	}
-	unless(defined($CFG::obsolete_overlayfs) && ($CFG::obsolete_overlayfs eq 'force')) {
+	unless(($CFG::obsolete_overlayfs // '') eq 'force') {
 		my $workdir = &create_workdir();
 		return 'overlayfs' if(($workdir ne '') &&
 			(&my_system(@systemargs1, '-o', "workdir\=${workdir}",
 				@systemargs2) == 0))
 	}
-	if(defined($CFG::obsolete_overlayfs) && ($CFG::obsolete_overlayfs eq '')) {
+	if(($CFG::obsolete_overlayfs // 1) eq '') {
 		return 'overlayfs-obsolete'
 			if(&my_system(@systemargs1, @systemargs2) == 0)
 	}
@@ -2312,8 +2312,7 @@ sub mksquashfs_options {
 # Return $mksquash_symbols according to $mksquash_verbose argument:
 
 sub calc_mksquash_symbols {
-	my ($squash_verbose) = @_;
-	$squash_verbose = 'q?n-n+!' unless(defined($squash_verbose));
+	my $squash_verbose = (shift() // 'q?n-n+!');
 	my $squash_symbols = {};
 	while($squash_verbose =~ s{([inpqr])([12\-\+\?\!]*)}{}i) {
 		my ($symbol, $flags) = ($1, $2);
@@ -2399,10 +2398,8 @@ sub check_squash {
 { my %probed = (); # A closure static variable
 sub my_modprobe {
 	my ($module) = @_;
-	my $probed = $probed{$module};
-	return $probed if(defined($probed));
-	$probed = $probed{$module} =
-		(&my_system(2, \$modprobe, 'modprobe', $module) == 0)
+	$probed{$module} // ($probed{$module} =
+		(&my_system(2, \$modprobe, 'modprobe', $module) == 0))
 }}
 
 # use IO::Uncompress::Gunzip qw(gunzip) and return whether successful
@@ -2447,8 +2444,7 @@ sub kernelprobe {
 		}
 	}
 	return ((!$gz) || ($check_gz > 0)) if(ref($gz) eq '');
-	my $ret = $gz->{$module};
-	defined($ret) && $ret
+	$gz->{$module} // ''
 }}
 
 # The main function to read a configuration file:
@@ -2662,26 +2658,22 @@ sub settings_file {
 # Fill "global" variables according to options and $current state
 
 sub set_globals {
-	$backup = (defined($opt_backup) ? $opt_backup :
-		$current->{'BACKUP'});
-	$tempdir = (defined($opt_tempdir) ? $opt_tempdir :
-		$current->{'TEMPDIR'});
-	$compression = (defined($opt_compression) ? $opt_compression :
-		$current->{'COMPRESSION'});
+	$backup = ($opt_backup // $current->{'BACKUP'});
+	$tempdir = ($opt_tempdir // $current->{'TEMPDIR'});
+	$compression = ($opt_compression // $current->{'COMPRESSION'});
 	$threshold = (($opt_threshold ne '') ?
 		&parse_threshold($opt_threshold) : $current->{'THRESHOLD'});
 	if($threshold < 0) {
 		$kill = ''
 	} else {
-		$kill = (defined($opt_kill) ? $opt_kill : $current->{'KILL'})
+		$kill = ($opt_kill // $current->{'KILL'})
 	}
 }
 
 # Fill $current state with defaults from $user_config.
 
 sub fill_current {
-	my ($force) = @_;
-	$force = '' unless(defined($force));
+	my $force = (shift() // '');
 	if($force || !exists($current->{'BACKUP'})) {
 		$current->{'BACKUP'} = $user_config->{'BACKUP'}
 	}
@@ -2711,7 +2703,7 @@ sub parse_threshold {
 	use bigint;
 	my ($num, $ext) = ($1, $2);
 	return (-1) if($num < 0);
-	return $num unless(defined($ext) && ($ext ne ''));
+	return $num unless(&is_nonempty($ext));
 	for my $i (qr{k}i, qr{m}i, qr{g}i) {
 		$num *= 1024;
 		return $num if($ext =~ $i)
@@ -2783,8 +2775,7 @@ sub create_dir {
 # Fetch a filename from @CFG::mounts, creating the directory if necessary
 
 sub create_dirname {
-	my ($temp) = @_;
-	$temp = '' unless(defined($temp));
+	my $temp = (shift() // '');
 	if(ref($temp) eq 'CODE') {
 		$temp = &{$temp}($tag)
 	}
@@ -2833,8 +2824,9 @@ sub is_valid_workdir {
 # With $create_dir only take resolved path to $user_config if possible.
 
 sub get_abspath {
-	my ($i, $create_dir, $required_dir) = @_;
-	$create_dir = '' unless(defined($create_dir));
+	my $i = shift();
+	my $create_dir = (shift() // '');
+	my ($required_dir) = @_;
 	&create_dir($i, $required_dir) if($create_dir && defined($required_dir));
 	my $ret = $current->{$i};
 	return $ret if(defined($ret));
@@ -2850,7 +2842,7 @@ sub get_abspath {
 
 sub is_resquash_type {
 	my $type  = $current->{'TYPE'};
-	return '' unless(defined($type) && ($type ne ''));
+	return '' unless(&is_nonempty($type));
 	(($type eq 'readonly') || ($type =~ m{bind})) ? 0 : 1
 }
 
@@ -2858,9 +2850,9 @@ sub is_resquash_type {
 # Result is 1 (yes) or 0 (no) or the empty string if it is not known
 
 sub is_workdir_type {
-	return 0 if(defined($CFG::obsolete_overlayfs) && ($CFG::obsolete_overlayfs eq 'force'));
+	return 0 if(($CFG::obsolete_overlayfs // '') eq 'force');
 	my $type  = $current->{'TYPE'};
-	return '' unless(defined($type) && ($type ne ''));
+	return '' unless(&is_nonempty($type ne ''));
 	($type eq 'overlayfs') ? 1 : 0
 }
 
@@ -3121,7 +3113,7 @@ sub output {
 		$len += 3;
 		$first = ' ' . $col . '*' . $reset . ' '
 	}
-	if((defined($notag) && ($notag ne '')) || ($tag eq '')) {
+	if(&is_nonempty($notag) || ($tag eq '')) {
 		$len += length($name) + 2;
 		$first .= $col . $name . $reset . ': '
 	} else {
@@ -3162,7 +3154,7 @@ sub title {
 END {
 	&end_locking();
 	&title(($? == 0) ? "$name finished" : "$name failed")
-		if(defined($printed_title) && $printed_title)
+		if($printed_title // '')
 }
 
 # Output of print-..., returning '' if undefined
@@ -3287,8 +3279,7 @@ sub use_ansicolor {
 # Is argument defined and nonempty?
 
 sub is_nonempty {
-	my ($arg) = @_;
-	defined($arg) && ($arg ne '')
+	(shift() // '') ne ''
 }
 
 # Is argument defined and an absolute path?
@@ -3398,9 +3389,9 @@ sub good_abs_path {
 
 sub bad_abs_path {
 	my ($f) = @_;
-	return undef unless(defined($f) && ($f ne ''));
+	return undef unless(&is_nonempty($f));
 	$f = abs_path($f);
-	return undef unless(defined($f) && ($f ne ''));
+	return undef unless(&is_nonempty($f));
 	$f = File::Spec->canonpath($f);
 	&is_abspath($f) ? $f : undef
 }
@@ -3493,9 +3484,8 @@ $titleopt = undef if(($titleopt =~ m{-}) || !$stdoutterm);
 
 # Determine $action, $fatalreturn, $run_ro, $star, $CFG::locking, @CFG::order
 
-my $action = shift(@ARGV);
+my $action = (shift(@ARGV) // '');
 {
-	$action = '' unless(defined($action));
 	my $order_needed = '';
 	$run_ro = '';
 	if($action =~ m{^p}i) {

@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-7.11
+	Martin Väth <martin at mvath.de>:
+	- code cleanup (prefer // over defined())
+
 *squashmount-7.10
 	Martin Väth <martin at mvath.de>:
 	- Fix @umount{,_ro} and UMOUNT{,_RO} (they had swapped their meaning)
