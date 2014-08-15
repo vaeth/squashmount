@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 7.11\n");
+	print("$name 7.12\n");
 	exit(0)
 }
 
@@ -301,6 +301,11 @@ Display extended help as a manpage.
 =item B<--verbose> or B<-v> (accumulative)
 
 Verbose output.
+In verbose level 3 or larger any "external" command like B<mount> is output,
+its output not being suppressed.
+In verbose level 4 even additional options are passed to such external commands
+to make them produce verbose output. This overrides also B<--mksquash-verbose>
+partially, see the subsequent description.
 
 =item B<--mksquash-verbose=>I<string>
 
@@ -313,7 +318,7 @@ The following symbols do exist:
 =over 16
 
 =item B<i>:
-Pass option B<-info>
+Pass option B<-info> (automatic if verbose level is 4 or larger)
 
 =item B<n>:
 Pass option B<-no-progress>
@@ -322,10 +327,10 @@ Pass option B<-no-progress>
 Pass option B<-progress>
 
 =item B<q>:
-Pass option B<-quiet>.
+Pass option B<-quiet> (unless verbose level is 4 or larger)
 
 =item B<r>:
-Redirect stdout to F</dev/null>.
+Redirect stdout to F</dev/null> (unless verbose level is 3 or larger)
 
 =item B<I>, B<N>, B<P>, B<Q>, B<R>
 Ignore earlier respective symbol B<i>, B<n>, B<p>, B<q>, B<r>
@@ -2129,6 +2134,7 @@ sub mount_overlayfs {
 	return '' if($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_OVERLAYFS'},
 		['-o', 'noatime']);
+	push(@options, '-v') if($verbose > 3);
 	my @systemargs1 = ('', \$mount, 'mount', '-t', 'overlayfs', @options,
 		'-o', "upperdir\=${changes}", '-o', "lowerdir\=${ro}");
 	my @systemargs2 = ('--', 'overlayfs', $rw);
@@ -2172,6 +2178,7 @@ sub mount_aufs {
 	return '' if($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_AUFS'},
 		['-o', 'noatime']);
+	push(@options, '-v') if($verbose > 3);
 	$ro =~ s{([=:])}{\\$1}g;
 	$changes =~ s{([=:])}{\\$1}g;
 	return 1 if(&my_system('', \$mount, 'mount', '-t', 'aufs', @options,
@@ -2216,6 +2223,7 @@ sub mount_unionfs {
 	return '' if($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_UNIONFS'},
 		['-o', 'noatime']);
+	push(@options, '-v') if($verbose > 3);
 	$ro =~ s{([=:])}{\\$1}g;
 	$changes =~ s{([=:])}{\\$1}g;
 	return 1 if(&my_system('', \$mount, 'mount', '-t', 'unionfs', @options,
@@ -2228,7 +2236,7 @@ sub mount_unionfs {
 
 sub mount_funionfs {
 	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
-	return '' if($check_bin && !&which_store(\$mount, 'mount'));
+	return '' if($check_bin && !&which_store(\$funionfs, 'funionfs'));
 	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
 	&push_ref(\my @options, $user_config->{'MOUNT_FUNIONFS'},
 		['-o', 'allow_other', '-o', 'nonempty']);
@@ -2243,7 +2251,9 @@ sub mount_funionfs {
 
 sub mount_bind {
 	my ($from, $to) = @_;
-	return 1 if(&my_system('', \$mount, 'mount', '--bind', '--', $from, $to) == 0);
+	my @options = ('--bind');
+	push(@options, '-v') if($verbose > 3);
+	return 1 if(&my_system('', \$mount, 'mount', @options, '--', $from, $to) == 0);
 	&error('mount --bind failed');
 	''
 }
@@ -2260,8 +2270,10 @@ sub mount_squash {
 		$modprobe_squash = '';
 		&my_modprobe('squashfs')
 	}
-	return 1 if(&my_system('', \$mount, 'mount','-t', 'squashfs',
-		'-o', 'loop,ro,noatime', '--', $squashfile, $dir) == 0);
+	my @options = ('-t', 'squashfs', '-o', 'loop,ro,noatime');
+	push(@options, '-v') if($verbose > 3);
+	return 1 if(&my_system('', \$mount, 'mount', @options,
+		'--', $squashfile, $dir) == 0);
 	&error('failed to mount squashfile');
 	''
 }
@@ -2293,9 +2305,11 @@ sub mksquashfs_options {
 	push(@$options, '-mem', $mem) if($mem ne '');
 	$mksquash_symbols = &calc_mksquash_symbols($mksquash_verbose)
 		unless(defined($mksquash_symbols));
-	push(@$options, '-quiet') if(defined($mksquash_symbols->{'q'}));
+	push(@$options, '-quiet') if(($verbose <= 3) &&
+		defined($mksquash_symbols->{'q'}));
 	push(@$options, '-no-progress') if(defined($mksquash_symbols->{'n'}));
-	push(@$options, '-info') if(defined($mksquash_symbols->{'i'}));
+	push(@$options, '-info') if(($verbose > 3) &&
+		defined($mksquash_symbols->{'i'}));
 	push(@$options, '-progress') if(defined($mksquash_symbols->{'p'}));
 	push(@$options, '-always-use-fragments') if(&is_nonempty($user_config->{'DEFAULT_FRAGMENTS'}));
 	my $comp = (defined($compression) ? lc($compression) : 'xz');
@@ -2321,7 +2335,7 @@ sub calc_mksquash_symbols {
 				($stdoutterm && ($flags =~ m{\-})))
 		}
 		if($flags =~ m{[2\+]}) {
-			$stderrterm = (-t STDERR) unless(defined($stderrterm));
+			$stderrterm //= (-t STDERR);
 			next if(((!$stderrterm) && ($flags =~ m{2})) ||
 				($stderrterm && ($flags =~ m{\+})))
 		}
@@ -2361,6 +2375,7 @@ sub umount_dir {
 	} else {
 		push(@addopt, ($readonly ? @CFG::umount_ro : @CFG::umount))
 	}
+	push(@addopt, '-v') if($verbose > 3);
 	my $ret = (&my_system(1, \$umount, 'umount', @addopt, '--', $dir) == 0);
 	unless($ret) {
 		if($lazy) {
@@ -2398,8 +2413,8 @@ sub check_squash {
 { my %probed = (); # A closure static variable
 sub my_modprobe {
 	my ($module) = @_;
-	$probed{$module} // ($probed{$module} =
-		(&my_system(2, \$modprobe, 'modprobe', $module) == 0))
+	$probed{$module} //= (&my_system(2, \$modprobe, 'modprobe',
+		(($verbose > 3) ? '-v' : ()), $module) == 0)
 }}
 
 # use IO::Uncompress::Gunzip qw(gunzip) and return whether successful
@@ -3088,24 +3103,18 @@ sub info {
 
 # Main action of fatal, error, warning, info:
 
+{ my %colorhash = (); # A closure static variable
+  my $resethash = undef;
 sub output {
 	my ($array, $to_stderr, $colorname, $label, $notag) = @_;
-	$label = '' unless(defined($label));
+	$label //= '';
 	my $col = '';
 	my $reset = '';
-	if((!defined($opt_color)) || $opt_color) {
-		my $use_color = $opt_color;
-		unless(defined($use_color)) {
-			$use_color = $stdoutterm;
-			if($to_stderr) {
-				$stderrterm = (-t STDERR) unless(defined($stderrterm));
-				$use_color = $stderrterm
-			}
-		}
-		if($use_color && &use_ansicolor()) {
-			$col = color($colorname);
-			$reset = color('reset')
-		}
+	if(($opt_color //
+		($to_stderr ? ($stderrterm //= (-t STDERR)) : $stdoutterm))
+		&& &use_ansicolor()) {
+		$col = ($colorhash{$colorname} //= color($colorname));
+		$reset = ($resethash //= color('reset'))
 	}
 	my $first = '';
 	my $len = length($label);
@@ -3131,7 +3140,7 @@ sub output {
 	} else {
 		print(@copy)
 	}
-}
+}}
 
 # Set title:
 
@@ -3203,7 +3212,10 @@ sub my_system {
 		&error($b . ' not found in $PATH');
 		return 127
 	}
-	print(&join_quoted($$a, @_), "\n") if($verbose > 2);
+	if($verbose > 2) {
+		print(&join_quoted($$a, @_), "\n");
+		$redirect = ''
+	}
 	my $oldout = undef;
 	my $olderr = undef;
 	if($redirect) {

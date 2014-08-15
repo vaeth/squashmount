@@ -1,5 +1,11 @@
 # ChangeLog for squashmount
 
+*squashmount-7.12
+	Martin Väth <martin at mvath.de>:
+	- Introduce a 4th verbose level to make external tools more verbose
+	- Do not suppress output in 3rd verbose level
+	- Further minor code cleanup
+
 *squashmount-7.11
 	Martin Väth <martin at mvath.de>:
 	- code cleanup (prefer // over defined())
