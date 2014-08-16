@@ -18,6 +18,11 @@ It must be configured first for the mount-points you are actually using!
 See 'squashmount man' and the comments in that file for how to do this.\n");
 exit(1);
 
+# Our configuration can depend on the hostname:
+
+use Sys::Hostname;
+my $hostname = ($ENV{'HOSTNAME'} // hostname());
+
 # First we specify the tools which we have (possibly) installed;
 # if possible, only the first in this list is used, but the others are
 # successively a fallback if that fails.
@@ -72,8 +77,8 @@ exit(1);
 # $killpower = [ '/etc/killpower', '/etc/nosquash' ]
 
 # Even if we would not set anything in the following hash, it is recommended
-# to use this local variable throughout, so that "defaults" for all mountpoints
-# can be changed without modifying every mountpoint manually.
+# to use this local variable throughout, so that "defaults" for all
+# mount-points can be changed without modifying every mount-point manually.
 
 my $defaults = {
 	COMPRESSION => 'xz', # We could omit this line as xz is default.
@@ -210,3 +215,56 @@ my $non_binary = {
 		COMPRESSION => 'xz'
 	})
 );
+
+
+# Now we give an example of a mount-point "cd" which is only available
+# if some argument was passed with the option
+# --arg=something (or -a something).
+
+# We load a perl module for system independent filename handling later on.
+# (This needs to be done only once.)
+use File::Spec;
+
+# We use the variable "$cd" to indicate whether the mount-point is visible.
+# By default, it is only visible if an option was passed with --arg:
+
+my $cd = @ARGV;
+
+# The following is important:
+# The mount-point should always be visible if there is data stored for it
+# in $rundir. This is important so that when the init-system calls
+# "squashmount stop", this will properly shut down the mount-point
+# (even if the special option --arg=something does not occur in this command.)
+# This also has the nice side effect that the mount-point will appear
+# with "squashmount list", once it is mounted.
+
+$cd ||= (-e File::Spec->catfile($rundir, 'cd'));
+
+# A less compatible but shorter way for the above would be:
+# $cd ||= (-e "$rundir/cd");
+
+# Uncomment, if you want to hide "cd" only for "squashmount start":
+# $cd ||= ($command ne 'start');
+
+# Uncomment, if you want to make "cd" visibleto all query commands like
+# "squashmount list" or "squashmount print-...":
+# $cd ||= $query;
+
+# Finally, we make the mount-point available if $cd is true (1).
+
+push(@mounts, # append the following to @mounts:
+
+# In this example, we use /var/cd as DIR,
+# /var/cd.mount/{readonly,changes,workdir} as READONLY,CHANGES,WORKDIR,
+# repectively, and /media/cd/file.sfs as FILE.
+# Since almost everything is the setting of "standard_mount", we only
+# need to override FILE:
+	standard_mount('cd', '/var/cd', {
+		FILE => '/media/cd/file.sfs'
+	})
+# now we finish the above push command, indicating that this push command
+# should be executed only if $cd is true:
+) if($cd);
+
+
+1;# The last executed command in this file should be a true expression

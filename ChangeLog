@@ -1,5 +1,17 @@
 # ChangeLog for squashmount
 
+*squashmount-8.0
+	Martin Väth <martin at mvath.de>:
+	- Add possibilities for advanced configuration like conditional
+	  mount-points (e.g. for cds),
+	- Add options -a --arg
+	- Provide @ARGV, $command, $query, $rundir for configuration file
+	- manpage: Add section "ADVANCED CONFIGURATION"
+	- Add example to etc/squashmount.pl about CD mount-points
+	- Add example about conditionals based on host-name
+	- Improve parsing of configuration file
+	- Document that configuration files must finish with a true expression
+
 *squashmount-7.12
 	Martin Väth <martin at mvath.de>:
 	- Introduce a 4th verbose level to make external tools more verbose
@@ -182,7 +194,7 @@
 
 *squashmount-2.6
 	Martin Väth <martin at mvath.de>:
-	- Require -f for restart to forget+start an umounted mountpoint
+	- Require -f for restart to forget+start an umounted mount-point
 	- Introduce --ignore-state to deal better with exceptional
 	  situations caused by bugs (in squashmount or its config) or
 	  by manual interfering

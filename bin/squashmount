@@ -21,7 +21,7 @@ $|=1;
 my $name = 'squashmount';
 
 sub version {
-	print("$name 7.12\n");
+	print("$name 8.0\n");
 	exit(0)
 }
 
@@ -145,14 +145,14 @@ In order to change F</etc/squashmount.pl> after B<squasmount mount> was called,
 the safe way is to call first B<squashmount stop> (at least for the
 mount-points you want to modify) and then do your modifications.
 
-If used with B<--force> forget also umounted mountpoints.
+If used with B<--force> forget also umounted mount-points.
 
 =item B<restart>
 
 This is like calling B<squashmount stop> followed by B<squashmount start>.
 Note that in contrast to B<remount> this is executed unconditionally
 (and it differs also substantially from B<squashmount --force remount>).
-If used with B<--force> forget and try to mount umounted mountpoints.
+If used with B<--force> forget and try to mount umounted mount-points.
 
 =item B<status> or B<list>
 
@@ -162,7 +162,7 @@ To output particular data use the B<print-...> commands (and specify B<mask1>).
 =item B<check>
 
 Check whether B<DIR> is empty; usually this should always be the case.
-Normally, this command requires that the corresopnding mountpoint is umounted.
+Normally, this command requires that the corresopnding mount-point is umounted.
 Use option B<-f> to force an umount temporarily.
 In this case, B<--lazy> always defaults to false unless specified by the option.
 
@@ -190,7 +190,7 @@ B<forget> command.
 =item B<forget>
 
 This removes B<all> local configuration stored in F</run/squashmount> for
-the corresponding mountpoints. It works only for umounted mountpoints.
+the corresponding mount-points. It works only for umounted mount-points.
 (You can use F<--force> to make it work anyway, but this is very dangerous;
 see below).
 
@@ -561,9 +561,9 @@ If used with B<create>, continue even if the squash-file already exists.
 If used with B<check>, force temporary umounting.
 
 If used with B<stop> or B<restart>, forget information also for
-umounted mountpoints.
+umounted mount-points.
 
-If used with B<forget>, forget information also if mountpoint is mounted.
+If used with B<forget>, forget information also if mount-point is mounted.
 The latter is very dangerous, see the description of the B<forget> command.
 
 If used with B<print-...> or B<status>, when required to print directories
@@ -634,7 +634,7 @@ some versions of B<mksquashfs> use in this case B<1954M>
 =item B<--separator=>I<sep> or B<-S> I<sep>
 
 When using B<check> or B<print-...> with option B<-q>,
-I<sep> is appended to the output of each mountpoint.
+I<sep> is appended to the output of each mount-point.
 The default is a newline.
 
 =item B<--pass-dir>
@@ -699,6 +699,11 @@ see above
 
 Only execute the first match, then end.
 
+=item B<--arg=>I<argument> or B<-a> I<argument> (accumulative)
+
+Add I<argument> to B<@ARGV> for the configuration file,
+see the section B<ADVANCED CONFIGURATION>.
+
 =item B<-->
 
 Last option
@@ -721,6 +726,10 @@ B<UMOUNT> and B<UMOUNT_RO>, respectively.
 Finally, also the variables B<$mksquash_verbose>,
 B<$processors>, B<$mem> can specify the default values
 if the corresponding options are not passed.
+
+For advanced configuration, you can access the variables B<@ARGV>, B<$command>,
+B<$query>, and B<$rundir> which are explained in the section
+B<ADVANCED CONFIGURATION>.
 
 Here is an example for this file.
 (You can use this syntax if you do not have much knowledge about perl;
@@ -874,6 +883,8 @@ see the remarks at the end of this manpage.)
 =item $dir .= "/$tag"; mkdir($dir); return $dir }
 
 =back
+
+=item 1;# The last executed command should be a true expression
 
 =back
 
@@ -1154,7 +1165,7 @@ Depending on B<$squashfs_verbose>, B<COMPRESSION>, B<DEFAULT_FRAGMENTS>
 also the options B<-no-progress>, B<-comp>, or B<-always-use-fragments>
 are appended automatically.
 
-=item B<MKSQUASHFS>, B<COMPOPT_{XZ,LZMA,GZIP,LZO,LZ4,}
+=item B<MKSQUASHFS>, B<COMPOPT_{XZ,LZMA,GZIP,LZO,LZ4,}>
 
 These should be a (possibly empty) strings or references arrays of strings:
 These strings are used as additional options when calling B<mksquashfs>
@@ -1429,7 +1440,7 @@ functions which make this task relatively easy:
 
 =over 8
 
-=item B<standard_mount(>I<tag>B<,> I<dir> I<...>B<)>
+=item B<standard_mount(>I<tag>B<,> I<dir>, ...B<)>
 
 This function returns a reference to a hash with the keys B<TAG> and B<DIR>
 filled according to the first two arguments.
@@ -1440,11 +1451,11 @@ Moreover, if I<...> are references to hashes, they are added to the hash:
 Later hashes override earlier ones; setting a value to C<undef> in a sense
 cancels a previous definition.
 
-=item B<added_hash(>I<hash_reference>B<,> I<hash_reference>B<,> ...B<)>
+=item B<added_hash(>I<hashref>B<,> ...B<)>
 
-This function returns a reference to a hash which merges all passed hashes,
-that is, it is like B<standard_mount()> except that it does not fill a
-hash with certain values first.
+This function returns a reference to a hash which merges all hashes,
+that is, it is like B<standard_mount()> except that it does
+not fill a hash with certain values first.
 The idea is that this function can be used to start with a "default" hash
 and override/modify/add some data at your descretion.
 
@@ -1524,6 +1535,231 @@ Here is such an example which also demonstrates the use of B<added_hash()>:
 
 =back
 
+=head1 ADVANCED CONFIGURATION
+
+Since the configuration file consists of perl code, you can do all sort of
+conditional configuration in the configuration code.
+
+For instance, you can use the same configuration file for different machines,
+making the behaviour depend on the hostname. Here is such an example:
+
+=over 8
+
+=item use Sys::Hostname; # Use a module to fetch the hostname
+
+=item # The environment variable B<HOSTNAME> can override the hostname
+
+=item my $hostname = ($ENV{'HOSTNAME'} // hostname());
+
+=back
+
+=over 8
+
+=item # Here can be configuration common for all hosts...
+
+=back
+
+=over 8
+
+
+=item if($hostname =~ m{^(?:foo|bar)$}) {
+
+=over 16
+
+=item # Configuration for hosts 'foo' and 'bar' only
+
+=back
+
+=item } elsif($hostname eq 'bazola') {
+
+=over 16
+
+=item # Configuration for host 'bazola' only
+
+=back
+
+=item } else {
+
+=over 16
+
+=item # Configuration for all other hosts only
+
+=back
+
+=item }
+
+=back
+
+=over 8
+
+=item # Configuration common for all hosts
+
+=back
+
+In some cases, you might want to make the configuration even dependent on
+the command line. For instance, you might want that certain mount-points
+are not visible during the "regular" B<squashmount start> but must be activated
+explicitly. Or you might want to make a certain path dependent on an option
+passed on the command line.
+
+For this reason, it is possible to pass arguments from the command line
+to the configuration file with B<-a> I<argument> (or B<--arg=>I<argument>):
+Arguments passed this way are collected in the array B<@ARGV> which can be
+accessed from within the configuration.
+
+However, some care has to be taken. For instance, even if you want to hide
+certain mount-points from B<squashmount start> (or maybe also from
+B<squashmount mount>) for "normal" usage, you will probably not want to
+hide that mount-point from B<squashmount stop> (or maybe also not from
+B<squashmount umount>), since you probably want that the mount-point is
+umounted during shutdown.
+
+FOr this reason, you can see the currently used command in the perl variable
+B<$command>. This variable constains the actual command (even if the user
+used a shortcut like B<l> instead of B<list> on the command line);
+the command B<list> appears as B<status>.
+
+Special care has to be taken with "variable data" (that is, with data
+in mount-points which may differ for different calls of B<squashmount>):
+In many occassions, B<squashmount> will store the effective data in
+B<$rundir>, and once this has happened, the stored path usually overrides the
+paths from the configuration file. This is almost always what you want:
+
+Suppose that you have a mount-point with a "variable data" B<DIR>.
+If B<DIR> was F</foo/bar> in the moment when B<squash start> is called,
+then F</foo/bar> is also used for B<squash umount>, that is, you do not
+need to remember that B<DIR> to umount the correct directories.
+
+However, this can also be undesired: Once you umounted this directory,
+also the next mount will access the same path, that is, you cannot really
+have a "variable" B<DIR> using successively different paths.
+A "workaround" for this problem is to use B<squashmount forget>
+(or to remove the file named after a mount-point from B<$squashdir>).
+
+It is explicitly not specified precisely which data is stored in B<$rundir>
+and when: This might change in future versions of B<squashmount>,
+so do not rely on anything. There are only two things you can rely on
+concering stored data:
+
+(1) B<squashmount forget> will forget any data stored in B<$rundir>
+(for the mount-point)
+
+(2) All query commands (currently, these are B<print-*>, B<status>/B<list>,
+and B<check>) do not store any data in B<$rundir>.
+
+The configuration can easily check whether B<$command> is such a query command
+as in (2): The perl variable B<$query> is B<1> in this case
+(otherwise B<$query> is the empty string).
+
+If you want to store "variable data" which is not automatically stored for
+later usage, you can do this in a file in the directory B<$rundir>:
+This is B</var/run/squashmount> (or the value passed with B<--rundir>),
+and this directory exists when the configuration file is parsed
+(unless a query command is used, that is, unless B<$query> is B<1>).
+You can use any filename in B<$rundir> with the exceptions of the names
+of mount-points: The latter files are used by B<squashmount> internally
+and should not be touched. The format of these files is intentionally not
+fully documented, since it may be different in future versions of
+B<squashmount>. There are only a few things you can rely on
+concerning B<$rundir>:
+
+(1) B<squashmount forget> (or B<squashmount stop>) will remove the file
+in B<$rundir> named after the corresponding mount-point(s).
+
+(2) Conversely, if you remove a file from B<$rundir> named after a mount-point,
+the effect will be as if B<squashmount --force forget> has been called in
+advance for that mount-point. Do not do this, unless you know
+what you are doing!
+
+(3) If you define a hash name B<%data>, you can evaluate (in perl) the content
+of the file from B<$rundir> named after a mount-point, and this will fill
+the hash B<%data> with the information stored for that mount-point.
+Thus, to fill the B<%data> hash, you can use the code
+
+=over 8
+
+=item our %data; { package RUNCFG; our %data = (); do($file) }
+
+=back
+
+However, it is recommended to do (3) only in very exceptional cases if
+there is no other way to do what you want. If you need to do this, because
+some feature is missing in B<squashmount>, better file a bug report and
+request for that feature.
+
+Here is an example which generates a mount-point from a squashfile or a cd
+only if the option B<-a -c> or B<--arg=--cd> is passed to B<squashmount>.
+
+=over 8
+
+=item use File::Spec; # We will use system-independent filename handling
+
+=item my $cd = ''; We set $cd = 1 if the mount-point is available
+
+=back
+
+=over 8
+
+=item # Make the mount-point available via options.
+
+=item # (We use B<GetOptions()> here just to illustrate that
+
+=item # B<@ARGV> can be treated with usual perl tools.)
+
+=item use Getopt::Long; GetOptions('cd|c', \$cd);
+
+=back
+
+=over 8
+
+=item # The following is important: Make the mount-point available
+
+=item # whenever squashmount data is stored for it in B<$rundir>.
+
+=item # Thus, the mount-point 'cd' is recognized once it is mounted,
+
+=item # even if you do not pass any special options.
+
+=item # In particular, when the init system calls B<squashmount stop>,
+
+=item # it will also shut down the mount-point 'cd' properly.
+
+=item $cd ||= (-e File::Spec->catfile($rundir, 'cd'));
+
+=back
+
+=over 8
+
+=item # Instead of File::Spec, we could also have used:
+
+=item # $cd || = (-e "$rundir/cd");
+
+=back
+
+=over 8
+
+=item # Finally, we (conditionally) add the mount-point to @mounts:
+
+=item push(@mounts, standard_mount('cd', '/var/cd', {
+
+=over 16
+
+=item FILE => '/path/to/squashfile/on/cd'
+
+=back
+
+=item })) if($cd); # under the condition that $cd is true
+
+=back
+
+=over 8
+
+=item # If this is the end of the file, do not forget:
+
+=item 1;# The last executed command should be a true expression
+
+=back
+
 =head1 COPYRIGHT AND LICENSE
 
 Copyright Martin VE<auml>th.
@@ -1566,6 +1802,7 @@ my $errorbreak = '';
 my $fatalreturn = undef;
 my $firstmatch = '';
 my @configs = ();
+my @argv = ();
 my $separator = "\n";
 my $rundir = File::Spec->catdir($root, 'run', 'squashmount');
 my $titleopt;
@@ -2043,7 +2280,7 @@ sub first_create {
 	&clean_directory($dir)
 }
 
-# Chmod and chown according to mountpoint defaults
+# Chmod and chown according to mount-point defaults
 
 sub set_permissions {
 	my ($squashfile) = @_;
@@ -2474,12 +2711,15 @@ sub kernelprobe {
 	our $processors = '';
 	our $mem = '';
 	our $modprobe_squash = 1;
-	our $locking;
+	our $locking = undef;
 	our $overlayfs = '';
 	our @order = ();
 	our @mounts = ();
 	our @umount = ();
 	our @umount_ro = ();
+	our $command = undef;
+	our $query = undef;
+	our $rundir = undef;
 }
 
 sub read_config_file {
@@ -2508,6 +2748,9 @@ sub read_config_file {
 	our @mounts;
 	our @umount;
 	our @umount_ro;
+	our $command;
+	our @query;
+	our $rundir;
 	sub standard_mount($$@) {
 		my ($tag, $dir, @rest) = @_;
 		unless(defined($tag) && (ref(\$tag) eq 'SCALAR') && ($tag ne '')) {
@@ -2547,10 +2790,20 @@ sub read_config_file {
 		}
 		return $a
 	}
-	unless(my $ret = do($file)) {
-		die "error parsing $file: $@\nstopped" if($@);
-		die "error running $file\nstopped" if(defined($ret) && !$ret)
+	my $ret = do($file);
+	return 1 if($ret // '');
+	if($@) {
+		my $err = $@;
+		&main::fatal('failed to parse ' . $file . ':', $err)
 	}
+	unless(defined($ret)) {
+		my $err = $!;
+		&main::fatal('failed to read ' . $file . ':', $err)
+	}
+	&main::warning('failed to run ' . $file,
+		'perhaps the last executed command was not a true expression')
+		unless ($ret);
+	''
 }
 
 # Read settings from /run/squashmount:
@@ -2565,7 +2818,7 @@ sub read_settings {
 		{
 			package RUNCFG;
 			our %data = ();
-			do($file);
+			do($file)
 		}
 		close($fh) unless(&end_locking());
 		%$current = %RUNCFG::data
@@ -3440,6 +3693,7 @@ GetOptions(
 	'config|c=s', \@configs,
 	'umount|u=s', \@CFG::umount,
 	'umount-ro|U=s', \@CFG::umount_ro,
+	'arg|a=s', \@argv,
 	'rundir=s', \$rundir,
 	'separator|S=s', \$separator,
 	'interactice|i', \$interactive,
@@ -3499,71 +3753,97 @@ $titleopt = undef if(($titleopt =~ m{-}) || !$stdoutterm);
 my $action = (shift(@ARGV) // '');
 {
 	my $order_needed = '';
+	my $cmd = undef;
 	$run_ro = '';
 	if($action =~ m{^p}i) {
 		$run_ro = 1;
 		if($action =~ m{tag}i) {
+			$cmd = 'print-tag';
 			$action = \&cmd_print_tag
 		} elsif($action =~ m{dir}i) {
+			$cmd = 'print-dir';
 			$action = \&cmd_print_dir
 		} elsif($action =~ m{chan}i) {
+			$cmd = 'print-changes';
 			$action = \&cmd_print_changes
 		} elsif($action =~ m{wor}i) {
+			$cmd = 'print-workdir';
 			$action = \&cmd_print_workdir
 		} elsif($action =~ m{read|ro}i) {
+			$cmd = 'print-readonly';
 			$action = \&cmd_print_readonly
 		} elsif($action =~ m{fil}i) {
+			$cmd = 'print-file';
 			$action = \&cmd_print_file
 		} elsif($action =~ m{typ}i) {
+			$cmd = 'print-type';
 			$action = \&cmd_print_type
 		} elsif($action =~ m{new|mod}i) {
+			$cmd = 'print-new';
 			$action = \&cmd_print_new
 		} elsif($action =~ m{will|sq|comp}i) {
+			$cmd = 'print-will_squash';
 			$action = \&cmd_print_will_squash
 		} elsif($action =~ m{thr}i) {
+			$cmd = 'print-threashold';
 			$action = \&cmd_print_threshold
 		} elsif($action =~ m{kil}i) {
+			$cmd = 'print-kill';
 			$action = \&cmd_print_kill
 		}
-	} elsif($action =~ m{^(stat|l)}i) {
+	} elsif($action =~ m{^(?:stat|l)}i) {
+		$cmd = 'status';
 		$run_ro = 1;
 		$action = \&cmd_status
 	} elsif($action =~ m{^mo}i) {
+		$cmd = 'mount';
 		$order_needed = 1;
 		$action = \&cmd_mount
 	} elsif($action =~ m{^star}i) {
+		$cmd = 'start';
 		$order_needed = 1;
 		$fatalreturn = 1 unless(defined($fatalreturn));
 		$action = \&cmd_start
 	} elsif($action =~ m{^cr}i) {
+		$cmd = 'create';
 		$action = \&cmd_create
 	} elsif($action =~ m{^ch}i) {
+		$cmd = 'check';
 		$run_ro = 1;
 		$lazy = '' unless(defined($lazy));
 		$action = \&cmd_check
 	} elsif($action =~ m{set}i) {
 		if($action =~ m{[ur]}i) {
+			$cmd = 'reset';
 			$action = \&cmd_reset
 		} else {
+			$cmd = 'set';
 			$action = \&cmd_set
 		}
 	} elsif($action =~ m{^u}i) {
+		$cmd = 'umount';
 		$action = \&cmd_umount
 	} elsif($action =~ m{^sto}i) {
+		$cmd = 'stop';
 		$fatalreturn = 1 unless(defined($fatalreturn));
 		$action = \&cmd_stop
 	} elsif($action =~ m{^rem}i) {
+		$cmd = 'remount';
 		$order_needed = 1;
 		$action = \&cmd_remount
 	} elsif($action =~ m{^rest}i) {
+		$cmd = 'restart';
 		$fatalreturn = 1 unless(defined($fatalreturn));
 		$order_needed = 1;
 		$action = \&cmd_restart
 	} elsif($action =~ m{^for}i) {
+		$cmd = 'forget';
 		$action = \&cmd_forget
 	} elsif($action =~ m{^m}i) {
+		# $cmd = 'man';
 		pod2usage(-verbose => 2)
 	} elsif($action =~ m{^[h\?]}i) {
+		# $cmd = 'help';
 		pod2usage(0)
 	}
 	pod2usage(2) unless(ref($action) eq 'CODE');
@@ -3573,13 +3853,27 @@ my $action = (shift(@ARGV) // '');
 	$run_ro = '' if($force || $ignore_state);
 	$CFG::locking = !$run_ro;
 	@CFG::order = qw(overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)
-		if($order_needed)
+		if($order_needed);
+
+	$CFG::query = $run_ro;
+
+	&fatal('internal error: undefined $cmd. Please report a bug')
+		unless(defined($cmd));
+	$CFG::command = $cmd
 }
+
+# Make sure that /run/squashmount exists (unless we have $run_ro):
+
+&make_directory($rundir) unless($run_ro || (-d $rundir));
+$CFG::rundir = $rundir;
 
 # Read config files:
 
-for my $file (@configs) {
-	&read_config_file($file)
+{
+	local @ARGV = @argv;
+	for my $file (@configs) {
+		&read_config_file($file)
+	}
 }
 
 # Modify options according to config:
@@ -3691,10 +3985,6 @@ if($pass_dir) {
 		exit(0)
 	}
 }
-
-# Make sure that /run/squashmount exists (unless we have $run_ro)
-
-&make_directory($rundir) unless($run_ro || (-d $rundir));
 
 # Finally, the main loop over the @mounts or %pass_dir entries:
 
