@@ -52,7 +52,7 @@ my $hostname = ($ENV{'HOSTNAME'} // hostname());
 # Normally, this is not needed.
 # $lazy = '';
 # $squash_verbose = '';
-# $locking = 1; # lock always, even for status and print-* commands
+# $locking = 1; # lock always, even if it appears unnecessary
 # $modprobe_squash = '';
 
 # Do not override the default of $squashmount_quiet for a flexible config.
@@ -217,18 +217,24 @@ my $non_binary = {
 );
 
 
-# Now we give an example of a mount-point "cd" which is only available
-# if some argument was passed with the option
-# --arg=something (or -a something).
+# Now we give an example of a mount-point "custom" which is only available
+# if a corresponding path to a squash file was passed with the option
+# --arg=file (or -a file).
 
-# We load a perl module for system independent filename handling later on.
-# (This needs to be done only once.)
-use File::Spec;
+# This is the "luxury" variant of the code described with "squashmount man".
 
-# We use the variable "$cd" to indicate whether the mount-point is visible.
+# We use the variable "$customn" to indicate whether the mount-point is visible.
 # By default, it is only visible if an option was passed with --arg:
 
-my $cd = @ARGV;
+my $custom = @ARGV;
+my $file = undef;
+if($custom) {
+	$file = pop(@ARGV);
+	fatal("argument '$file' of --args is not a file") unless(-f $file);
+
+	# If B<--args> was provided once, store it for later usage
+	$locking = $storing = 1 # don't set $storing without $locking!
+}
 
 # The following is important:
 # The mount-point should always be visible if there is data stored for it
@@ -238,33 +244,64 @@ my $cd = @ARGV;
 # This also has the nice side effect that the mount-point will appear
 # with "squashmount list", once it is mounted.
 
-$cd ||= (-e File::Spec->catfile($rundir, 'cd'));
+$custom ||= have_stored_data('custom');
 
-# A less compatible but shorter way for the above would be:
-# $cd ||= (-e "$rundir/cd");
+# Uncomment, if you want to hide "custom" only for "squashmount start":
+# $custom ||= ($command ne 'start');
 
-# Uncomment, if you want to hide "cd" only for "squashmount start":
-# $cd ||= ($command ne 'start');
-
-# Uncomment, if you want to make "cd" visibleto all query commands like
+# Uncomment, if you want to make "custom" visible to all query commands like
 # "squashmount list" or "squashmount print-...":
-# $cd ||= $query;
+# $custom ||= $query;
 
-# Finally, we make the mount-point available if $cd is true (1).
+# We use a callback function to store/restore $file:
+
+$before = sub {
+	# These are the 3 parameters provided to callback functions:
+	my ($mountpoint, $store, $config) = @_;
+
+	# Handle only that mount-point which is of interest for us:
+	return 1 unless($mountpoint eq 'custom');
+
+	my $stored = $store->{FILE};
+
+	if(defined($stored)) {
+		if(defined($file) && ($stored ne $file)) {
+			error("stored path $stored",
+			"differs from --arg $file",
+			'Use "squashmount stop|forget custom"');
+			# We return a false value to skip the action:
+			return ''
+		}
+	} else {
+		# Store $file for future usage:
+		$store->{FILE} = $stored = $file
+	}
+	# Note that $stored is undefined here if no data was stored and
+	# if no --arg argument was provided
+
+	# Use the stored value as the configuration value for FILE
+	# (provided $stored is defined; if it undefined do not touch anything)
+	$config->{FILE} = $stored if(defined($stored));
+
+	1 # return a true value!
+};
+
+# Finally, we make the mount-point available if $custom is true
 
 push(@mounts, # append the following to @mounts:
 
-# In this example, we use /var/cd as DIR,
-# /var/cd.mount/{readonly,changes,workdir} as READONLY,CHANGES,WORKDIR,
-# repectively, and /media/cd/file.sfs as FILE.
+# In this example, we use /var/custom as DIR, and
+# /var/custom.mount/{readonly,changes,workdir} as READONLY,CHANGES,WORKDIR.
 # Since almost everything is the setting of "standard_mount", we only
 # need to override FILE:
-	standard_mount('cd', '/var/cd', {
-		FILE => '/media/cd/file.sfs'
+	standard_mount('custom', '/var/custom', {
+		# if $file is undefined, we use some "dummy" path instead
+		# (it should be an absolute path to avoid error messages)
+		FILE => ($file // '/default.sfs')
 	})
 # now we finish the above push command, indicating that this push command
-# should be executed only if $cd is true:
-) if($cd);
+# should be executed only if $custom is true:
+) if($custom);
 
 
 1;# The last executed command in this file should be a true expression

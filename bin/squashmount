@@ -2,26 +2,26 @@
 use strict;
 use warnings;
 use integer;
-use Cwd 'abs_path';
-use Pod::Usage;
-use Getopt::Long;
-use Fcntl qw(:flock SEEK_SET);
-use File::Compare;
-use File::Copy;
-use File::Find;
-use File::Path qw(make_path remove_tree);
-use File::Spec;
-use File::Temp qw();
-# use File::Which; # not mandatory but recommended; there are fallbacks
-# use Term::ANSIColor; # not mandatory but recommended: fallback to no color
-# use IO::Uncompress::Gunzip qw(gunzip); # if not available, flag ?/?? is ignored
+use Cwd ();
+use Pod::Usage ();
+use Getopt::Long ();
+use Fcntl ();
+use File::Compare ();
+use File::Copy ();
+use File::Find ();
+use File::Path ();
+use File::Spec ();
+use File::Temp ();
+# use File::Which (); # not mandatory but recommended; there are fallbacks
+# use Term::ANSIColor (); # not mandatory but recommended: fallback to no color
+# use IO::Uncompress::Gunzip (); # if not available, flag ?/?? is ignored
 
 $|=1;
 
 my $name = 'squashmount';
 
 sub version {
-	print("$name 8.0\n");
+	print("$name 8.1\n");
 	exit(0)
 }
 
@@ -607,7 +607,7 @@ Use perl's flock() to avoid simulatenous usage of the same mount-point.
 This is the opposite of B<--locking>.
 Whether B<--locking> or B<--no-locking> is the default depends on the
 variable B<$locking> in F</etc/squashmount.pl> (the default in the latter
-is true except if some of the commands B<status> or B<print-*> is used.)
+is true except if it is clear that no writing will be required.)
 
 =item B<--threshold=>I<size> or B<-t> I<size>
 
@@ -728,8 +728,9 @@ B<$processors>, B<$mem> can specify the default values
 if the corresponding options are not passed.
 
 For advanced configuration, you can access the variables B<@ARGV>, B<$command>,
-B<$query>, and B<$rundir> which are explained in the section
-B<ADVANCED CONFIGURATION>.
+B<$storing>, and you can set callback functions/function arrays B<$before>,
+B<$after> which are explained in the section B<ADVANCED CONFIGURATION>.
+There also some auxiliary perl functions available which are eplained later on.
 
 Here is an example for this file.
 (You can use this syntax if you do not have much knowledge about perl;
@@ -925,8 +926,8 @@ the series of reboots is finished.
 =item B<$locking>
 
 This determines whether B<--locking> or B<--no-locking> is the default.
-This variable defaults to the value B<''> (I<false>) when the commands
-B<status> or B<print-*> are used; for all other commands it defaults to
+This variable defaults to the value B<''> (I<false>) when query commands
+like B<status> or B<print-*> are used; for all other commands it defaults to
 B<1> (I<true>).
 
 =item B<$obsolete_overlayfs>
@@ -1607,6 +1608,14 @@ to the configuration file with B<-a> I<argument> (or B<--arg=>I<argument>):
 Arguments passed this way are collected in the array B<@ARGV> which can be
 accessed from within the configuration.
 
+You can use the functions B<info>()>, B<warning>(), B<error>()>, B<errorinfo>(),
+and B<fatal>() to output information to the user: All of these functions
+take arbitrary many arguments, each argument is output into a separate line
+(somewhat formatted according to the context).
+The function B<fatal>() also finishes B<squashmount> with exit status B<1>;
+the difference between B<error>() and B<errorinfo>() is that the latter
+does not output the text "error".
+
 However, some care has to be taken. For instance, even if you want to hide
 certain mount-points from B<squashmount start> (or maybe also from
 B<squashmount mount>) for "normal" usage, you will probably not want to
@@ -1621,9 +1630,10 @@ the command B<list> appears as B<status>.
 
 Special care has to be taken with "variable data" (that is, with data
 in mount-points which may differ for different calls of B<squashmount>):
-In many occassions, B<squashmount> will store the effective data in
-B<$rundir>, and once this has happened, the stored path usually overrides the
-paths from the configuration file. This is almost always what you want:
+In many occassions, B<squashmount> will store the effective data for later
+calls of B<squashmount>, and once this has happened, the stored data usually
+overrides the paths from the configuration file.
+This is almost always what you want:
 
 Suppose that you have a mount-point with a "variable data" B<DIR>.
 If B<DIR> was F</foo/bar> in the moment when B<squash start> is called,
@@ -1633,68 +1643,50 @@ need to remember that B<DIR> to umount the correct directories.
 However, this can also be undesired: Once you umounted this directory,
 also the next mount will access the same path, that is, you cannot really
 have a "variable" B<DIR> using successively different paths.
-A "workaround" for this problem is to use B<squashmount forget>
-(or to remove the file named after a mount-point from B<$squashdir>).
+A "workaround" for this problem is to use B<squashmount stop>
+(or B<squashmount forget>) or to override the corresponding data
+in a callback function (see below).
 
-It is explicitly not specified precisely which data is stored in B<$rundir>
+It is explicitly not specified precisely which data is stored, how and
 and when: This might change in future versions of B<squashmount>,
-so do not rely on anything. There are only two things you can rely on
-concering stored data:
+so do not rely on anything.
 
-(1) B<squashmount forget> will forget any data stored in B<$rundir>
-(for the mount-point)
+The only thing you can rely on in this connection is that data is only stored
+if B<$storing> is true: The variable B<$storing> defaults to the same value
+as B<$locking>.
 
-(2) All query commands (currently, these are B<print-*>, B<status>/B<list>,
-and B<check>) do not store any data in B<$rundir>.
+It is possible to change the variable B<$storing> in the configuration file.
+If you do this, you should probably also change the value of B<$locking>
+correspodingly. While it is usually not a problem if you set B<$storing>
+and B<$locking> to a true value, you will hardly ever have a reason to set
+B<$storing> to a false value. For instance, for B<squashmount mount>,
+this would mean that B<squashmount> would not store the information
+that the mount-points are now mounted, and so a subsequent
+B<squashmount umount> would then fail.
 
-The configuration can easily check whether B<$command> is such a query command
-as in (2): The perl variable B<$query> is B<1> in this case
-(otherwise B<$query> is the empty string).
-
-If you want to store "variable data" which is not automatically stored for
-later usage, you can do this in a file in the directory B<$rundir>:
-This is B</var/run/squashmount> (or the value passed with B<--rundir>),
-and this directory exists when the configuration file is parsed
-(unless a query command is used, that is, unless B<$query> is B<1>).
-You can use any filename in B<$rundir> with the exceptions of the names
-of mount-points: The latter files are used by B<squashmount> internally
-and should not be touched. The format of these files is intentionally not
-fully documented, since it may be different in future versions of
-B<squashmount>. There are only a few things you can rely on
-concerning B<$rundir>:
-
-(1) B<squashmount forget> (or B<squashmount stop>) will remove the file
-in B<$rundir> named after the corresponding mount-point(s).
-
-(2) Conversely, if you remove a file from B<$rundir> named after a mount-point,
-the effect will be as if B<squashmount --force forget> has been called in
-advance for that mount-point. Do not do this, unless you know
-what you are doing!
-
-(3) If you define a hash name B<%data>, you can evaluate (in perl) the content
-of the file from B<$rundir> named after a mount-point, and this will fill
-the hash B<%data> with the information stored for that mount-point.
-Thus, to fill the B<%data> hash, you can use the code
+It is admissible (and recommended for conditional mount-points) to check
+whether there is any data stored for a certain mount-point.
+A function is provided to do this cleanly:
 
 =over 8
 
-=item our %data; { package RUNCFG; our %data = (); do($file) }
+=item B<have_stored_data(>I<name of mount-point>B<)>
 
 =back
 
-However, it is recommended to do (3) only in very exceptional cases if
-there is no other way to do what you want. If you need to do this, because
-some feature is missing in B<squashmount>, better file a bug report and
-request for that feature.
+will return true (B<1>) or false B<('')> depending on whether B<squashmount>
+has data stored for that mountpoint.
+It is recommended to use only this function and the callback
+mechanisms described later on when you want to know something about
+the data stored by B<squashmount>.
 
-Here is an example which generates a mount-point from a squashfile or a cd
-only if the option B<-a -c> or B<--arg=--cd> is passed to B<squashmount>.
+Here is an example which generates a mount-point from a squashfile of a CD
+(from a fixed path) only if the option B<-a -c> or B<--arg=--cd> is passed
+to B<squashmount>.
 
 =over 8
 
-=item use File::Spec; # We will use system-independent filename handling
-
-=item my $cd = ''; We set $cd = 1 if the mount-point is available
+=item my $cd = ''; # We set $cd = 1 if the mount-point is available
 
 =back
 
@@ -1706,7 +1698,7 @@ only if the option B<-a -c> or B<--arg=--cd> is passed to B<squashmount>.
 
 =item # B<@ARGV> can be treated with usual perl tools.)
 
-=item use Getopt::Long; GetOptions('cd|c', \$cd);
+=item Getopt::Long::GetOptions('cd|c', \$cd);
 
 =back
 
@@ -1714,7 +1706,7 @@ only if the option B<-a -c> or B<--arg=--cd> is passed to B<squashmount>.
 
 =item # The following is important: Make the mount-point available
 
-=item # whenever squashmount data is stored for it in B<$rundir>.
+=item # whenever squashmount has data stored for it.
 
 =item # Thus, the mount-point 'cd' is recognized once it is mounted,
 
@@ -1724,21 +1716,15 @@ only if the option B<-a -c> or B<--arg=--cd> is passed to B<squashmount>.
 
 =item # it will also shut down the mount-point 'cd' properly.
 
-=item $cd ||= (-e File::Spec->catfile($rundir, 'cd'));
+=item $cd ||= have_stored_data('cd');
 
 =back
 
 =over 8
 
-=item # Instead of File::Spec, we could also have used:
+=item # Finally, we (conditionally) add the mount-point to @mounts,
 
-=item # $cd || = (-e "$rundir/cd");
-
-=back
-
-=over 8
-
-=item # Finally, we (conditionally) add the mount-point to @mounts:
+=item # using "standard" paths except for B<FILE>:
 
 =item push(@mounts, standard_mount('cd', '/var/cd', {
 
@@ -1759,6 +1745,133 @@ only if the option B<-a -c> or B<--arg=--cd> is passed to B<squashmount>.
 =item 1;# The last executed command should be a true expression
 
 =back
+
+The callback mechanism mentioned earlier consists in setting the
+variables B<$before> and/or B<$after> to a function or a reference
+to an array of functions, respectively.
+These functions are called for each mount-point immediately before/after
+B<squashmount> executes its main task (specified by B<$command>).
+
+These functions are called with three parameters: The name of the mount-point
+(a string), a reference to the hash containing the "stored" data,
+and a reference to a hash containing the "configuration" data for that
+mount-point. These functions should always return B<1> (unless you want
+to indicate an error with a special functionality, see below).
+Note that the "stored" data usually overrides the "configuration" data.
+
+You can not only read these hashes but also modify them: Modifying data in
+a function from B<$before> can influence of course also the behaviour of the
+subsequent main task, while modifying the hash of "stored" data in a function
+from B<$after> only influences what will be stored later for later calls of
+B<squashmount>. You can add new keys to the hash of "stored" data, but the
+values must be very simple: Only strings (or numericals) are admissible.
+
+The modified data is only stored if B<$soring> is true. Changing
+the value of B<$storing> in any of the callback functions is not admissible:
+If you want to change B<$storing> (and then probably also B<$locking>)
+you must do this only when the configuration file is parsed.
+
+Note that the functions B<$before> and B<$after> must return a value, and
+this value should usually be true (e.g. B<1>): If a function from B<$before>
+does not return true, then no further function from B<$before> is executed,
+and also the main action of B<squashmount> is not executed for that mount-point
+and considered to be failed. If a function from B<$after> does not return
+true, then no further function from B<$after> is executed, and
+B<squashmount> will not store any data for that mount-point.
+Be aware that the latter means that you can run into the same problems
+as if you set B<$storing> to a false value: If B<squashmount> just mounted
+a mount-point, it will not "know" that it did this afterwards, if the
+data is not stored!
+
+In the functions from B<$after>, you should not add/modify any data to the
+hash of "stored" data if B<$command> is B<forget> or B<stop>:
+Otherwise, the data is stored, as required by you, and so the above mentioned
+function B<have_stored_data> will return a true value, contradicting the
+documented behaviour of B<forget> and B<stop>!
+
+Here is an example which is more advanced than the previous one:
+With this example, you can specify the path of the squashfile by
+calling B<squashmount> with the arguments B<-a> I<path> or B<--args=>I<path>.
+When mounted, this path will be stored for later usage, until the setting
+is forgotten with B<squashmount stop> or B<squashmount forget>.
+The mount-point is only visible if either the argument B<-a> is used or if
+the path is already stored.
+
+=over 8
+
+=item my $cd = @ARGV;
+
+=item my $file = '/default.sfs';
+
+=item if($cd) {
+
+=over 16
+
+=item (-f ($file = pop(@ARGV))) or
+
+=item fatal("argument '$file' of --args is not a file");
+
+=item # If --args was provided once, store it for later usage
+
+=item $locking = $storing = 1 # don't set $storing without $locking!
+
+=back
+
+=item }
+
+=item # The following is important (see previous example)
+
+=item $cd ||= have_stored_data('cd');
+
+=item # We use a callback function to store/restore $file:
+
+=item $before = sub {
+
+=over 16
+
+=item my ($mountpoint, $store, $config) = @_;
+
+=item return 1 unless($mountpoint eq 'cd');
+
+=item # Store $file only if not already done: Do not allow modification!
+
+=item $config->{FILE} = ($store->{FILE} //= $file);
+
+=item 1 # return a true value!
+
+=back
+
+=item };
+
+=item # Make the mount-point conditionally available (see previous example)
+
+=item push(@mounts,
+
+=over 16
+
+=item standard_mount('cd', '/var/cd', {
+
+=over 24
+
+=item FILE => $file;
+
+=back
+
+=item })
+
+=back
+
+=item ) if($cd);
+
+=item 1;
+
+=back
+
+In the above code, the value of B<--arg> is ignored if it is already stored.
+This is intentional, since it may be dangerous to change the path of FILE
+while it is mounted. A more luxury variant of the above code would also
+print a warning if the user attempts to use different values for B<--arg>
+without calling B<squashmount stop> (or B<squashmount forget>) in between.
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -2174,7 +2287,7 @@ sub umount_main {
 				$squashfile . $backup);
 			&info("$squashfile -> $file") unless($quiet);
 			unlink($file);
-			unless(move($squashfile, $file)) {
+			unless(File::Copy::move($squashfile, $file)) {
 				&error("failed moving $squashfile to $file");
 				return ''
 			}
@@ -2184,7 +2297,7 @@ sub umount_main {
 			unless($quiet);
 		unlink($squashfile);
 		$tempfile->unlink_on_destroy('');
-		unless(move($tempfile->filename, $squashfile)) {
+		unless(File::Copy::move($tempfile->filename, $squashfile)) {
 			&error("failed moving tempfile to $squashfile");
 			return ''
 		}
@@ -2660,8 +2773,7 @@ sub my_modprobe {
 sub use_gunzip {
 	return $gunzip if(defined($gunzip));
 	eval {
-		require IO::Uncompress::Gunzip;
-		IO::Uncompress::Gunzip->import(qw(gunzip))
+		require IO::Uncompress::Gunzip
 	};
 	$gunzip = scalar($@)
 }}
@@ -2672,7 +2784,7 @@ sub use_gunzip {
 sub read_kernel_config {
 	my ($gz) = @_;
 	my $buffer;
-	return '' unless(gunzip('/proc/config.gz' => \$buffer));
+	return '' unless(IO::Uncompress::Gunzip::gunzip('/proc/config.gz' => \$buffer));
 	$gz->{'overlayfs'} = 1 if($buffer =~ m{^CONFIG_OVERLAYFS_FS}m);
 	$gz->{'aufs'} = 1 if($buffer =~ m{^CONFIG_AUFS_FS}m);
 	$gz->{'unionfs'} = 1 if($buffer =~ m{^CONFIG_UNION_?FS}m);
@@ -2699,6 +2811,17 @@ sub kernelprobe {
 	$gz->{$module} // ''
 }}
 
+# Auxiliary function to import functions in configuration file:
+
+sub import_functions {
+	my $pkg = shift();
+	for my $i (@_) {
+		no strict 'refs';
+		no warnings 'once';
+		*{"${pkg}::$i"} = \&{"main::$i"}
+	}
+}
+
 # The main function to read a configuration file:
 
 # The default config must be parsed before the function
@@ -2718,8 +2841,9 @@ sub kernelprobe {
 	our @umount = ();
 	our @umount_ro = ();
 	our $command = undef;
-	our $query = undef;
-	our $rundir = undef;
+	our $storing = undef;
+	our $before = undef;
+	our $after = undef;
 }
 
 sub read_config_file {
@@ -2749,61 +2873,74 @@ sub read_config_file {
 	our @umount;
 	our @umount_ro;
 	our $command;
-	our @query;
-	our $rundir;
-	sub standard_mount($$@) {
-		my ($tag, $dir, @rest) = @_;
-		unless(defined($tag) && (ref(\$tag) eq 'SCALAR') && ($tag ne '')) {
-			print(STDERR 'error: first argument of &standard_mount() should be a (nonempty) tag', "\n");
-			exit(2)
-		}
-		# Checking for -d $dir might be wrong: the config might use
-		# this as a flag and not add the result to @mounts later on
-		unless(defined($dir) && (ref(\$dir) eq 'SCALAR') && ($dir ne '')) {
-			print(STDERR 'error: second argument of &standard_mount() should be a directory', "\n");
-			exit(2)
-		}
-		$dir = File::Spec->canonpath($dir);
-		return &added_hash({
-			TAG => $tag,
-			DIR => $dir,
-			CHANGES => File::Spec->catdir($dir . '.mount', 'changes'),
-			READONLY => File::Spec->catdir($dir . '.mount', 'readonly'),
-			WORKDIR => File::Spec->catdir($dir . '.mount', 'workdir'),
-			FILE => File::Spec->catfile($dir . '.mount',
-				((File::Spec->splitpath($dir))[2]) . '.sfs')
-		}, @rest)
-	}
-	sub added_hash(@) {
-		my $a = {};
-		for my $i (@_) {
-			unless(defined($i) && (ref($i) eq 'HASH')) {
-				print(STDERR
-					'warning: wrong argument in &added_hash() or &standard_mount():',
-					"\n", (' ' x 9),
-					'hash reference expected', "\n");
-				next
-			}
-			for my $j (keys(%$i)) {
-				$a->{$j} = $i->{$j}
-			}
-		}
-		return $a
-	}
+	our $storing;
+	our $before;
+	our $after;
+	&main::import_functions('CFG',
+		'have_stored_data',
+		'standard_mount',
+		'added_hash',
+		'fatal',
+		'error',
+		'errorinfo',
+		'warning',
+		'info'
+	);
 	my $ret = do($file);
 	return 1 if($ret // '');
 	if($@) {
 		my $err = $@;
-		&main::fatal('failed to parse ' . $file . ':', $err)
+		&fatal('failed to parse ' . $file . ':', $err)
 	}
 	unless(defined($ret)) {
 		my $err = $!;
-		&main::fatal('failed to read ' . $file . ':', $err)
+		&fatal('failed to read ' . $file . ':', $err)
 	}
-	&main::warning('failed to run ' . $file,
+	&warning('failed to run ' . $file,
 		'perhaps the last executed command was not a true expression')
 		unless ($ret);
 	''
+}
+
+# Functions exported to the config file
+
+sub have_stored_data($) {
+	(-e &settings_file($_[0]))
+}
+
+sub added_hash(@) {
+	my $a = {};
+	for my $i (@_) {
+		unless(defined($i) && (ref($i) eq 'HASH')) {
+			&warning('wrong argument in &added_hash() or &standard_mount():',
+				'hash reference expected');
+			next
+		}
+		for my $j (keys(%$i)) {
+			$a->{$j} = $i->{$j}
+		}
+	}
+	$a
+}
+
+sub standard_mount($$@) {
+	my ($tag, $dir, @rest) = @_;
+	&fatal('first argument of &standard_mount() should be a (nonempty) tag')
+		unless(defined($tag) && (ref(\$tag) eq 'SCALAR') && ($tag ne ''));
+	# Checking for -d $dir might be wrong: the config might use
+	# this as a flag and not add the result to @mounts later on
+	&fatal('error: second argument of &standard_mount() should be a directory')
+		unless(defined($dir) && (ref(\$dir) eq 'SCALAR') && ($dir ne ''));
+	$dir = File::Spec->canonpath($dir);
+	&added_hash({
+		TAG => $tag,
+		DIR => $dir,
+		CHANGES => File::Spec->catdir($dir . '.mount', 'changes'),
+		READONLY => File::Spec->catdir($dir . '.mount', 'readonly'),
+		WORKDIR => File::Spec->catdir($dir . '.mount', 'workdir'),
+		FILE => File::Spec->catfile($dir . '.mount',
+			((File::Spec->splitpath($dir))[2]) . '.sfs')
+	}, @rest)
 }
 
 # Read settings from /run/squashmount:
@@ -2813,7 +2950,7 @@ sub read_settings {
 	if(open(my $fh, '<', $file)) {
 		if($locking) {
 			$lockfh = $fh; # unlock even if we die
-			flock($lockfh, LOCK_SH)
+			flock($lockfh, Fcntl::LOCK_SH())
 		}
 		{
 			package RUNCFG;
@@ -2834,7 +2971,7 @@ sub write_settings {
 	my $fh;
 	if(defined($lockfh)) {
 		$fh = $lockfh;
-		unless(seek($fh, 0, SEEK_SET)) {
+		unless(seek($fh, 0, Fcntl::SEEK_SET())) {
 			&error("cannot seek $file");
 			return ''
 		}
@@ -2849,7 +2986,7 @@ sub write_settings {
 		}
 		if($locking) {
 			$lockfh = $fh; # unlock even if we die
-			flock($lockfh, LOCK_EX)
+			flock($lockfh, Fcntl::LOCK_EX())
 		}
 	}
 	my $ret = 1;
@@ -2893,14 +3030,14 @@ sub start_locking {
 		$lockfh = undef;
 		return
 	}
-	flock($lockfh, LOCK_EX);
+	flock($lockfh, Fcntl::LOCK_EX());
 }
 
 # End locking in /run/squashmount. Return 1 if we had a lock
 
 sub end_locking {
 	return '' unless(defined($lockfh));
-	flock($lockfh, LOCK_UN);
+	flock($lockfh, Fcntl::LOCK_UN());
 	close($lockfh);
 	$lockfh = undef;
 	1
@@ -2920,7 +3057,7 @@ sub forget_settings {
 # Return the filename in /run/squashmount for the current tag
 
 sub settings_file {
-	File::Spec->catfile($rundir, $tag)
+	File::Spec->catfile($rundir, ($_[0] // $tag))
 }
 
 # Fill "global" variables according to options and $current state
@@ -3120,7 +3257,7 @@ sub is_resquash_type {
 sub is_workdir_type {
 	return 0 if(($CFG::obsolete_overlayfs // '') eq 'force');
 	my $type  = $current->{'TYPE'};
-	return '' unless(&is_nonempty($type ne ''));
+	return '' unless(&is_nonempty($type));
 	($type eq 'overlayfs') ? 1 : 0
 }
 
@@ -3179,7 +3316,7 @@ sub threshold_dir {
 		# if($type eq 'aufs');
 
 	my @compare = (); # postponed file content comparison...
-	find({
+	File::Find::find({
 		no_chdir => 1,
 		follow => '',
 		follow_fast => 1,
@@ -3233,7 +3370,7 @@ sub threshold_dir {
 	# also the content of files:
 	# If the files differ, they add to $to_find...
 	for my $i (@compare) {
-		next if(compare($i->[0], $i->[1]) == 0);
+		next if(File::Compare::compare($i->[0], $i->[1]) == 0);
 		$to_find -= $i->[2];
 		return 1 if($to_find < 0);
 		$found = 1
@@ -3283,7 +3420,7 @@ sub is_match {
 
 sub make_directory {
 	my ($dir) = @_;
-	make_path($dir, { error => \my $err });
+	File::Path::make_path($dir, { error => \my $err });
 	undef unless(&filepath_ok($err, 1))
 }
 
@@ -3299,14 +3436,15 @@ sub clean_directory {
 		}
 	}
 	&info("cleaning $dir") if($verbose);
-	remove_tree($dir, {
+	File::Path::remove_tree($dir, {
 		keep_root => 1,
 		error => \my $err
 	});
 	&filepath_ok($err, '')
 }
 
-# Handle the error of make_path or remove_tree. Return true if no error
+# Handle the error of File::Path::make_path or File::Path::remove_tree.
+# Return true if no error
 
 sub filepath_ok {
 	my ($err, $make_path) = @_;
@@ -3366,8 +3504,8 @@ sub output {
 	if(($opt_color //
 		($to_stderr ? ($stderrterm //= (-t STDERR)) : $stdoutterm))
 		&& &use_ansicolor()) {
-		$col = ($colorhash{$colorname} //= color($colorname));
-		$reset = ($resethash //= color('reset'))
+		$col = ($colorhash{$colorname} //= Term::ANSIColor::color($colorname));
+		$reset = ($resethash //= Term::ANSIColor::color('reset'))
 	}
 	my $first = '';
 	my $len = length($label);
@@ -3502,7 +3640,7 @@ sub which_store {
 sub my_which {
 	my ($command) = @_;
 	my $which = &which_which();
-	return which($command) if($which eq ':');
+	return File::Which::which($command) if($which eq ':');
 	return $command if($which eq '');
 	my $ret = `$which $command`;
 	chomp($ret) if(defined($ret));
@@ -3516,8 +3654,7 @@ sub my_which {
 sub which_which {
 	return $which if(defined($which));
 	eval {
-		require File::Which;
-		File::Which->import()
+		require File::Which
 	};
 	return ($which = ':') unless($@);
 	my $olderr;
@@ -3535,8 +3672,7 @@ sub which_which {
 sub use_ansicolor {
 	return $ansicolor if(defined($ansicolor));
 	eval {
-		require Term::ANSIColor;
-		Term::ANSIColor->import()
+		require Term::ANSIColor
 	};
 	$ansicolor = !$@
 }}
@@ -3615,6 +3751,22 @@ sub join_quoted {
 	join(' ', @r)
 }
 
+# Run hook functions from the configuration file:
+
+sub run_hook {
+	my ($value , $var) = @_;
+	return 1 unless(defined($value));
+	# Make a copy for arrays to allow callback functions modifiying array
+	for my $i ((ref($value) eq 'ARRAY') ? @$value : ($value)) {
+		if(ref($i) eq 'CODE') {
+			return '' unless(&{$i}($tag, $current, $user_config))
+		} else {
+			&warning("callback variable $var is not a function/array of functions")
+		}
+	}
+	1
+}
+
 # set $had_error and $exitstatus according to $errorbreak and $fatalreturn
 
 sub bad_status {
@@ -3655,7 +3807,7 @@ sub good_abs_path {
 sub bad_abs_path {
 	my ($f) = @_;
 	return undef unless(&is_nonempty($f));
-	$f = abs_path($f);
+	$f = Cwd::abs_path($f);
 	return undef unless(&is_nonempty($f));
 	$f = File::Spec->canonpath($f);
 	&is_abspath($f) ? $f : undef
@@ -3686,9 +3838,9 @@ sub cat_dir {
 # Parse Options:
 
 Getopt::Long::Configure(qw(bundling gnu_compat permute));
-GetOptions(
-	'help|h', sub { pod2usage(1) },
-	'man|?', sub { pod2usage(-verbose => 2) },
+Getopt::Long::GetOptions(
+	'help|h', sub { Pod::Usage::pod2usage(1) },
+	'man|?', sub { Pod::Usage::pod2usage(-verbose => 2) },
 	'version|V', \&version,
 	'config|c=s', \@configs,
 	'umount|u=s', \@CFG::umount,
@@ -3725,7 +3877,7 @@ GetOptions(
 	'first|1', \$firstmatch,
 	'verbose|v+', \$verbose,
 	'quiet|q+', \$quiet
-) or pod2usage(2);
+) or Pod::Usage::pod2usage(2);
 
 # Check options:
 
@@ -3841,31 +3993,24 @@ my $action = (shift(@ARGV) // '');
 		$action = \&cmd_forget
 	} elsif($action =~ m{^m}i) {
 		# $cmd = 'man';
-		pod2usage(-verbose => 2)
+		Pod::Usage::pod2usage(-verbose => 2)
 	} elsif($action =~ m{^[h\?]}i) {
 		# $cmd = 'help';
-		pod2usage(0)
+		Pod::Usage::pod2usage(0)
 	}
-	pod2usage(2) unless(ref($action) eq 'CODE');
+	Pod::Usage::pod2usage(2) unless(ref($action) eq 'CODE');
 	$fatalreturn = '' unless(defined($fatalreturn));
 	$star = 1 # !$run_ro # Use this to make --no-star the default for infos
 		unless(defined($star));
 	$run_ro = '' if($force || $ignore_state);
-	$CFG::locking = !$run_ro;
+	$CFG::storing = $CFG::locking = !$run_ro;
 	@CFG::order = qw(overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)
 		if($order_needed);
-
-	$CFG::query = $run_ro;
 
 	&fatal('internal error: undefined $cmd. Please report a bug')
 		unless(defined($cmd));
 	$CFG::command = $cmd
 }
-
-# Make sure that /run/squashmount exists (unless we have $run_ro):
-
-&make_directory($rundir) unless($run_ro || (-d $rundir));
-$CFG::rundir = $rundir;
 
 # Read config files:
 
@@ -3874,6 +4019,7 @@ $CFG::rundir = $rundir;
 	for my $file (@configs) {
 		&read_config_file($file)
 	}
+	$run_ro = !$CFG::storing
 }
 
 # Modify options according to config:
@@ -3986,6 +4132,10 @@ if($pass_dir) {
 	}
 }
 
+# Make sure that /run/squashmount exists (unless we have $run_ro)
+
+&make_directory($rundir) unless($run_ro || (-d $rundir));
+
 # Finally, the main loop over the @mounts or %pass_dir entries:
 
 for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
@@ -4002,8 +4152,9 @@ for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 	my %current_bak = %$current;
 	&fill_current();
 	&set_globals();
-	&bad_status() unless(&{$action}());
-	unless($run_ro) {
+	&bad_status() unless(&run_hook($CFG::before, '$before') &&
+		&{$action}());
+	if(&run_hook($CFG::after, '$after') && !$run_ro) {
 		unless(&remove_settings() || &hash_equal(\%current_bak, $current)) {
 			&bad_status() unless(&write_settings())
 		}
@@ -4014,4 +4165,7 @@ for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 exit($exitstatus);
 
 # Auxiliary functions which are convenient to have when debugging:
-sub print_arr { for my $i (@_) {print "'$i' "} print "\n" }
+
+sub print_arr {
+	print(join(' ', map("'$_'", @_)), "\n")
+}

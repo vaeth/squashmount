@@ -7,7 +7,7 @@ _arguments -C -s -S -A '-*' : \
 '(* -)'{'--version','-V'}'[print version and exit]' \
 '*'{'-v','--verbose'}'[be more verbose (accumulative)]' \
 '*'{'-q','--quiet'}'[be more quiet (accumulative)]' \
-{'*-a+','*--arg='}'[ARG (add user ARG)]:user arg:()' \
+{'*-a+','*--arg='}'[ARG (add user ARG)]:user arg:_files' \
 {'*-c+','*--config='}'[CONFIGFILE (add CONFIGFILE to list)]:configfile:_files' \
 {'*-u+','*--umount='}'[OPT (add OPT to umount DIR)]:umount option:("-r")' \
 {'*-U+','*--umount-ro='}'[OPT (add OPT to umount ro dir)]:umount option:("-r")' \

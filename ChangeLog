@@ -1,5 +1,18 @@
 # ChangeLog for squashmount
 
+*squashmount-8.1
+	Martin Väth <martin at mvath.de>:
+	- Remove $rundir and $query from advanced configuration, and expose
+	  less details than in 8.0 to ensure stability with future versions.
+	  Instead:
+	- Provide have_stored_data(mountpoint)
+	- Introduce callback functionality to store user-defined data
+	- Introduce $storing (with side effects! Change also $locking!)
+	- export output functions info, warning, error, errorinfo, fatal
+	  to configuration file (and use them for errors in that file)
+	- Full custom example with a "variable" custom FILE
+	- code cleanup: always use explicit package names, no imports
+
 *squashmount-8.0
 	Martin Väth <martin at mvath.de>:
 	- Add possibilities for advanced configuration like conditional
