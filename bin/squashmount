@@ -2,9 +2,10 @@
 use strict;
 use warnings;
 use integer;
-use Cwd ();
 use Pod::Usage ();
 use Getopt::Long ();
+use Cwd ();
+use Exporter qw(import);
 use Fcntl ();
 use File::Compare ();
 use File::Copy ();
@@ -18,10 +19,11 @@ use File::Temp ();
 
 $|=1;
 
+our $VERSION = '8.2';
 my $name = 'squashmount';
 
 sub version {
-	print("$name 8.1\n");
+	print("$name $VERSION\n");
 	exit(0)
 }
 
@@ -885,7 +887,7 @@ see the remarks at the end of this manpage.)
 
 =back
 
-=item 1;# The last executed command should be a true expression
+=item 'EOF';# The last executed command should be a true expression
 
 =back
 
@@ -1742,7 +1744,7 @@ to B<squashmount>.
 
 =item # If this is the end of the file, do not forget:
 
-=item 1;# The last executed command should be a true expression
+=item 'EOF';# The last executed command should be a true expression
 
 =back
 
@@ -2811,17 +2813,6 @@ sub kernelprobe {
 	$gz->{$module} // ''
 }}
 
-# Auxiliary function to import functions in configuration file:
-
-sub import_functions {
-	my $pkg = shift();
-	for my $i (@_) {
-		no strict 'refs';
-		no warnings 'once';
-		*{"${pkg}::$i"} = \&{"main::$i"}
-	}
-}
-
 # The main function to read a configuration file:
 
 # The default config must be parsed before the function
@@ -2845,6 +2836,17 @@ sub import_functions {
 	our $before = undef;
 	our $after = undef;
 }
+
+our @EXPORT = qw(
+	&have_stored_data
+	&standard_mount
+	&added_hash
+	&fatal
+	&error
+	&errorinfo
+	&warning
+	&info
+);
 
 sub read_config_file {
 	my ($file) = @_;
@@ -2876,16 +2878,7 @@ sub read_config_file {
 	our $storing;
 	our $before;
 	our $after;
-	&main::import_functions('CFG',
-		'have_stored_data',
-		'standard_mount',
-		'added_hash',
-		'fatal',
-		'error',
-		'errorinfo',
-		'warning',
-		'info'
-	);
+	main->import();
 	my $ret = do($file);
 	return 1 if($ret // '');
 	if($@) {
@@ -3182,7 +3175,7 @@ sub create_dir {
 sub create_dirname {
 	my $temp = (shift() // '');
 	if(ref($temp) eq 'CODE') {
-		$temp = &{$temp}($tag)
+		$temp = $temp->($tag)
 	}
 	if(ref($temp) eq 'File::Temp::Dir') {
 		$temp->unlink_on_destroy('');
@@ -3344,12 +3337,12 @@ sub threshold_dir {
 		}
 		if(defined($skipfunc) && (ref($skipfunc) eq 'CODE')) {
 			local($_);
-			return unless(&{$skipfunc}($path, $_, $readonlysub))
+			return unless($skipfunc->($path, $_, $readonlysub))
 		}
 		my $currfill = &is_match($path, $fill);
 		if((!$currfill) && defined($fillfunc) && (ref($fillfunc) eq 'CODE')) {
 			local($_);
-			$currfill = &{$fillfunc}($path, $_, $readonlysub)
+			$currfill = $fillfunc->($path, $_, $readonlysub)
 		}
 		$found = 1;
 		if($currfill) {
@@ -3717,7 +3710,7 @@ sub starts_with {
 	1
 }
 
-# If the first string in an array is empty, pop it.
+# If the first string in an array is empty, shift it
 
 sub shift_empty {
 	my ($a) = @_;
@@ -3759,7 +3752,7 @@ sub run_hook {
 	# Make a copy for arrays to allow callback functions modifiying array
 	for my $i ((ref($value) eq 'ARRAY') ? @$value : ($value)) {
 		if(ref($i) eq 'CODE') {
-			return '' unless(&{$i}($tag, $current, $user_config))
+			return '' unless($i->($tag, $current, $user_config))
 		} else {
 			&warning("callback variable $var is not a function/array of functions")
 		}
@@ -4153,7 +4146,7 @@ for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 	&fill_current();
 	&set_globals();
 	&bad_status() unless(&run_hook($CFG::before, '$before') &&
-		&{$action}());
+		$action->());
 	if(&run_hook($CFG::after, '$after') && !$run_ro) {
 		unless(&remove_settings() || &hash_equal(\%current_bak, $current)) {
 			&bad_status() unless(&write_settings())

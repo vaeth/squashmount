@@ -304,4 +304,4 @@ push(@mounts, # append the following to @mounts:
 ) if($custom);
 
 
-1;# The last executed command in this file should be a true expression
+'EOF';# The last executed command in this file should be a true expression

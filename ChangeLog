@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-8.2
+	Martin Väth <martin at mvath.de>:
+	- use Exporter instead of manual manipulation of symbol glob table
+	- more compatible indirect call syntax
+
 *squashmount-8.1
 	Martin Väth <martin at mvath.de>:
 	- Remove $rundir and $query from advanced configuration, and expose
