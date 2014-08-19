@@ -251,7 +251,7 @@ $custom ||= have_stored_data('custom');
 
 # Uncomment, if you want to make "custom" visible to all query commands like
 # "squashmount list" or "squashmount print-...":
-# $custom ||= $query;
+# $custom ||= $storing;
 
 # We use a callback function to store/restore $file:
 

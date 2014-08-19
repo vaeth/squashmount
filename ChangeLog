@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-8.3
+	Martin Väth <martin at mvath.de>:
+	- Fix some typos in manpage/examples introduced in 8.2
+	- Cosmetical code rearrangements
+
 *squashmount-8.2
 	Martin Väth <martin at mvath.de>:
 	- use Exporter instead of manual manipulation of symbol glob table

@@ -17,15 +17,7 @@ use File::Temp ();
 # use Term::ANSIColor (); # not mandatory but recommended: fallback to no color
 # use IO::Uncompress::Gunzip (); # if not available, flag ?/?? is ignored
 
-$|=1;
-
-our $VERSION = '8.2';
-my $name = 'squashmount';
-
-sub version {
-	print("$name $VERSION\n");
-	exit(0)
-}
+our $VERSION = '8.3';
 
 =head1 NAME
 
@@ -1610,7 +1602,7 @@ to the configuration file with B<-a> I<argument> (or B<--arg=>I<argument>):
 Arguments passed this way are collected in the array B<@ARGV> which can be
 accessed from within the configuration.
 
-You can use the functions B<info>()>, B<warning>(), B<error>()>, B<errorinfo>(),
+You can use the functions B<info>(), B<warning>(), B<error>(), B<errorinfo>(),
 and B<fatal>() to output information to the user: All of these functions
 take arbitrary many arguments, each argument is output into a separate line
 (somewhat formatted according to the context).
@@ -1625,7 +1617,7 @@ hide that mount-point from B<squashmount stop> (or maybe also not from
 B<squashmount umount>), since you probably want that the mount-point is
 umounted during shutdown.
 
-FOr this reason, you can see the currently used command in the perl variable
+For this reason, you can see the currently used command in the perl variable
 B<$command>. This variable constains the actual command (even if the user
 used a shortcut like B<l> instead of B<list> on the command line);
 the command B<list> appears as B<status>.
@@ -1649,8 +1641,8 @@ A "workaround" for this problem is to use B<squashmount stop>
 (or B<squashmount forget>) or to override the corresponding data
 in a callback function (see below).
 
-It is explicitly not specified precisely which data is stored, how and
-and when: This might change in future versions of B<squashmount>,
+It is explicitly not specified precisely which data is stored, how and when:
+This might change in future versions of B<squashmount>,
 so do not rely on anything.
 
 The only thing you can rely on in this connection is that data is only stored
@@ -1659,7 +1651,7 @@ as B<$locking>.
 
 It is possible to change the variable B<$storing> in the configuration file.
 If you do this, you should probably also change the value of B<$locking>
-correspodingly. While it is usually not a problem if you set B<$storing>
+correspondingly. While it is usually not a problem if you set B<$storing>
 and B<$locking> to a true value, you will hardly ever have a reason to set
 B<$storing> to a false value. For instance, for B<squashmount mount>,
 this would mean that B<squashmount> would not store the information
@@ -1764,7 +1756,7 @@ Note that the "stored" data usually overrides the "configuration" data.
 You can not only read these hashes but also modify them: Modifying data in
 a function from B<$before> can influence of course also the behaviour of the
 subsequent main task, while modifying the hash of "stored" data in a function
-from B<$after> only influences what will be stored later for later calls of
+from B<$after> only influences what will be stored for later calls of
 B<squashmount>. You can add new keys to the hash of "stored" data, but the
 values must be very simple: Only strings (or numericals) are admissible.
 
@@ -1855,7 +1847,7 @@ the path is already stored.
 
 =over 24
 
-=item FILE => $file;
+=item FILE => $file
 
 =back
 
@@ -1865,7 +1857,7 @@ the path is already stored.
 
 =item ) if($cd);
 
-=item 1;
+=item 'EOF';
 
 =back
 
@@ -1939,7 +1931,7 @@ my $modprobe_squash;    # will modprobe squash
 my $lockfh = undef;
 my $stdoutterm = (-t STDOUT); # whether stdout is a terminal
 my $stderrterm = undef; # whether stderr is a terminal
-my $know_quiet = undef; # whether mksquash contains -quiet
+my $know_quiet = undef; # whether mksquash accepts -quiet
 my $mksquash_symbols = undef;
 my $exitstatus = 0;
 my $had_error = '';
@@ -1954,6 +1946,7 @@ my $kill;               # currently active kill (boolean)
 my $backup;             # currently active backup (string)
 my $tempdir;            # currently active tempdir (string)
 my $compression;        # currently active compression (string)
+my $name = 'squashmount'; # name of the program (this is actually a constant)
 
 #
 # Commands
@@ -3824,6 +3817,11 @@ sub cat_dir {
 	File::Spec->catpath($vol, File::Spec->catdir(@_), $file)
 }
 
+sub version {
+	print("$name $VERSION\n");
+	exit(0)
+}
+
 #
 # Now the main program:
 #
@@ -4004,6 +4002,10 @@ my $action = (shift(@ARGV) // '');
 		unless(defined($cmd));
 	$CFG::command = $cmd
 }
+
+# Immadiate output without caching:
+
+$|=1;
 
 # Read config files:
 
