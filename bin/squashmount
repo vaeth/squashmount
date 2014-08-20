@@ -17,7 +17,7 @@ use File::Temp ();
 # use Term::ANSIColor (); # not mandatory but recommended: fallback to no color
 # use IO::Uncompress::Gunzip (); # if not available, flag ?/?? is ignored
 
-our $VERSION = '8.3';
+our $VERSION = '8.4';
 
 =head1 NAME
 
@@ -2631,8 +2631,14 @@ sub mksquashfs {
 		&error("no directory $dir");
 		return ''
 	}
-	my $redirect = &mksquashfs_options(\my @options);
 	&title("$tag squashing");
+	my @parent = &split_dir($squashfile);
+	pop(@parent);
+	my $parent = &cat_dir(@parent);
+	if(($parent ne '') && !(-d $parent)) {
+		return '' unless(&make_directory($parent))
+	}
+	my $redirect = &mksquashfs_options(\my @options);
 	my $oldout = undef;
 	my $ret = (&my_system($redirect, \$mksquashfs, 'mksquashfs', $dir, $squashfile, @options) == 0);
 	&error($verbose ? 'failed: ' . &join_quoted($mksquashfs, $dir, $squashfile, @options)
@@ -2831,14 +2837,14 @@ sub kernelprobe {
 }
 
 our @EXPORT = qw(
-	&have_stored_data
-	&standard_mount
-	&added_hash
-	&fatal
-	&error
-	&errorinfo
-	&warning
-	&info
+	have_stored_data
+	standard_mount
+	added_hash
+	fatal
+	error
+	errorinfo
+	warning
+	info
 );
 
 sub read_config_file {
@@ -3407,7 +3413,7 @@ sub is_match {
 sub make_directory {
 	my ($dir) = @_;
 	File::Path::make_path($dir, { error => \my $err });
-	undef unless(&filepath_ok($err, 1))
+	&filepath_ok($err, 1)
 }
 
 # Clean all files from a directory

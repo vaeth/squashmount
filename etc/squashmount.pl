@@ -13,10 +13,9 @@
 #
 # Use "squashmount man" for further details and a full list of options
 # (only a few are used in this file).
-print(STDERR "The default /etc/squashmount.pl is only an example config!
-It must be configured first for the mount-points you are actually using!
-See 'squashmount man' and the comments in that file for how to do this.\n");
-exit(1);
+fatal('The default /etc/squashmount.pl is only an example config!',
+'It must be configured first for the mount-points you want.',
+'see "squashmount man" and the comments in /etc/squashmount.pl');
 
 # Our configuration can depend on the hostname:
 

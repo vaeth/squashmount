@@ -1,5 +1,11 @@
 # ChangeLog for squashmount
 
+*squashmount-8.4
+	Martin Väth <martin at mvath.de>:
+	- Create parent directories before calling mksquashfs. This fixes
+	  "squashmount create" with standard_mount and nonexistent DIR.mount
+	- internal: omit & for function export
+
 *squashmount-8.3
 	Martin Väth <martin at mvath.de>:
 	- Fix some typos in manpage/examples introduced in 8.2
