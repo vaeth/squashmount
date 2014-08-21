@@ -17,7 +17,7 @@ use File::Temp ();
 # use Term::ANSIColor (); # not mandatory but recommended: fallback to no color
 # use IO::Uncompress::Gunzip (); # if not available, flag ?/?? is ignored
 
-our $VERSION = '8.4';
+our $VERSION = '8.5';
 
 =head1 NAME
 
@@ -1929,7 +1929,7 @@ my $modprobe = undef;
 my $run_ro;             # handle /run/squashmount as readonly
 my $modprobe_squash;    # will modprobe squash
 my $lockfh = undef;
-my $stdoutterm = (-t STDOUT); # whether stdout is a terminal
+my $stdoutterm = ((-t STDOUT) // ''); # whether stdout is a terminal
 my $stderrterm = undef; # whether stderr is a terminal
 my $know_quiet = undef; # whether mksquash accepts -quiet
 my $mksquash_symbols = undef;
@@ -2686,7 +2686,7 @@ sub calc_mksquash_symbols {
 				($stdoutterm && ($flags =~ m{\-})))
 		}
 		if($flags =~ m{[2\+]}) {
-			$stderrterm //= (-t STDERR);
+			$stderrterm //= ((-t STDERR) // '');
 			next if(((!$stderrterm) && ($flags =~ m{2})) ||
 				($stderrterm && ($flags =~ m{\+})))
 		}
@@ -2897,7 +2897,7 @@ sub read_config_file {
 # Functions exported to the config file
 
 sub have_stored_data($) {
-	(-e &settings_file($_[0]))
+	(-e &settings_file($_[0])) // ''
 }
 
 sub added_hash(@) {
@@ -3150,7 +3150,11 @@ sub find_pass_dir {
 sub create_dir {
 	my ($i, $require_dir) = @_;
 	if(exists($current->{$i})) {
-		return (&is_abspath($current->{$i}) ? 1 : -1)
+		my $dir = $current->{$i};
+		return -1 unless(&is_abspath($dir));
+		return 1 if(-d $dir);
+		# $current->{$i} directory was removed (e.g. by the user).
+		# Recreate it, possibly generating a new tempdir...
 	}
 	my $dir = &create_dirname($user_config->{$i});
 	unless(&is_nonempty($dir)) {
@@ -3493,8 +3497,8 @@ sub output {
 	$label //= '';
 	my $col = '';
 	my $reset = '';
-	if(($opt_color //
-		($to_stderr ? ($stderrterm //= (-t STDERR)) : $stdoutterm))
+	if(($opt_color // ($to_stderr ?
+		($stderrterm //= ((-t STDERR) // '')) : $stdoutterm))
 		&& &use_ansicolor()) {
 		$col = ($colorhash{$colorname} //= Term::ANSIColor::color($colorname));
 		$reset = ($resethash //= Term::ANSIColor::color('reset'))
