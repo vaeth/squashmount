@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-8.6
+	Martin Väth <martin at mvath.de>:
+	- Fix IO::Uncompress::Gunzip handling (regression from squashmount-7.6)
+	- Treat nonexistent IO::Uncompress::Gunzip like unreadable config
+
 *squashmount-8.5
 	Martin Väth <martin at mvath.de>:
 	- Be graceful if stored directories are removed: Recreate from scratch

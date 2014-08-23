@@ -17,7 +17,7 @@ use File::Temp ();
 # use Term::ANSIColor (); # not mandatory but recommended: fallback to no color
 # use IO::Uncompress::Gunzip (); # if not available, flag ?/?? is ignored
 
-our $VERSION = '8.5';
+our $VERSION = '8.6';
 
 =head1 NAME
 
@@ -1021,10 +1021,9 @@ If this flag is used and the B<modprobe> failed (or if combined with B<!!>)
 the content of B</proc/config.gz> is checked for whether the corresponding tool
 appears available in the running linux kernel.
 If the tool appears unavailable it is tacitly skipped.
-For the case that B</proc/config.gz> cannot be read and the B<??> variant
-is used, the tool is considered as unavailable.
-Usage of this flag requires that the perl module B<IO::Uncompress::Gunzip>
-is available; the flag is tacitly ignored if this is not the case
+For the case that B</proc/config.gz> cannot be read (including the case
+that the perl module B<IO::Uncompress::Gunzip> is unavailable) and the
+B<??> variant is used, the tool is considered as unavailable.
 
 =item B<#>
 
@@ -2776,7 +2775,7 @@ sub use_gunzip {
 	eval {
 		require IO::Uncompress::Gunzip
 	};
-	$gunzip = scalar($@)
+	$gunzip = !$@
 }}
 
 # Assuming that use_gunzip() has previously been called with success,
@@ -2808,8 +2807,7 @@ sub kernelprobe {
 			$gz = ''
 		}
 	}
-	return ((!$gz) || ($check_gz > 0)) if(ref($gz) eq '');
-	$gz->{$module} // ''
+	(ref($gz) eq 'HASH') ? ($gz->{$module} // '') : ($check_gz > 0)
 }}
 
 # The main function to read a configuration file:
