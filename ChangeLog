@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-8.7
+	Martin Väth <martin at mvath.de>:
+	- Provide sample find_cruft.d
+	- Cosmetical code cleanup
+
 *squashmount-8.6
 	Martin Väth <martin at mvath.de>:
 	- Fix IO::Uncompress::Gunzip handling (regression from squashmount-7.6)

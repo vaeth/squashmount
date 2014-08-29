@@ -102,6 +102,8 @@ takes place before calling "squashmount start".
 (Since accidental cleaning can have very inconvenient consequences, "d" is
 the default.) See section "Emergency Case" what to do if /run/squashmount
 is removed accidentally anyway.
+If you use find_cruft, you might want to copy the content of
+etc/find_cruft.d to /etc/find_cruft.d and adapt it to your needs.
 
 In all cases you have to copy etc/squashmount.pl to /etc/squashmount.pl
 and adapt it to your need! This is the essential point of squashmount!

@@ -17,7 +17,7 @@ use File::Temp ();
 # use Term::ANSIColor (); # not mandatory but recommended: fallback to no color
 # use IO::Uncompress::Gunzip (); # if not available, flag ?/?? is ignored
 
-our $VERSION = '8.6';
+our $VERSION = '8.7';
 
 =head1 NAME
 
@@ -394,12 +394,12 @@ See also B<--separator>.
 
 Print version number and exit
 
-=item B<--config>B<=>I<file> or B<-c> I<file> (accumulative)
+=item B<--config=>I<file> or B<-c> I<file> (accumulative)
 
 Using I<file> instead of B</etc/squashmount.pl> as a config file.
 If this option is repeated, all passed B<file>s are parsed in the given order.
 
-=item B<--umount>B<=>I<opt> or B<-u> I<opt> (accumulative)
+=item B<--umount=>I<opt> or B<-u> I<opt> (accumulative)
 
 Add option I<opt> to the default B<@umount> array (see also B<--umount-ro>).
 If this option is repeated, all passed options are added to the array.
@@ -407,7 +407,7 @@ By default, this means that the option are used in the call to B<umount DIR>.
 There might be code in B</etc/squashmount.pl> which treats this array value
 differently (for examples, see the description of B<@umount> and B<UMOUNT>).
 
-=item B<--umount-ro>B<=>I<opt> or B<-U> I<opt> (accumulative)
+=item B<--umount-ro=>I<opt> or B<-U> I<opt> (accumulative)
 
 Add option I<opt> to the default B<@umount> array.
 If this option is repeated, all passed options are added to the array.
@@ -494,12 +494,11 @@ so that this happens for all subsequent umounts/remounts.
 If used with B<status> or B<print*> act as if mount-point was correspondingly
 configured (without actually changing the configuration, of course).
 
-=item B<--backup>B<=>I<file_or_appendix> or B<-b> I<file_or_appendix>
+=item B<--backup=>I<file/app> or B<-b> I<file/app>
 
 Override the value of B<BACKUP> for all specified mount-points.
 If nonempty and not an absolute path, the effective value is the current value
-of B<FILE> with the string C<appendix> appended.
-The empty value means no backup.
+of B<FILE> with the string I<app> appended. The empty value means no backup.
 For obvious reasons you should better not give an absolute path if
 using several mount-points.
 
@@ -520,7 +519,7 @@ so that this happens for all subsequent umounts/remounts.
 If used with B<status> or B<print*> act as if mount-point was correspondingly
 configured (without actually changing the configuration, of course).
 
-=item B<--tempdir>B<=>I<tempdir> or B<-D> I<tempdir>
+=item B<--tempdir=>I<tempdir> or B<-D> I<tempdir>
 
 Override the value of B<TEMPDIR> for all specified mount-points.
 
@@ -530,7 +529,7 @@ so that this happens for all subsequent umounts/remounts.
 If used with B<status> or B<print*> act as if mount-point was correspondingly
 configured (without actually changing the configuration, of course).
 
-=item B<--compression>B<=>I<mode> B<--comp>B<=>I<mode> or B<-x> I<mode>
+=item B<--compression=>I<mode>, B<--comp=>I<mode>, or B<-x> I<mode>
 
 Override the value of B<COMPRESSION> for all specified mount-points.
 
@@ -2877,19 +2876,12 @@ sub read_config_file {
 	our $after;
 	main->import();
 	my $ret = do($file);
-	return 1 if($ret // '');
-	if($@) {
-		my $err = $@;
-		&fatal('failed to parse ' . $file . ':', $err)
-	}
-	unless(defined($ret)) {
-		my $err = $!;
-		&fatal('failed to read ' . $file . ':', $err)
-	}
-	&warning('failed to run ' . $file,
+	&fatal("failed to parse $file:", $@) if($@);
+	&fatal("failed to read $file:", $!) unless(defined($ret));
+	&warning("failed to run $file",
 		'perhaps the last executed command was not a true expression')
-		unless ($ret);
-	''
+		unless($ret);
+	$ret
 }
 
 # Functions exported to the config file
