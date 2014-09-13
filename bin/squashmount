@@ -1,23 +1,26 @@
 #!/usr/bin/env perl
+
+require 5.012;
+package Squashmount v8.7.1;
+
 use strict;
 use warnings;
 use integer;
+use version 0.77 ();
 use Pod::Usage ();
-use Getopt::Long ();
+use Getopt::Long 2.24 ();
 use Cwd ();
 use Exporter qw(import);
 use Fcntl ();
 use File::Compare ();
 use File::Copy ();
 use File::Find ();
-use File::Path ();
+use File::Path v2.6.5 ();
 use File::Spec ();
-use File::Temp ();
+use File::Temp 0.19 ();
 # use File::Which (); # not mandatory but recommended; there are fallbacks
 # use Term::ANSIColor (); # not mandatory but recommended: fallback to no color
 # use IO::Uncompress::Gunzip (); # if not available, flag ?/?? is ignored
-
-our $VERSION = '8.7';
 
 =head1 NAME
 
@@ -1924,6 +1927,7 @@ my $modprobe = undef;
 
 # Global/State variables:
 
+our $VERSION;
 my $run_ro;             # handle /run/squashmount as readonly
 my $modprobe_squash;    # will modprobe squash
 my $lockfh = undef;
@@ -2874,7 +2878,7 @@ sub read_config_file {
 	our $storing;
 	our $before;
 	our $after;
-	main->import();
+	Squashmount->import();
 	my $ret = do($file);
 	&fatal("failed to parse $file:", $@) if($@);
 	&fatal("failed to read $file:", $!) unless(defined($ret));
@@ -3818,7 +3822,7 @@ sub cat_dir {
 }
 
 sub version {
-	print("$name $VERSION\n");
+	print($name . ' ' . $VERSION->stringify() . "\n");
 	exit(0)
 }
 

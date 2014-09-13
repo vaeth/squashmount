@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-8.7.1
+	Martin Väth <martin at mvath.de>:
+	- Use perl-5.12 versioning, dotted-decimal version format
+	- Require correct minimal versions of perl and its modules
+
 *squashmount-8.7
 	Martin Väth <martin at mvath.de>:
 	- Provide sample find_cruft.d
