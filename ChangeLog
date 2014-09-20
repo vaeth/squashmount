@@ -1,8 +1,9 @@
 # ChangeLog for squashmount
 
-*squashmount-8.7.2
+*squashmount-8.7.3
 	Martin Väth <martin at mvath.de>:
 	- require Pod::Usage only if necessary; don't use version
+	- Replace 'EOF' by 1 to avoid stupid new perl warning
 
 *squashmount-8.7.1
 	Martin Väth <martin at mvath.de>:

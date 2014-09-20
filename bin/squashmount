@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v8.7.2;
+package Squashmount v8.7.3;
 
 use strict;
 use warnings;
@@ -880,7 +880,7 @@ see the remarks at the end of this manpage.)
 
 =back
 
-=item 'EOF';# The last executed command should be a true expression
+=item 1;# The last executed command should be a true expression
 
 =back
 
@@ -1736,7 +1736,7 @@ to B<squashmount>.
 
 =item # If this is the end of the file, do not forget:
 
-=item 'EOF';# The last executed command should be a true expression
+=item 1;# The last executed command should be a true expression
 
 =back
 
@@ -1857,7 +1857,7 @@ the path is already stored.
 
 =item ) if($cd);
 
-=item 'EOF';
+=item 1;
 
 =back
 
