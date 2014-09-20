@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-8.7.2
+	Martin Väth <martin at mvath.de>:
+	- require Pod::Usage only if necessary; don't use version
+
 *squashmount-8.7.1
 	Martin Väth <martin at mvath.de>:
 	- Use perl-5.12 versioning, dotted-decimal version format

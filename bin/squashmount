@@ -1,13 +1,11 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v8.7.1;
+package Squashmount v8.7.2;
 
 use strict;
 use warnings;
 use integer;
-use version 0.77 ();
-use Pod::Usage ();
 use Getopt::Long 2.24 ();
 use Cwd ();
 use Exporter qw(import);
@@ -19,8 +17,9 @@ use File::Path v2.6.5 ();
 use File::Spec ();
 use File::Temp 0.19 ();
 # use File::Which (); # not mandatory but recommended; there are fallbacks
-# use Term::ANSIColor (); # not mandatory but recommended: fallback to no color
 # use IO::Uncompress::Gunzip (); # if not available, flag ?/?? is ignored
+# use Pod::Usage (); not mandatory, but no help/manpage without this
+# use Term::ANSIColor (); # not mandatory but recommended: fallback to no color
 
 =head1 NAME
 
@@ -3822,8 +3821,13 @@ sub cat_dir {
 }
 
 sub version {
-	print($name . ' ' . $VERSION->stringify() . "\n");
+	print($name, ' ', $VERSION, "\n");
 	exit(0)
+}
+
+sub pod2usage {
+	require Pod::Usage;;
+	Pod::Usage::pod2usage(@_)
 }
 
 #
@@ -3834,8 +3838,8 @@ sub version {
 
 Getopt::Long::Configure(qw(bundling gnu_compat permute));
 Getopt::Long::GetOptions(
-	'help|h', sub { Pod::Usage::pod2usage(1) },
-	'man|?', sub { Pod::Usage::pod2usage(-verbose => 2) },
+	'help|h', sub { &pod2usage(0) },
+	'man|?', sub { &pod2usage(-verbose => 2, -exit => 0) },
 	'version|V', \&version,
 	'config|c=s', \@configs,
 	'umount|u=s', \@CFG::umount,
@@ -3872,7 +3876,7 @@ Getopt::Long::GetOptions(
 	'first|1', \$firstmatch,
 	'verbose|v+', \$verbose,
 	'quiet|q+', \$quiet
-) or Pod::Usage::pod2usage(2);
+) or &pod2usage(2);
 
 # Check options:
 
@@ -3988,10 +3992,10 @@ my $action = (shift(@ARGV) // '');
 		$action = \&cmd_forget
 	} elsif($action =~ m{^m}i) {
 		# $cmd = 'man';
-		Pod::Usage::pod2usage(-verbose => 2)
+		&pod2usage(-verbose => 2, -exit => 0)
 	} elsif($action =~ m{^[h\?]}i) {
 		# $cmd = 'help';
-		Pod::Usage::pod2usage(0)
+		&pod2usage(0)
 	}
 	Pod::Usage::pod2usage(2) unless(ref($action) eq 'CODE');
 	$fatalreturn = '' unless(defined($fatalreturn));
