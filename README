@@ -86,10 +86,26 @@ will work in your zsh as intended without the need to quote *.
 For openrc-support copy openrc/init.d/squashmount to /etc/init.d/squashmount
 and activate it in the usual way.
 For systemd-support copy systemd/system/squashmount.service to your
-systemd system folder and activate it in the usual way.
-(If you copied the main script not to /usr/bin/squashmount, you have
-to modify the squashmount.service file for systemd correspondingly.)
-Also copy tmpfiles.d/squashmount.conf to /usr/lib/tmpfiles.d, though that
+systemd system folder (typically /usr/lib/systemd/system)
+and activate it in the usual way.
+
+For systemd, you should set an appropriate timeout: There is no general
+rule how long compression can take "maximally", so the timeout is set to
+infinity, by default. It is strongly recommended to set this to a realistic
+value for you system and setting by giving a (generous) upper estimate for
+your needs by copying the file etc/system/squashmount.service.d/timeout.conf
+to /etc/systemd/squashmount/service.d/timeout.conf and editing appropriately.
+If you copied the main script not to /usr/bin/squashmount, you should
+put into the same directory a file with appropriate modified paths.
+For instance, if you copied the main script to /sbin/squashmount
+create /etc/systemd/system/squashmount.service.d/exec.conf with the content
+[Service]
+ExecStart=
+ExecStart=/sbin/squashmount start
+ExecStop=
+ExecStop=/sbin/squashmount -f stop
+
+Also copy tmpfiles.d/squashmount.conf to /usr/lib/tmpfiles.d, although this
 is not absolutely necessary (squashmount will create the corresponding
 directories anyway).
 If you use an init-system which does not mount /run as a ramdisk,
@@ -97,10 +113,11 @@ you should cleanup /run/squashmount on every fresh start before
 calling "squashmount start".
 Depending on your init-system, a way to achieve this might be to change the
 first letter in the crucial line in /usr/lib/tmpfiles.d/squashmount.conf
-from "d" to "D" and to make sure that the processing of /usr/lib/tmpfiles.d
+from "d" to "D!" and to make sure that the processing of /usr/lib/tmpfiles.d
 takes place before calling "squashmount start".
-(Since accidental cleaning can have very inconvenient consequences, "d" is
-the default.) See section "Emergency Case" what to do if /run/squashmount
+(Since accidental cleaning can have very inconvenient consequences, and
+currently only systemd supports the "D!" syntax, "d" is the default.)
+See section "Emergency Case" what to do if /run/squashmount
 is removed accidentally anyway.
 If you use find_cruft, you might want to copy the content of
 etc/find_cruft.d to /etc/find_cruft.d and adapt it to your needs.

@@ -3,6 +3,9 @@ Description=mount/umount all squashmount configured mountpoints
 After=local-fs.target systemd-tmpfiles-setup.service
 
 [Service]
+# Squashing can take a long time. It is recommended to override the following
+# infinite timeout in /etc/systemd/system/squashmount.service.d/timeout.conf
+TimeoutStopSec=0
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/usr/bin/squashmount start

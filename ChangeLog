@@ -1,5 +1,11 @@
 # ChangeLog for squashmount
 
+*squashmount-8.7.5
+	Martin Väth <martin at mvath.de>:
+	- systemd: set timout to infinity and document how to change it
+	- zsh completion: Fix _tags mask test
+
+*squashmount-8.7.4
 *squashmount-8.7.3
 	Martin Väth <martin at mvath.de>:
 	- require Pod::Usage only if necessary; don't use version

@@ -80,7 +80,7 @@ case $state in
 	local expl
 	if [[ -z ${opt_args[--pass-dir]++} ]]
 	then	_tags masks
-		_requested masks && {
+		_tags && {
 			local masks
 			masks=(${(f)"$(_call_program print-masks 'squashmount --no-locking -q print-tag 2>/dev/null')"})
 			_description masks expl 'mask'
