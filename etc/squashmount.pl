@@ -52,6 +52,7 @@ my $hostname = ($ENV{'HOSTNAME'} // hostname());
 # $lazy = '';
 # $squash_verbose = '';
 # $locking = 1; # lock always, even if it appears unnecessary
+# $modprobe_loop = '';
 # $modprobe_squash = '';
 
 # Do not override the default of $squashmount_quiet for a flexible config.

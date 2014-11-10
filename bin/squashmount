@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v8.7.5;
+package Squashmount v8.7.6;
 
 use strict;
 use warnings;
@@ -713,9 +713,10 @@ In addition, the array B<@order> can be filled with the available tools,
 the order in which they should be tried, and flags whether modprobe should
 be called, how to test the existence of tools and what to do if tools appear
 unavailable.
-Also the default variables B<$lazy>, B<$locking>, B<$modprobe_squash>,
-B<$obsolete_overlayfs> can be initialized: They are initialized to B<1>
-(perl interprets this as I<true>) or B<''> (I<false>).
+Also the default variables B<$lazy>, B<$locking>, B<$modprobe_loop>,
+B<$modprobe_squash>, B<$obsolete_overlayfs> can be initialized:
+They are initialized to B<1> (perl interprets this as I<true>)
+or B<''> (I<false>).
 The arrays B<@umount> or B<@umount_ro> can carry default values for
 B<UMOUNT> and B<UMOUNT_RO>, respectively.
 Finally, also the variables B<$mksquash_verbose>,
@@ -741,6 +742,8 @@ see the remarks at the end of this manpage.)
 =item $locking = 1; # lock always, even for status and print-* commands
 
 =item $modprobe_squash = ''; # Differ from default: No modprobe squashfs
+
+=item $modprobe_loop = 1; # Keep default: modprobe loop
 
 =item $mksquash_verbose = 'qn-'; # quicker if we know mksquash -quiet works
 
@@ -941,6 +944,12 @@ B<$obsolete_overlayfs = 'force'>,
 
 Not setting B<$obsolete_overlayfs> correctly should not cause any problems,
 but it might lead to undesired warning/kernel messages.
+
+=item B<$modprobe_loop>
+
+This determines whether C<modprobe loop> is executed before the first
+squashfile is mounted.
+This variable defaults to the value B<1> (I<true>).
 
 =item B<$modprobe_squash>
 
@@ -1928,6 +1937,7 @@ my $modprobe = undef;
 
 our $VERSION;
 my $run_ro;             # handle /run/squashmount as readonly
+my $modprobe_loop;      # will modprobe loop
 my $modprobe_squash;    # will modprobe squash
 my $lockfh = undef;
 my $stdoutterm = ((-t STDOUT) // ''); # whether stdout is a terminal
@@ -2612,6 +2622,10 @@ sub mount_squash {
 		&error("no directory $dir");
 		return ''
 	}
+	if($modprobe_loop) {
+		$modprobe_loop = '';
+		&my_modprobe('loop')
+	}
 	if($modprobe_squash) {
 		$modprobe_squash = '';
 		&my_modprobe('squashfs')
@@ -2823,6 +2837,7 @@ sub kernelprobe {
 	our $squash_verbose = undef;
 	our $processors = '';
 	our $mem = '';
+	our $modprobe_loop = 1;
 	our $modprobe_squash = 1;
 	our $locking = undef;
 	our $overlayfs = '';
@@ -2866,6 +2881,7 @@ sub read_config_file {
 	our $squash_verbose;
 	our $processors;
 	our $mem;
+	our $modprobe_loop;
 	our $modprobe_squash;
 	our $locking;
 	our $overlayfs;
@@ -4029,6 +4045,7 @@ $|=1;
 
 $lazy = $CFG::lazy unless(defined($lazy));
 $locking = $CFG::locking unless(defined($locking));
+$modprobe_loop = $CFG::modprobe_loop;
 $modprobe_squash = $CFG::modprobe_squash;
 &fatal('Obsolete $squash_verbose is set in the configuration.',
 'Do not define $squash_verbose; set $mksquash_verbose instead.')

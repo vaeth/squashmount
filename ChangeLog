@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-8.7.6
+	Martin Väth <martin at mvath.de>:
+	- Support modprobe loop to work around a new udev bug
+
 *squashmount-8.7.5
 	Martin Väth <martin at mvath.de>:
 	- systemd: set timout to infinity and document how to change it
