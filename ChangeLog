@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-8.7.7
+	Martin Väth <martin at mvath.de>:
+	- Use gnu_getopt
+
 *squashmount-8.7.6
 	Martin Väth <martin at mvath.de>:
 	- Support modprobe loop to work around a new udev bug
