@@ -307,9 +307,8 @@ Patching squashfs-tools
 =======================
 
 It is recommended to use a patched version of squashfs-tools which
-redirects its progress bar to stderr (instead of stdout).
-Cf. the description of the VERBOSE_MODE variable in ./squashmount man
-for details.
+has the -quiet option. Cf. the description of --mksquash-verbose
+and the $mksquash_verbose variable in ./squashmount man for details.
 As a gentoo user you can install such a patched version from the mv overlay.
 
 However, this patching is only an eye-candy: squashmount will work without
