@@ -1,7 +1,7 @@
 #!/usr/bin/perl (this is only for editors)
 
-# To use squashmount, remove this comment and the following "print()" and
-# "exit()" command from the file and write into the subsequent configuration
+# To use squashmount, remove this comment and the following "fatal()"
+# command from the file and write into the subsequent configuration
 # of the variables (in particular of @mounts) what is approrpriate for
 # your system!
 #
@@ -51,9 +51,12 @@ my $hostname = ($ENV{'HOSTNAME'} // hostname());
 # Normally, this is not needed.
 # $lazy = '';
 # $squash_verbose = '';
-# $locking = 1; # lock always, even if it appears unnecessary
 # $modprobe_loop = '';
 # $modprobe_squash = '';
+
+# The default of $locking depends on the command used.
+# Normally, there is no reason to uncomment the following line:
+# $locking = 1; # lock always, even if it appears unnecessary
 
 # Do not override the default of $squashmount_quiet for a flexible config.
 # For quicker execution, specify which version of mksquashfs is installed:
@@ -63,7 +66,7 @@ my $hostname = ($ENV{'HOSTNAME'} // hostname());
 # $squashmount_quiet = 'r-n-r+n+';# for silent output only on terminals
 
 # Unless you have a particular reason, it is wise to leave the choice
-# of -processes and -mem to mksquashfs. So the default is '':
+# of -processors and -mem to mksquashfs. So the default is '':
 # $processors = '';
 # $mem = '';
 
@@ -223,7 +226,7 @@ my $non_binary = {
 
 # This is the "luxury" variant of the code described with "squashmount man".
 
-# We use the variable "$customn" to indicate whether the mount-point is visible.
+# We use the variable "$custom" to indicate whether the mount-point is visible.
 # By default, it is only visible if an option was passed with --arg:
 
 my $custom = @ARGV;

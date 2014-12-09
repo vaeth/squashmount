@@ -1,5 +1,15 @@
 # ChangeLog for squashmount
 
+*squashmount-8.7.9
+	Martin Väth <martin at mvath.de>:
+	- Fix comments in example configuration, see
+	  https://github.com/vaeth/squashmount/issues/4
+	  Thanks to Arnaudv6 for reporting
+
+*squashmount-8.7.8
+	Martin Väth <martin at mvath.de>:
+	- Update description of recommended squashfs-tools patch
+
 *squashmount-8.7.7
 	Martin Väth <martin at mvath.de>:
 	- Use gnu_getopt
