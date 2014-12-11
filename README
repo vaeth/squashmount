@@ -20,7 +20,8 @@ This is squashmount, a generic initscript, user interface and management tool
 for keeping directories compressed by squashfs but simultaneously keep them
 writable using some of (depending on the configuration and what is available):
 
-	overlayfs, see
+	overlay (AKA overlayfs for linux kernels 3.18 and newer)
+	overlayfs, a variant for older linux kernels, see
 		http://git.kernel.org/?p=linux/kernel/git/mszeredi/vfs.git
 	aufs, see http://aufs.sourceforge.net
 	unionfs-fuse, see http://podgorny.cz/moin/UnionFsFuse
@@ -271,12 +272,13 @@ A Word of None-Warning
 
 It is in general rather safe to squash a directory, even a rather vital one:
 Even if e.g. you boot from a kernel which has no support for some of
-aufs|overlayfs|unionfs-fuse|unionfs|funionfs to make the directory writable,
-squashmount will mount it at least as read-only (using "mount --bind" if
-necessary). Moreover, if everything goes wrong you can still use "unsquashfs"
+overlay|overlayfs|aufs|unionfs-fuse|unionfs|funionfs to make the directory
+writable, squashmount will mount it at least as read-only (using "mount --bind"
+if necessary).
+Moreover, if everything goes wrong you can still use "unsquashfs"
 to unpack the directory manually.
-Probably the only danger in packing "strange" directories are special files
-like hard links (this information will usually get lost) or special devices
+Probably the only danger in packing "strange" directories are special files,
+hard links (this information will usually get lost), or special devices
 which are perhaps not supported by the used tools.
 
 
@@ -285,7 +287,7 @@ Modules and Mounting
 
 Since version 3.0, unless configured otherwise, squashmount will attempt
 to modprobe the modules
-	squashfs, aufs, fuse, overlayfs, unionfs
+	squashfs, aufs, fuse, overlay, overlayfs, unionfs
 when they are required; optionally/alternatively, also the corresponding
 kernel option can be checked in /proc/config.gz; also the existence of
 required binaries can be checked before actually the mounting is attempted.

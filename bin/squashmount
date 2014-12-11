@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v8.7.9;
+package Squashmount v9.0.0;
 
 use strict;
 use warnings;
@@ -23,7 +23,7 @@ use File::Temp 0.19 ();
 
 =head1 NAME
 
-squashmount - mount certain directories with squashfs + overlayfs/aufs/...
+squashmount - mount certain directories with squashfs + overlay/aufs/...
 
 =head1 SYNOPSIS
 
@@ -43,7 +43,7 @@ To get an extended help, type B<squashmount man>
 For each configured mount-point (resp. if I<mask1>, I<mask2>, ... are given,
 for all mount-points whose tag matches at least one of the masks),
 the corresponding directory is mounted readonly using squash as a readonly
-filesystem and additionally using overlayfs/aufs/... as a writable filesystem.
+filesystem and additionally using overlay/aufs/... as a writable filesystem.
 
 When the filesystem is umounted or remounted, the changed data is recompressed
 (unless the mount-point is configured otherwise).
@@ -246,7 +246,7 @@ For usage in scripts, combine this with B<-q>/B<-S> and pass a tag.
 =item B<print-type>
 
 Output the tool actually used for mounting.
-Possible output is C<overlayfs>, C<overlayfs-obsolete>, C<aufs>,
+Possible output is C<overlay>, C<overlayfs>, C<overlayfs-obsolete>, C<aufs>,
 C<unionfs-fuse>, C<unionfs>, C<funionfs>, C<bind>, or C<readonly>.
 For usage in scripts, combine this with B<-q> and pass a tag.
 
@@ -757,7 +757,7 @@ see the remarks at the end of this manpage.)
 
 =item $obsolete_overlayfs = undef; # no fallback: require >=kernel-3.15
 
-=item @order = qw(overlayfs? aufs! unionfs-fuse! unionfs??# funionfs??#);
+=item @order = qw(overlay? overlayfs? aufs! unionfs-fuse! unionfs??# funionfs??#);
 
 =item # The main task is to set B<@mounts>. Use one of
 
@@ -930,20 +930,24 @@ B<1> (I<true>).
 
 =item B<$obsolete_overlayfs>
 
+This variable is only important when squashmount attempts to mount B<overlayfs>
+(in contrast to B<overlay> which is contained in >=kernel-3.18)
+
 When this perl variable is B<''> (I<false>), which is the default,
-then it is attempted to mount overlayfs with the new B<workdir> option,
+then it is attempted to mount overlayfs with the B<workdir> option
+(required since overlayfs-22, i.e., since linux kernel-3.15),
 and only if this fails, it is attempted to mount overlayfs without this option.
 Undefine this variable if you do not want the latter.
 In contrast, set this variable to B<1> (I<true>) if you have an obsolete
 version of overlayfs (linux kernel less than 3.15): In this case, it is
-first attempted to mount overlayfs without the new B<workdir> option,
+first attempted to mount overlayfs without the B<workdir> option,
 and the B<workdir> option is only attempted as a fallback if the former fails.
 
-If  you never want to use overlayfs with >=kernel-3.15, set
-B<$obsolete_overlayfs = 'force'>,
+If you never want to use overlayfs with >=kernel-3.15 (and <kernel-3.18)
+set B<$obsolete_overlayfs = 'force'>.
 
 Not setting B<$obsolete_overlayfs> correctly should not cause any problems,
-but it might lead to undesired warning/kernel messages.
+but it might lead to undesired warning/kernel messages and can cost some time.
 
 =item B<$modprobe_loop>
 
@@ -995,7 +999,7 @@ See the description of B<@umount> on the consequences of this.
 
 =item B<@order>
 
-This array determines in which order the overlayfs/aufs/... tools are tried
+This array determines in which order the overlay/aufs/... tools are tried
 and/or whether it is attempted to modprobe them and on which conditions they
 are (tacitly) skipped.
 
@@ -1004,11 +1008,15 @@ The content of this array should be strings with one of the texts
 
 =over 16
 
-=item B<overlayfs>, B<aufs>, B<unionfs-fuse>, B<unionfs>, B<funionfs>
+=item B<overlay>, B<overlayfs>, B<aufs>, B<unionfs-fuse>, B<unionfs>, B<funionfs>
 
 =back
 
-for the corresponding tool. By default, it is attempted to B<modprobe> the
+for the corresponding tool. (Note that B<overlayfs> refers only to overlayfs
+up to version 22 (available as a patch for <=linux-3.17); for >=linux-3.18
+the corresponding filesystem is called B<overlay> in B<squashmount>.)
+
+By default, it is attempted to B<modprobe> the
 corresponding module, and if that B<modprobe> fails, the corresponding tool
 is tacitly skipped. Optionally, you can append or prepend the following
 special flags to change this default behaviour:
@@ -1038,9 +1046,9 @@ B<??> variant is used, the tool is considered as unavailable.
 =item B<#>
 
 If this flag is used, it is checked whether the binary
-(B<mount> in case of B<overlayfs>, B<aufs>, or B<unionfs> or the special
-userspace binary for B<unionfs-fuse> or B<funionfs>, respectively)
-is available in your path. If it is unavailable, the tool is
+(B<mount> in case of B<overlay>, B<overlayfs>, B<aufs>, or B<unionfs>
+or the special userspace binary for B<unionfs-fuse> or B<funionfs>,
+respectively) is available in your path. If it is unavailable, the tool is
 tacitly skipped. This flag is ignored if neither B<File::Which> nor the
 B<which> program are available.
 
@@ -1051,13 +1059,13 @@ If B<squashmount> is used with a command for which the order is possibly needed
 
 =over 16
 
-=item B<qw(overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)>
+=item B<qw(overlay!? overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)>
 
 =back
 
-This means that all modules are loaded as required with overlayfs being
-tacitly skipped if the running kernel does not provide support for it;
-all other tools are attempted in the order until the first succeeds,
+This default means that all modules are loaded as required, with overlay and
+overlayfs being tacitly skipped if the running kernel does not provide support
+for it; all other tools are attempted in the order until the first succeeds,
 no matter whether the kernel provides support for it.
 
 If B<squashmount> is used with a different command, the default of this
@@ -1127,11 +1135,12 @@ B<squashmount print-changes ...>
 
 =item B<WORKDIR>
 
-The working directory required by overlayfs, set according to the same rules
-as for B<CHANGES>.
-If you want to use current versions of overlayfs (kernel 3.15 or newer)
-this B<must> be on the same filesystem as B<CHANGES>.
-If you do not want to use B<WORKDIR>, set B<$obsolete_overlayfs = 'force'>.
+The working directory required by overlay and overlayfs,
+set according to the same rules as for B<CHANGES>.
+If you want to use current versions of overlay or overlayfs
+(kernel 3.15 or newer) this B<must> be on the same filesystem as B<CHANGES>.
+If you do not want to use B<WORKDIR>, set B<$obsolete_overlayfs = 'force'>
+and use only overlayfs (not overlay).
 
 =item B<READONLY>
 
@@ -1189,10 +1198,20 @@ Set it to the empty string if you want fastest B<lz4> compression instead.
 
 =back
 
+=item B<MOUNT_OVERLAY>
+
+This should be a (possibly empty) string or a reference to an array of strings:
+These strings are used as additional options when mounting with overlay.
+(Note that overlayfs is available only for >=kernel-3.18;
+see B<MOUNT_OVERLAYFS> for older versions).
+The default is B<['-o', 'noatime']>.
+
 =item B<MOUNT_OVERLAYFS>
 
 This should be a (possibly empty) string or a reference to an array of strings:
 These strings are used as additional options when mounting with overlayfs.
+(Note that overlayfs is available only for <kernel-3.18;
+see B<MOUNT_OVERLAY> for newer versions).
 The default is B<['-o', 'noatime']>.
 
 =item B<MOUNT_AUFS>
@@ -1329,7 +1348,7 @@ this file are usually lost (unless the directory is ressquashed anyway).
 
 If a file you want to skip resides in a subdirectory (not in the root
 of B<CHANGES>) you probably also want to skip all parent directories,
-because overlayfs/aufs/... has to create them to create the file.
+because overlay/overlayfs/aufs/... has to create them to create the file.
 However, to be more careful you might want skip them with B<DIFF>
 (as that will check that it is really a directory and exists in B<READONLY>).
 
@@ -2276,7 +2295,7 @@ sub umount_main {
 		$ret = '';
 		$message = 'umounting READONLY' unless($quiet)
 	}
-	if($type eq 'overlayfs') {
+	if(($type eq 'overlay') || ($type eq 'overlayfs')) {
 		my $workdir = &get_abspath('WORKDIR');
 		if(&is_abspath($workdir)) {
 			&info('cleaning workdir...') unless($quiet);
@@ -2464,9 +2483,11 @@ sub mount_rw {
 		my $probemod = (($i =~ m{\!}) ? (($i =~ m{\!\!}) ? '' : -1) : 1);
 		my $check_bin = ($i =~ m{\#});
 		my $check_gz = (($i =~ m{\?}) ? (($i =~ m{\?\?}) ? -1 : 1) : '');
-		if($i =~ m{overlay}i) {
+		if($i =~ m{overlayfs}i) {
 			my $type = &mount_overlayfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes);
 			return $type if($type ne '')
+		} elsif($i =~ m{overlay}i) {
+			return 'overlay' if(&mount_overlay($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		} elsif($i =~ m{aufs}i) {
 			return 'aufs' if(&mount_aufs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		} elsif($i =~ m{fuse}i) {
@@ -2479,6 +2500,24 @@ sub mount_rw {
 	}
 	&error('fallback to mount --bind');
 	&mount_bind($ro, $rw) ? 'bind' : undef
+}
+
+# Mount with overlay.
+
+sub mount_overlay {
+	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
+	return '' unless(&kernelprobe($probemod, $check_gz, 'overlay'));
+	return '' if($check_bin && !&which_store(\$mount, 'mount'));
+	my $workdir = &create_workdir();
+	return '' if($workdir eq '');
+	&push_ref(\my @options, $user_config->{'MOUNT_OVERLAY'},
+		['-o', 'noatime']);
+	push(@options, '-v') if($verbose > 3);
+	return 1 if(&my_system('', \$mount, 'mount', '-t', 'overlay', @options,
+		'-o', "upperdir\=${changes}", '-o', "lowerdir\=${ro}",
+		'-o', "workdir\=${workdir}", '--', 'overlay', $rw) == 0);
+	&warning('overlay failed') unless($quiet > 1);
+	''
 }
 
 # Mount with overlayfs.
@@ -2801,6 +2840,7 @@ sub read_kernel_config {
 	my ($gz) = @_;
 	my $buffer;
 	return '' unless(IO::Uncompress::Gunzip::gunzip('/proc/config.gz' => \$buffer));
+	$gz->{'overlay'} = 1 if($buffer =~ m{^CONFIG_OVERLAY_FS}m);
 	$gz->{'overlayfs'} = 1 if($buffer =~ m{^CONFIG_OVERLAYFS_FS}m);
 	$gz->{'aufs'} = 1 if($buffer =~ m{^CONFIG_AUFS_FS}m);
 	$gz->{'unionfs'} = 1 if($buffer =~ m{^CONFIG_UNION_?FS}m);
@@ -2813,7 +2853,10 @@ sub read_kernel_config {
 { my $gz = undef; # A closure static variable
 sub kernelprobe {
 	my ($probemod, $check_gz, $module) = @_;
-	return 1 if($probemod && &my_modprobe($module) && ($probemod > 0));
+	if($probemod) {
+		return 1 if(&my_modprobe($module));
+		return '' if(($probemod > 0) && !$check_gz);
+	}
 	return 1 unless($check_gz);
 	unless(defined($gz)) {
 		if(&use_gunzip()) {
@@ -2840,7 +2883,7 @@ sub kernelprobe {
 	our $modprobe_loop = 1;
 	our $modprobe_squash = 1;
 	our $locking = undef;
-	our $overlayfs = '';
+	our $obsolete_overlayfs = '';
 	our @order = ();
 	our @mounts = ();
 	our @umount = ();
@@ -2884,7 +2927,7 @@ sub read_config_file {
 	our $modprobe_loop;
 	our $modprobe_squash;
 	our $locking;
-	our $overlayfs;
+	our $obsolete_overlayfs;
 	our @order;
 	our @mounts;
 	our @umount;
@@ -3260,10 +3303,11 @@ sub is_resquash_type {
 # Result is 1 (yes) or 0 (no) or the empty string if it is not known
 
 sub is_workdir_type {
-	return 0 if(($CFG::obsolete_overlayfs // '') eq 'force');
 	my $type  = $current->{'TYPE'};
 	return '' unless(&is_nonempty($type));
-	($type eq 'overlayfs') ? 1 : 0
+	return 1 if($type eq 'overlay');
+	(($type eq 'overlayfs') &&
+		(($CFG::obsolete_overlayfs // '') ne 'force')) ? 1 : 0
 }
 
 # Check whether dir is empty. Returns 1 or '', or 0 in case of error
@@ -3311,7 +3355,7 @@ sub threshold_dir {
 	# Now some hidden files/directories for special filesystems:
 	# We skip these files also if the $type does not match;
 	# otherwise there would be confusion if e.g. changing from
-	# aufs to overlayfs and thus suddenly aufs-hidden files are visible.
+	# aufs to overlay and thus suddenly aufs-hidden files are visible.
 	# However, more exact would be to use the if-clauses of the comments:
 	# my $type = $current->{'TYPE'};
 	push(@$skip, qr{^\._funionfs}); # if($type eq 'funionfs');
@@ -4013,13 +4057,13 @@ my $action = (shift(@ARGV) // '');
 		# $cmd = 'help';
 		&pod2usage(0)
 	}
-	Pod::Usage::pod2usage(2) unless(ref($action) eq 'CODE');
+	&pod2usage(2) unless(ref($action) eq 'CODE');
 	$fatalreturn = '' unless(defined($fatalreturn));
 	$star = 1 # !$run_ro # Use this to make --no-star the default for infos
 		unless(defined($star));
 	$run_ro = '' if($force || $ignore_state);
 	$CFG::storing = $CFG::locking = !$run_ro;
-	@CFG::order = qw(overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)
+	@CFG::order = qw(overlay!? overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)
 		if($order_needed);
 
 	&fatal('internal error: undefined $cmd. Please report a bug')

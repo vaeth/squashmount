@@ -32,18 +32,20 @@ my $hostname = ($ENV{'HOSTNAME'} // hostname());
 # (Note that if you compiled e.g. unionfs as a module but /proc/config.gz is
 # not available this means that unionfs is not used even it could be).
 #
-# We also skip overlayfs if the module cannot be loaded successfully.
-# Again, this means that overlayfs is skipped if compiled into the kernel.
-# Use "overlayfs?" instead if you want a more reliable check for that case.
+# We also skip overlay and overlayfs if the module cannot be loaded
+# successfully. Note again that this means that overlayfs is skipped
+# if compiled into the kernel. Use "overlay? overlayfs?" instead
+# if you want a more reliable check for that case.
 
-@order = qw(overlayfs aufs! unionfs-fuse! unionfs??# funionfs??#);
+@order = qw(overlay overlayfs aufs! unionfs-fuse! unionfs??# funionfs??#);
 
 # Set $obsolete_overlayfs = 1 if you normally use a kernel older than 3.15.
 # Set $obsolete_overlayfs = undef if you only use >=kernel-3.15
 # Set $obsolete_overlayfs = 'force' if you never use overlayfs or
-# never use >=kernel-3.15
-# Leave the default ($obsolete_overlayfs = '') if you sometimes use overalayfs,
-# usually with >=kernel-3.15 but with a fallback for other kernels
+# never use >=kernel-3.15 (and <kernel-3.18)
+# Leave the default ($obsolete_overlayfs = '') if it might happen that
+# you sometimes use kernels between 3.15 and (less than) 3.18 and
+# also want a fallback for older kernels.
 #$obsolete_overlayfs = 1;
 
 # The following variables all default to 1 (true).

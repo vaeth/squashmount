@@ -1,5 +1,15 @@
 # ChangeLog for squashmount
 
+*squashmount-9.0.0
+	Martin Väth <martin at mvath.de>:
+	- Support overlay of linux kernel 3.18.
+	  Note the new name "overlay" in contrast to "overlayfs" which
+	  is available only for older linux kernels.
+	  squashmount uses "overlay" and "overlayfs" throughout to distinguish.
+	- Fix logic for @order to work as documented
+	- Fix $obsolete_overlay handling in config
+	- Fix error in case of illegal cmd
+
 *squashmount-8.7.9
 	Martin Väth <martin at mvath.de>:
 	- Fix comments in example configuration, see
