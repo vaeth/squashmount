@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v9.0.0;
+package Squashmount v9.0.1;
 
 use strict;
 use warnings;

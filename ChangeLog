@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-9.0.1
+	Martin Väth <martin at mvath.de>:
+	- Use openrc-run instead of deprecated runscript
+
 *squashmount-9.0.0
 	Martin Väth <martin at mvath.de>:
 	- Support overlay of linux kernel 3.18.
