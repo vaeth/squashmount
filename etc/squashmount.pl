@@ -15,12 +15,14 @@
 # (only a few are used in this file).
 fatal('The default /etc/squashmount.pl is only an example config!',
 'It must be configured first for the mount-points you want.',
-'see "squashmount man" and the comments in /etc/squashmount.pl');
+'See "squashmount man" and the comments in /etc/squashmount.pl');
 
-# Our configuration can depend on the hostname:
-
-use Sys::Hostname;
-my $hostname = ($ENV{'HOSTNAME'} // hostname());
+# The configuration might depend on the hostname: Test the variable $hostname
+# to use the same file for different configs on different machines.
+# (We do not employ this possibility in this example file).
+# The followng line initializes $hostname appropriately:
+# use Sys::Hostname;
+# my $hostname = ($ENV{'HOSTNAME'} // hostname());
 
 # First we specify the tools which we have (possibly) installed;
 # if possible, only the first in this list is used, but the others are
@@ -30,7 +32,7 @@ my $hostname = ($ENV{'HOSTNAME'} // hostname());
 # In this example, we deviate from the defaults by changing some of the flags:
 # We skip unionfs and funionfs tacitly unless *surely* available.
 # (Note that if you compiled e.g. unionfs as a module but /proc/config.gz is
-# not available this means that unionfs is not used even it could be).
+# not available this means that unionfs is not used even if it could be).
 #
 # We also skip overlay and overlayfs if the module cannot be loaded
 # successfully. Note again that this means that overlayfs is skipped
@@ -55,6 +57,27 @@ my $hostname = ($ENV{'HOSTNAME'} // hostname());
 # $squash_verbose = '';
 # $modprobe_loop = '';
 # $modprobe_squash = '';
+
+# Uncomment the following if you prefer (globally) resquashing on start
+# instead of resquashing on umount/stop. You can override this individually
+# per mount-point by setting RESQUASH_ON_START for that mount-point:
+# $resquash_on_start = 1; # the default is ''
+
+# Uncomment the following line if you do not want to remove /run/squashmount
+# on "squashmount stop". The default is 1 which means to remove it if empty
+# (but not its parent directories). You can also specify a negative number
+# to remove all its empty parent directories or a positive number + 1 for
+# the number of parent directories to remove.
+# $rm_rundir
+
+# Specify the default for RM_DIR, RM_CHANGES, RM_WORKDIR, RM_READONLY.
+# The number has the analogous meaning to $rm_rundir for the corresponding
+# directories.
+# $rm_dir = 0; # This is the default
+# $rm_changes = $rm_workdir = $rm_readonly = 1; # This is the default.
+# Unless you use temporary directories (not recommended),
+# you will probably want to keep the created directories:
+$rm_changes = $rm_workdir = $rm_readonly = 0;
 
 # The default of $locking depends on the command used.
 # Normally, there is no reason to uncomment the following line:
@@ -86,10 +109,12 @@ my $hostname = ($ENV{'HOSTNAME'} // hostname());
 # mount-points can be changed without modifying every mount-point manually.
 
 my $defaults = {
-	COMPRESSION => 'xz', # We could omit this line as xz is default.
-	                     # However, this might change in the future
+	COMPRESSION => 'lz4', # We could omit this line as lz4 is default.
 	COMPOPT_LZ4 => '-Xhc', # We could omit this line as -Xhc is default
-	COMPOPT_XZ => ['-Xbcj', 'x86'] # Use this in case COMPRESSION => 'xz'
+	# In case of COMPRESSION => 'xz', we use the following option.
+	# Note that this option roughly doubles the squashing time for only
+	# slightly better compression of binaries.
+	COMPOPT_XZ => ['-Xbcj', 'x86']
 };
 my $non_binary = {
 	COMPOPT_XZ => undef # "-Xbcj x86" is slower for pure text archives
@@ -116,10 +141,16 @@ my $non_binary = {
 		CHMOD => 0400, # squashfile readonly by user
 		CHOWN => [ (getpwnam('guest'))[2], # user and group of ...
 			(getgrnam('guest'))[2] ],  # ... new squashfile's owner
-		KILL => 1 # normally remove data on every umount/remount
+		KILL => 1, # normally remove data on every umount/remount
+		# Clean temporary directories, independent of defaults:
+		RM_CHANGES => 1, RM_WORKDIR => 1, RM_READONLY => 1,
 		# If you want to cancel this KILL temporarily
 		# (e.g. to make modifications on guest-skeleton.sqsf)
 		# use something like "squashmount --nokill set"
+		# In such a case, we must no postpone resquashing
+		# even if $resquash_on_start should be true, becuse
+		# CHANGES is a temporary directory:
+		RESQUASH_ON_START => ''
 	}),
 	# The above block "added_hash(...)," is actually equivalent to
 	# {
@@ -127,7 +158,8 @@ my $non_binary = {
 	#	TAG => 'guest',
 	#	DIR => '/home/guest',
 	#	FILE => '/home/guest-skeleton.sfs',
-	#	KILL => 1
+	#	KILL => 1,
+	#	RESQUASH_ON_START => ''
 	# },
 	# because added_hash() "adds" our values to that from $defaults.
 	added_hash($defaults, $non_binary,  {
@@ -211,12 +243,13 @@ my $non_binary = {
 	}),
 	standard_mount('games', '/usr/share/games', $defaults, {
 		# games is huge: use the fastest compression algorithm for it.
-		# (Note that this overrides $defaults):
+		# (Note that this possibly overrides $defaults):
 		COMPRESSION => 'lz4',
 		COMPOPT_LZ4 => ''
 	}),
 	standard_mount('office', '/usr/lib/libreoffice', $defaults, {
-		# Make sure to use the algorithm with best compression ratio
+		# Make sure to use the algorithm with best compression ratio,
+		# possibly overriding $defaults:
 		COMPRESSION => 'xz'
 	})
 );

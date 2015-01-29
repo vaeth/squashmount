@@ -1,5 +1,18 @@
 # ChangeLog for squashmount
 
+*squashmount-10.0.0
+	Martin Väth <martin at mvath.de>:
+	- IMPORTANT: New default for COMPRESSION is lz4.
+	  lz4 must be enabled for squashfs when you use the new default!
+	  This is possible only with linux-3.19 or newer!
+	- systemd is no longer officially supported, although it might work
+	  for you. Reasons are explained in the README
+	- Support $resquash_on_start and per mount-point RESQUASH_ON_START
+	- Support $rm_rundir
+	- Support $rm_dir, $rm_changes, $rm_workdir, $rm_readonly
+	  and per mount-point RM_DIR, RM_CHANGES, RM_WORKDIR, RM_READONLY
+	- Provide etc/revdep-rebuild
+
 *squashmount-9.0.1
 	Martin Väth <martin at mvath.de>:
 	- Use openrc-run instead of deprecated runscript

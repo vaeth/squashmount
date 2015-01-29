@@ -1,0 +1,3 @@
+SEARCH_DIRS_MASK="*.mount/changes"
+SEARCH_DIRS_MASK="*.mount/readonly"
+SEARCH_DIRS_MASK="*.mount/workdir"

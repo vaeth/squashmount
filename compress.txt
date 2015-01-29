@@ -1,4 +1,4 @@
-Comparison of some size/time:
+Comparison of some size/time for compression of large directories.
 Sorting is by size, if size is equal by time
 
                            MB Core2 I3   Athlon

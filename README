@@ -10,8 +10,13 @@ This is the successor of the squash_dir project
 It is actually a ground-up rewrite of that project in perl with a
 highly improved control interface.
 
-It is easily usable with any init system, but for systemd and openrc
-ready-to-use configuration files are provided.
+One of its aims is to be init system independent.
+For openrc and systemd ready-to-use init/service-files are provided;
+I gladly add init-files for other init systems if I receive (tested) patches.
+
+squashmount works with systemd in "standard" setups, but due to
+conceptional bugs of systemd in some setups (see section "Installation"),
+systemd is no longer officially supported.
 
 What is this project?
 =====================
@@ -54,6 +59,10 @@ kernel (and supports the COMPRESSION method), that the mksquashfs tool
 is available, and also that some of the above mentioned unionfs-type tools
 is available and supported by the kernel.
 
+WARNING: Since v10.0.0, squashmount has the default COMPRESSION method lz4.
+This method is available only in linux-3.19 or higher. So take care to either
+use a sufficiently new kernel or to change the default!
+
 Moreover, you need a decently new version of perl5 together with some of
 its standard modules (which might need to be installed separately if your
 perl5 version should be too old). Decently new perl versions should have the
@@ -84,11 +93,29 @@ so that things like
 will work in your zsh as intended without the need to quote *.
 (I assume that you do not use any poor shell instead of zsh.) ;)
 
+If you use revdep-rebuild from gentoo or similar distributions, and
+if you use the default naming schme, it is recommended to copy the content of
+etc/revdep-rebuild into /etc/revdep-rebuild to cancel duplicate or obsolete
+paths search of revdep-rebuild
+
 For openrc-support copy openrc/init.d/squashmount to /etc/init.d/squashmount
 and activate it in the usual way.
 For systemd-support copy systemd/system/squashmount.service to your
 systemd system folder (typically /usr/lib/systemd/system)
 and activate it in the usual way.
+
+If you use systemd *BE SURE TO COMPILE THE "mount" BINARY WITH SYSTEMD SUPPORT*
+(this should be the case in most distributions providing systemd; in gentoo
+this means to enable USE=systemd for the util-linux package. If you compile
+util-linux manually, make sure to pass --with-systemd to ./configure).
+In this case, systemd will probably work for you in "standard" setups.
+With systemd-219 (or newer?) and some unusual setups like --make-shared on
+some partitions, it can happen nevertheless that "mount" appears to work,
+but actually nothing is mounted if systemd is in use. This is related with
+the fact that systemd tries to control all mounts instead of letting the
+kernel do it alone. Of course, this breaks tools like squashmount completely.
+Bug systemd upstream about such problems, but not me: I am not planning to add
+hacks to fix the breakage introduced by some ill-conceived systemd concepts.
 
 For systemd, you should set an appropriate timeout: There is no general
 rule how long compression can take "maximally", so the timeout is set to
@@ -314,4 +341,5 @@ and the $mksquash_verbose variable in ./squashmount man for details.
 As a gentoo user you can install such a patched version from the mv overlay.
 
 However, this patching is only an eye-candy: squashmount will work without
-any problems also with an unpatched version of squashfs-tools.
+any problems also with an unpatched version of squashfs-tools; just the
+display when squashing will not be so nice.

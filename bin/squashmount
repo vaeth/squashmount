@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v9.0.1;
+package Squashmount v10.0.0;
 
 use strict;
 use warnings;
@@ -126,22 +126,35 @@ if you want to suppress the corresponding warning).
 
 =item B<start>
 
-This is like B<squashmount mount>, but if there is not yet a squash-file
-(that is, presumably only the first time when this mount-point is used),
-B<squashmount create> is executed in advance.
+This is like B<squashmount mount> with two exception:
+
+1. If there is not yet a squash-file (that is, presumably only the first time
+when this mount-point is used), B<squashmount create> is executed in advance.
+
+2. For those mount-points for which B<RESQUASH_ON_START> is true, an
+analogue of the following sequence of commands is executed
+
+B<squashmount mount>, B<squashmount remount>, B<squashmount -n set>,
+
+that is, a (presumably postponed) resquash happens at B<squashmount start>
+and will by default not happen on subsequent B<squashmount umount> or
+B<squashmount stop> commands.
 
 =item B<stop>
 
 This is like calling B<squashmount umount> followed by B<squashmount forget>:
 After umounting it forgets all corresponding information of B<squashmount set>
-for the corresponding mount-points, and moreover, if the configuration uses
+for the corresponding mount-points, and if the configuration uses
 temporary directories, new directories will be chosen on the next B<mount>.
+Moreover, previous directories are removed according to the setting of
+B<RM_CHANGE>/B<$rm_change>, B<RM_WORKDIR>/B<$rm_workdir>,
+B<RM_READONLY>/B<$rm_readonly>, B<RM_DIR>/B<$rm_dir>, and B<$rm_rundir>.
 
 In order to change F</etc/squashmount.pl> after B<squasmount mount> was called,
 the safe way is to call first B<squashmount stop> (at least for the
 mount-points you want to modify) and then do your modifications.
 
-If used with B<--force> forget also umounted mount-points.
+If used with B<--force> also umounted mount-points are forgotten/dirs removed.
 
 =item B<restart>
 
@@ -714,11 +727,17 @@ the order in which they should be tried, and flags whether modprobe should
 be called, how to test the existence of tools and what to do if tools appear
 unavailable.
 Also the default variables B<$lazy>, B<$locking>, B<$modprobe_loop>,
-B<$modprobe_squash>, B<$obsolete_overlayfs> can be initialized:
+B<$modprobe_squash>, B<$obsolete_overlayfs>, B<$resquash_on_start>
+can be initialized:
 They are initialized to B<1> (perl interprets this as I<true>)
 or B<''> (I<false>).
 The arrays B<@umount> or B<@umount_ro> can carry default values for
 B<UMOUNT> and B<UMOUNT_RO>, respectively.
+The variable B<$rm_rundir> can be set to determined whether (and how)
+the directory B</run/squashmount> should be removed.
+Simlarly, also the variables B<$rm_dir>, B<$rm_change>, B<$rm_workdir>,
+B<$rm_readonly> can be set to determine default values for
+B<RM_DIR>, B<RM_CHANGE>, B<RM_WORKDIR>, and B<RM_READONLY>.
 Finally, also the variables B<$mksquash_verbose>,
 B<$processors>, B<$mem> can specify the default values
 if the corresponding options are not passed.
@@ -750,6 +769,12 @@ see the remarks at the end of this manpage.)
 =item $processors = ''; # unnecessary; this is the default
 
 =item $mem = ''; # unnecessary; this is the default
+
+=item $resquash_on_start = ''; # unnecessary; this is the default
+
+=item $rm_rundir = 0; # keep /run/squashmount
+
+=item $rm_dir = $rm_workdir = $rm_changes = $rm_readonly = 0; # keep dirs
 
 =item @umount = ('-i'); # default to UMOUNT => [ '-i' ], ignoring --umount
 
@@ -795,7 +820,19 @@ see the remarks at the end of this manpage.)
 
 =item # CHOWN => '2000:1000' would also be possible
 
-=item KILL => 1 # Forget all changes when umounting
+=item KILL => 1, # Forget all changes when umounting
+
+=item # For the exception that the user wants to resquash:
+
+=item # We must not postpone resquashing since CHANGES is temporary:
+
+=item RESQUASH_ON_START => '', # Ignore setting of $resquash_on_start
+
+=item RM_CHANGES => 1, # remove temporary CHANGES on stop
+
+=item RM_READONLY => 1, # remove temporary READONLY on stop
+
+=item RM_WORKDIR => 1, # remove temporary WORKDIR on stop
 
 =back
 
@@ -853,11 +890,15 @@ see the remarks at the end of this manpage.)
 
 =item DIR => sub { return File::Temp::newdir() },
 
+=item RM_DIR => 1, RM_CHANGES => 1, RM_WORKDIR => 1, RM_READONLY => 1,
+
 =item CHANGES => sub { return File::Temp::newdir(undef, DIR => '/path/to/ramdisk') },
 
 =item WORKDIR => sub { return File::Temp::newdir(undef, DIR => '/path/to/ramdisk') },
 
 =item READONLY => \&make_temporary_subdir,
+
+=item RESQUASH_ON_START => '', # we must not postpone resquashing
 
 =item FILE => '/just/a/crazy/example.sfs',
 
@@ -960,6 +1001,34 @@ This variable defaults to the value B<1> (I<true>).
 This determines whether C<modprobe squashfs> is executed before the first
 squashfile is mounted.
 This variable defaults to the value B<1> (I<true>).
+
+=item B<$resquash_on_start>
+
+If this variable is B<1> (true), this becomes the default for
+B<RESQUASH_ON_START> for all mount-points for which B<RESQUSH_ON_START>
+is not explicitly set differently. It defaults to B<''> (I<false>).
+
+=item B<$rm_rundir>
+
+If this variable is a nonzero integer number then at B<squashmount stop>
+the directory F</run/squashmount> is removed if it is nonempty.
+If the number is bigger than 1, also the corresponding number of parent
+directories (minus one) are removed (if nonempty). If the number is negative,
+all parent directories are removed (if nonempty).
+The default of this variable is B<1>.
+
+=item B<$rm_dir>
+
+=item B<$rm_changes>
+
+=item B<$rm_workdir>
+
+=item B<$rm_readonly>
+
+These variables are taken as the defaults for B<RM_DIR>, B<RM_CHANGES>,
+B<RM_WORKDIR>, or B<RM_READONLY>, respectively, if the latter variables
+are not defined for a mount-point. The default of B<$rm_dir> is B<0>,
+the default of the other three variables is B<1>.
 
 =item B<$mksquash_verbose>
 
@@ -1093,7 +1162,7 @@ The content must be alphanumeric; only the symbols B<.> B<-> B<_> are allowed.
 
 The absolute path of the main directory which you want to squash.
 
-Alternatively, B<DIR> can be a functin reference which returns a string to
+Alternatively, B<DIR> can be a function reference which returns a string to
 the directory or alternatively a B<File::Temp::Dir> object.
 This function is executed only once if B<DIR> is unknown and in this case
 it gets passed the tag as an argument.
@@ -1166,8 +1235,49 @@ The default is B<0>.
 
 =item B<KILL>
 
-If true (nonempty and not 0) B<--kill> is active for that mount-point
+If true (nonempty and not 0), B<--kill> is active for that mount-point
 (unless changed by command line options).
+
+=item B<RESQUASH_ON_START>
+
+If this value is undefined, the value of the variable B<$resquash_on_start>
+is considered instead; however, if it is defined, its value overrides the
+global setting of B<$resquash_on_start>,
+
+If the effective value is true (nonempty and not 0), then B<squashmount start>
+attempts to resquash the data, and sets the B<-n> option for the mount-point
+so that (by default) there is no resquashing of the data when
+B<squashmount umount> or B<squashmount stop> is called (unless an option like
+B<-s> is used later to override the previous B<-n>).
+
+Thus, while the "default" operation of B<squashmount> is to resquash the
+data on umounting (that is, as a rule, when you shut down the machine),
+setting this variable (or B<$resquash_on_start>) causes "normally" the
+resquashing to be postponed until the next start of the machine.
+
+Of course, this makes only sense if your B<CHANGES> directory is not a
+temporary directory which is cleaned during restarting: This is the reason
+why you can set this variable individually for each mount-point.
+Unless you have such exceptional mount-points, it is usually more convenient
+to set the global default through B<$resquash_on_start>.
+
+=item B<RM_DIR>
+
+=item B<RM_CHANGES>
+
+=item B<RM_WORKDIR>
+
+=item B<RM_READONLY>
+
+If this value is undefined, the value of the variable
+B<$rm_dir>, B<$rm_changes>, B<$rm_workdir>, or B<$rm_readonly> is used
+instead, respectively.
+
+If the effective value is a nonzero number then with B<squashmount stop>
+the corresponding directory is removed if it is nonempty.
+If the number is bigger than 1, also the corresponding number of parent
+directories (minus one) is removed (if nonempty). If the number is negative,
+all parent directories are removed (if nonempty).
 
 =item B<MKSQUASHFS>
 
@@ -1273,7 +1383,8 @@ If the value is empty, no B<-comp> parameter is passed,
 that is, the default of the installed B<mksquashfs> is chosen
 (which is usually B<gzip> but might depend on your version of B<mksquashfs>).
 The default of B<COMPRESSION> (that is, if undefined or not explicitly set)
-is B<xz>; in future versions of B<squashmount> this might change to B<lz4>.
+is B<lz4>; note that in earlier versions of B<squashmount> this was B<xz>.
+Note also that B<lz4> support in squashfs requires linux-3.19 or newer.
 
 =item B<DEFAULT_FRAGMENTS>
 
@@ -1697,7 +1808,7 @@ A function is provided to do this cleanly:
 =back
 
 will return true (B<1>) or false B<('')> depending on whether B<squashmount>
-has data stored for that mountpoint.
+has data stored for that mount-point.
 It is recommended to use only this function and the callback
 mechanisms described later on when you want to know something about
 the data stored by B<squashmount>.
@@ -1958,6 +2069,13 @@ our $VERSION;
 my $run_ro;             # handle /run/squashmount as readonly
 my $modprobe_loop;      # will modprobe loop
 my $modprobe_squash;    # will modprobe squash
+my $resquash_on_start;  # default for resquash_on_start
+my $rm_rundir_on_end;
+my $rm_rundir;
+my $rm_dir;
+my $rm_changes;
+my $rm_workdir;
+my $rm_readonly;
 my $lockfh = undef;
 my $stdoutterm = ((-t STDOUT) // ''); # whether stdout is a terminal
 my $stderrterm = undef; # whether stderr is a terminal
@@ -1993,16 +2111,7 @@ sub cmd_umount {
 
 sub cmd_remount {
 	return '' if(&error_unless_mounted());
-	my ($will_squash, $will_remove) = (1);
-	($will_squash, $will_remove) = &check_squash($threshold, $kill)
-		if(&is_nonempty($current->{'TYPE'}));
-	unless($force || $will_squash || ($will_remove > 0)) {
-		&info('remounting appears unnecessary');
-		return 1
-	}
-	&title("$tag remount") if($printed_title);
-	return '' unless(&umount_main($will_squash, $will_remove));
-	&mount_main('')
+	&remount_main()
 }
 
 sub cmd_create {
@@ -2029,7 +2138,7 @@ sub cmd_stop {
 		&forget_settings() if($force);
 		return ''
 	}
-	return '' unless(&umount_main());
+	return '' unless(&umount_main(1));
 	&forget_settings();
 	1
 }
@@ -2040,7 +2149,7 @@ sub cmd_restart {
 		return '' unless($force);
 		$ret = ''
 	} else {
-		return '' unless(&umount_main());
+		return '' unless(&umount_main(1));
 		$ret = 1
 	}
 	&forget_settings();
@@ -2213,9 +2322,10 @@ sub cmd_print_kill {
 # The main start/mount function:
 
 sub mount_main {
-	my ($first_create, $skip_ro_mounting) = @_;
+	my ($start_cmd, $skip_ro_mounting) = @_;
 	return '' if(&error_if_mounted());
 	my $squashfile = &get_abspath('FILE', 1);
+	my $first_create = $start_cmd;
 	if(-f $squashfile) {
 		$first_create = ''
 	} elsif(!$first_create) {
@@ -2258,15 +2368,21 @@ sub mount_main {
 	my $type = &mount_rw($dir_ro, $dir);
 	return '' unless(defined($type));
 	$current->{'TYPE'} = $type;
+	return $ret unless($start_cmd && $ret && (!$first_create) &&
+		(($user_config->{'RESQUASH_ON_START'}) // $resquash_on_start));
+	$ret = &remount_main();
+	$current->{'THRESHOLD'} = -1;
 	$ret
 }
 
 # The main umount function.
 # $will_squash and $will_remove will be calculated if they are not passed
+# as the second or third argument, respectively.
 
 sub umount_main {
+	my $stop_cmd = (shift() // '');
 	my $type = $current->{'TYPE'};
-	return &umount_readonly($quiet ? '' : 'umounting READONLY')
+	return &umount_readonly($stop_cmd, $quiet ? '' : 'umounting READONLY')
 		unless($ignore_state || &is_nonempty($type));
 	my ($will_squash, $will_remove) = @_;
 	($will_squash, $will_remove) = &check_squash($threshold, $kill)
@@ -2288,7 +2404,10 @@ sub umount_main {
 	&info('umounting...') unless($quiet);
 	my $ret = 1;
 	my $message = '';
-	unless(defined($dir) && &umount_dir($dir)) {
+	if(defined($dir) && &umount_dir($dir)) {
+		&rmdir_recurse($dir, ($user_config->{'RM_DIR'} // $rm_dir))
+			if($stop_cmd)
+	} else {
 		&error('cannot determine DIR') unless(defined($dir));
 		return '' unless($ignore_state && $force);
 		&warning('presuming umount was succesful due to -fI') unless($quiet > 1);
@@ -2299,12 +2418,17 @@ sub umount_main {
 		my $workdir = &get_abspath('WORKDIR');
 		if(&is_abspath($workdir)) {
 			&info('cleaning workdir...') unless($quiet);
-			$ret = '' unless(&clean_directory($workdir))
+			if(&clean_directory($workdir)) {
+				&rmdir_recurse($workdir, ($user_config->{'RM_WORKDIR'} // $rm_workdir))
+					if($stop_cmd)
+			} else {
+				$ret = ''
+			}
 		}
 	}
 	delete($current->{'TYPE'});
 	&reset_main(!$quiet) if($reset);
-	$ret = '' unless(&umount_readonly($message));
+	$ret = '' unless(&umount_readonly($stop_cmd, $message));
 	if($created) {
 		my $squashfile = &get_abspath('FILE', 1);
 		if(&is_nonempty($backup)) {
@@ -2333,19 +2457,44 @@ sub umount_main {
 	if(&is_abspath($changes)) {
 		&title("$tag cleaning");
 		&info('cleaning changes...') unless($quiet);
-		$ret = '' unless(&clean_directory($changes))
+		if(&clean_directory($changes)) {
+			&rmdir_recurse($changes, ($user_config->{'RM_CHANGES'} // $rm_changes))
+				if($stop_cmd)
+		} else {
+			$ret = ''
+		}
 	}
 	$ret
 }
 
-# Umount readonly directory if mounted. Print argument if umounting
+# The main remount function
+
+sub remount_main {
+	return '' if(&error_unless_mounted());
+	my ($will_squash, $will_remove) = (1);
+	($will_squash, $will_remove) = &check_squash($threshold, $kill)
+		if(&is_nonempty($current->{'TYPE'}));
+	unless($force || $will_squash || ($will_remove > 0)) {
+		&info('remounting appears unnecessary');
+		return 1
+	}
+	&title("$tag remount") if($printed_title);
+	return '' unless(&umount_main('', $will_squash, $will_remove));
+	&mount_main('')
+}
+
+# Umount readonly directory if mounted, and remove it if first arg is true.
+# If umounting really happens, print second argument.
 
 sub umount_readonly {
 	return 1 unless($ignore_state || &is_nonempty($current->{'MOUNT_RO'}));
-	my ($message) = @_;
-	&info($message) if(($message // '') ne '');
+	my $stop_cmd = (shift() // '');
+	my $message = (shift() // '');
+	&info($message) if($message ne '');
 	my $dir_ro = &get_abspath('READONLY');
 	return '' unless(&is_abspath($dir_ro) && &umount_dir($dir_ro, 1));
+	&rmdir_recurse($dir_ro, ($user_config->{'RM_READONLY'} // $rm_readonly))
+		if($stop_cmd // '');
 	delete($current->{'MOUNT_RO'});
 	1
 }
@@ -2717,7 +2866,7 @@ sub mksquashfs_options {
 		defined($mksquash_symbols->{'i'}));
 	push(@$options, '-progress') if(defined($mksquash_symbols->{'p'}));
 	push(@$options, '-always-use-fragments') if(&is_nonempty($user_config->{'DEFAULT_FRAGMENTS'}));
-	my $comp = (defined($compression) ? lc($compression) : 'xz');
+	my $comp = (defined($compression) ? lc($compression) : 'lz4');
 	my $compopt = $user_config->{'COMPOPT_' . uc($comp)};
 	unless(defined($compopt)) {
 		$compopt = '-Xhc' if($comp eq 'lz4')
@@ -2882,6 +3031,12 @@ sub kernelprobe {
 	our $mem = '';
 	our $modprobe_loop = 1;
 	our $modprobe_squash = 1;
+	our $resquash_on_start = '';
+	our $rm_rundir = 1;
+	our $rm_dir = 0;
+	our $rm_changes = 1;
+	our $rm_workdir = 1;
+	our $rm_readonly = 1;
 	our $locking = undef;
 	our $obsolete_overlayfs = '';
 	our @order = ();
@@ -2926,6 +3081,12 @@ sub read_config_file {
 	our $mem;
 	our $modprobe_loop;
 	our $modprobe_squash;
+	our $resquash_on_start;
+	our $rm_rundir;
+	our $rm_dir;
+	our $rm_changes;
+	our $rm_workdir;
+	our $rm_readonly;
 	our $locking;
 	our $obsolete_overlayfs;
 	our @order;
@@ -3091,6 +3252,7 @@ sub end_locking {
 
 sub forget_settings {
 	&info('forgetting settings') unless($quiet);
+	$rm_rundir_on_end = 1;
 	$current = {};
 	&fill_current();
 	&set_globals();
@@ -3880,6 +4042,27 @@ sub cat_dir {
 	File::Spec->catpath($vol, File::Spec->catdir(@_), $file)
 }
 
+sub rmdir_recurse {
+	my ($dir, $parents) = @_;
+	return 1 unless(($parents // '') && ($parents =~ m{^[+-]?\d+$}));
+	while(-d $dir) {
+		return 1 if(-l $dir);
+		&info("trying to remove directory $dir") if($verbose > 2);
+		unless(rmdir($dir)) {
+			&info("did not remove directory", $!) if($verbose > 2);
+			return 1
+		}
+		if($parents > 0) {
+			return 1 if(--$parents)
+		}
+		my ($vol, @dirs) = &split_dir($dir);
+		return 1 unless(@dirs);
+		pop(@dirs);
+		$dir = &cat_dir($vol, @dirs)
+	}
+	''
+}
+
 sub version {
 	print($name, ' ', $VERSION, "\n");
 	exit(0)
@@ -4091,6 +4274,12 @@ $lazy = $CFG::lazy unless(defined($lazy));
 $locking = $CFG::locking unless(defined($locking));
 $modprobe_loop = $CFG::modprobe_loop;
 $modprobe_squash = $CFG::modprobe_squash;
+$resquash_on_start = $CFG::resquash_on_start;
+$rm_rundir = $CFG::rm_rundir;
+$rm_dir = $CFG::rm_dir;
+$rm_changes = $CFG::rm_changes;
+$rm_workdir = $CFG::rm_workdir;
+$rm_readonly = $CFG::rm_readonly;
 &fatal('Obsolete $squash_verbose is set in the configuration.',
 'Do not define $squash_verbose; set $mksquash_verbose instead.')
 	if(defined($CFG::squash_verbose));
@@ -4199,6 +4388,7 @@ if($pass_dir) {
 # Make sure that /run/squashmount exists (unless we have $run_ro)
 
 &make_directory($rundir) unless($run_ro || (-d $rundir));
+$rm_rundir_on_end = '';
 
 # Finally, the main loop over the @mounts or %pass_dir entries:
 
@@ -4226,6 +4416,7 @@ for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 	&end_locking();
 	last if($firstmatch || $had_error)
 }
+&rmdir_recurse($rundir, $rm_rundir) if($rm_rundir_on_end);
 exit($exitstatus);
 
 # Auxiliary functions which are convenient to have when debugging:
