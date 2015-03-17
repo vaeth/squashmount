@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v10.0.0;
+package Squashmount v10.0.1;
 
 use strict;
 use warnings;
@@ -3922,8 +3922,11 @@ sub hash_equal {
 sub starts_with {
 	my ($a, $b) = @_;
 	return '' if(@$b > @$a);
-	for(my $i = 0; $i < @$b; ++$i) {
-		return '' if($a->[$i] ne $b->[$i])
+	while(my ($i, $j) = each(@$b)) {
+		if($a->[$i] ne $j) {
+			keys(@$b);  # reset "each" counter
+			return ''
+		}
 	}
 	1
 }
@@ -4306,8 +4309,7 @@ if(defined($CFG::killpower)) {
 
 my %tags = ();
 $taglen = 0;
-for(my $i = 0; $i < @CFG::mounts; ++$i) {
-	my $mountpoint = $CFG::mounts[$i];
+while(my ($i, $mountpoint) = each(@CFG::mounts)) {
 	&fatal('config error: element ' . ($i + 1) . ' of @mounts is not a hash reference')
 		unless(ref($mountpoint) eq 'HASH');
 	my $tag = $mountpoint->{'TAG'};
