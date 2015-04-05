@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-10.0.2
+	Martin Väth <martin at mvath.de>:
+	- Fix etc/revdep-rebuild
+
 *squashmount-10.0.1
 	Martin Väth <martin at mvath.de>:
 	- internal: prefer each() over index bookkeeping
