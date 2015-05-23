@@ -254,6 +254,33 @@ my $non_binary = {
 	})
 );
 
+# In the following example, we use mount --bind to provide a copy of
+# /usr/portage (from the mount-point portage) to /srv/copy
+# (This example can also be seen with "squashmount man"):
+
+$after_mount = sub {
+	my ($mountpoint, $store, $config) = @_;
+	return 1 unless($mountpoint eq 'portage');
+	system('mount', '--bind', $config->{DIR} // $store->{DIR}, '/srv/copy');
+	1 # return a true value!
+}
+
+$before_umount = sub {
+	my ($mountpoint, $store, $config) = @_;
+	return 1 unless($mountpoint eq 'portage');
+	system('umount /srv/copy');
+	1 # return a true value!
+};
+
+# In case the user has called "mount --bind ..." manually,
+# we umount tacitly before the mounting...
+
+$before_mount = sub {
+	my ($mountpoint, $store, $config) = @_;
+	return 1 unless($mountpoint eq 'portage');
+	system('umount /srv/copy >/dev/null 2>&1');
+	1 # return a true value!
+}
 
 # Now we give an example of a mount-point "custom" which is only available
 # if a corresponding path to a squash file was passed with the option

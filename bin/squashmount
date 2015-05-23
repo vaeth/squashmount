@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v10.0.2;
+package Squashmount v10.1.0;
 
 use strict;
 use warnings;
@@ -744,7 +744,8 @@ if the corresponding options are not passed.
 
 For advanced configuration, you can access the variables B<@ARGV>, B<$command>,
 B<$storing>, and you can set callback functions/function arrays B<$before>,
-B<$after> which are explained in the section B<ADVANCED CONFIGURATION>.
+B<$after>, B<$before_mount>, B<$after_mount>, B<$before_umount>, B<$after_umount>
+which are explained in the section B<ADVANCED CONFIGURATION>.
 There also some auxiliary perl functions available which are eplained later on.
 
 Here is an example for this file.
@@ -1879,11 +1880,16 @@ to B<squashmount>.
 
 =back
 
-The callback mechanism mentioned earlier consists in setting the
-variables B<$before> and/or B<$after> to a function or a reference
+The callback mechanism mentioned earlier consists in setting at least one of
+the variables B<$before>, B<$after>, B<$before_mount>, B<$after_mount>,
+B<$before_umount>, $B<$after_umount> to a function or a reference
 to an array of functions, respectively.
 These functions are called for each mount-point immediately before/after
-B<squashmount> executes its main task (specified by B<$command>).
+B<squashmount> executes its main task (specified by B<$command>), or
+before/after B<squashmount> is excutes its main mount/umount command(s).
+
+Note that e.g. B<$before_mount> can be called several times successively
+for the same mount point if B<RESQUASH_ON_START> is true.
 
 These functions are called with three parameters: The name of the mount-point
 (a string), a reference to the hash containing the "stored" data,
@@ -1899,12 +1905,12 @@ from B<$after> only influences what will be stored for later calls of
 B<squashmount>. You can add new keys to the hash of "stored" data, but the
 values must be very simple: Only strings (or numericals) are admissible.
 
-The modified data is only stored if B<$soring> is true. Changing
+The modified data is only stored if B<$storing> is true. Changing
 the value of B<$storing> in any of the callback functions is not admissible:
 If you want to change B<$storing> (and then probably also B<$locking>)
 you must do this only when the configuration file is parsed.
 
-Note that the functions B<$before> and B<$after> must return a value, and
+Note that all of the hook functions must return a value, and
 this value should usually be true (e.g. B<1>): If a function from B<$before>
 does not return true, then no further function from B<$before> is executed,
 and also the main action of B<squashmount> is not executed for that mount-point
@@ -1915,6 +1921,11 @@ Be aware that the latter means that you can run into the same problems
 as if you set B<$storing> to a false value: If B<squashmount> just mounted
 a mount-point, it will not "know" that it did this afterwards, if the
 data is not stored!
+
+In a similar way, a non-true return value of B<$before_mount> or
+B<$before_umount> indicates that the (u(mounting failed without actually
+attempting to (u(mount, and a non-true return value of B<$after_mount> or
+B<$after_umount> indicates that the (u)mounting failed.
 
 In the functions from B<$after>, you should not add/modify any data to the
 hash of "stored" data if B<$command> is B<forget> or B<stop>:
@@ -2005,6 +2016,66 @@ This is intentional, since it may be dangerous to change the path of FILE
 while it is mounted. A more luxury variant of the above code would also
 print a warning if the user attempts to use different values for B<--arg>
 without calling B<squashmount stop> (or B<squashmount forget>) in between.
+
+Here is an example of the usage of some of the other hooks.
+In this example, the hooks are used to bind a copy of the mounted directory
+from the "portage" mount point to /srv/copy
+
+=over 8
+
+=item $after_mount = sub {
+
+=over 16
+
+=item my ($mountpoint, $store, $config) = @_;
+
+=item return 1 unless($mountpoint eq 'portage');
+
+=item system('mount', '--bind', $config->{DIR} // $store->{DIR}, '/srv/copy');
+
+=item 1 # return a true value!
+
+=back
+
+=item };
+
+=item $before_umount = sub {
+
+=over 16
+
+=item my ($mountpoint, $store, $config) = @_;
+
+=item return 1 unless($mountpoint eq 'portage');
+
+=item system('umount /srv/copy');
+
+=item 1 # return a true value!
+
+=back
+
+=item };
+
+=item # In case the user has called "mount --bind ..." manually,
+
+=item # we umount tacitly before the mounting...
+
+=item $before_mount = sub {
+
+=over 16
+
+=item my ($mountpoint, $store, $config) = @_;
+
+=item return 1 unless($mountpoint eq 'portage');
+
+=item system('umount /srv/copy >/dev/null 2>&1');
+
+=item 1 # return a true value!
+
+=back
+
+=item };
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -2340,6 +2411,7 @@ sub mount_main {
 	my $ro_stat = &create_dir('READONLY', '');
 	return '' unless($ro_stat);
 	&info('mounting...') unless($quiet);
+	return '' unless(&run_hook($CFG::before_mount, '$before_mount'));
 	if($ro_stat < 0) {
 		return '' unless(&mount_squash($squashfile, $dir));
 		$current->{'TYPE'} = 'readonly';
@@ -2368,6 +2440,9 @@ sub mount_main {
 	my $type = &mount_rw($dir_ro, $dir);
 	return '' unless(defined($type));
 	$current->{'TYPE'} = $type;
+	if($ret) {
+		return '' unless(&run_hook($CFG::after_mount, '$after_mount'))
+	}
 	return $ret unless($start_cmd && $ret && (!$first_create) &&
 		(($user_config->{'RESQUASH_ON_START'}) // $resquash_on_start));
 	$ret = &remount_main();
@@ -2382,7 +2457,9 @@ sub mount_main {
 sub umount_main {
 	my $stop_cmd = (shift() // '');
 	my $type = $current->{'TYPE'};
-	return &umount_readonly($stop_cmd, $quiet ? '' : 'umounting READONLY')
+	return(&run_hook($CFG::before_umount, '$before_umount') &&
+		&umount_readonly($stop_cmd, $quiet ? '' : 'umounting READONLY') &&
+		&run_hook($CFG::after_umount, '$after_umount'))
 		unless($ignore_state || &is_nonempty($type));
 	my ($will_squash, $will_remove) = @_;
 	($will_squash, $will_remove) = &check_squash($threshold, $kill)
@@ -2404,7 +2481,13 @@ sub umount_main {
 	&info('umounting...') unless($quiet);
 	my $ret = 1;
 	my $message = '';
-	if(defined($dir) && &umount_dir($dir)) {
+	my $umount_ret = (defined($dir) &&
+		&run_hook($CFG::before_umount, '$before_umount'));
+	if($umount_ret) {
+		$umount_ret = &umount_dir($dir);
+		$umount_ret = '' unless(&run_hook($CFG::after_umount, '$after_umount'))
+	}
+	if($umount_ret) {
 		&rmdir_recurse($dir, ($user_config->{'RM_DIR'} // $rm_dir))
 			if($stop_cmd)
 	} else {
@@ -3047,6 +3130,10 @@ sub kernelprobe {
 	our $storing = undef;
 	our $before = undef;
 	our $after = undef;
+	our $before_mount = undef;
+	our $after_mount = undef;
+	our $before_umount = undef;
+	our $after_umount = undef;
 }
 
 our @EXPORT = qw(
@@ -3097,6 +3184,10 @@ sub read_config_file {
 	our $storing;
 	our $before;
 	our $after;
+	our $before_mount;
+	our $after_mount;
+	our $before_umount;
+	our $after_umount;
 	Squashmount->import();
 	my $ret = do($file);
 	&fatal("failed to parse $file:", $@) if($@);

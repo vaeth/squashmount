@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-10.1.0
+	Martin Väth <martin at mvath.de>:
+	- Support $before_{u,mount} $after_{u,mount}
+
 *squashmount-10.0.2
 	Martin Väth <martin at mvath.de>:
 	- Fix etc/revdep-rebuild
