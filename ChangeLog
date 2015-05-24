@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-11.0.1
+	Martin Väth <martin at mvath.de>:
+	- Fix error output in config file parsing
+
 *squashmount-11.0.0
 	Martin Väth <martin at mvath.de>:
 	- Provide etc/portage/repo.postsync.d/50-squashmount-gentoo
@@ -8,6 +12,7 @@
 	- WARNING: The above file treats the mount-point "gentoo" specially!
 	  Do not use that name as a mount-point if you install this file but
 	  do not inted to use portage's sync-type = squashdelta!
+	- Fix some typos in help/example texts
 
 *squashmount-10.1.0
 	Martin Väth <martin at mvath.de>:

@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v11.0.0;
+package Squashmount v11.0.1;
 
 use strict;
 use warnings;
@@ -3182,8 +3182,8 @@ sub read_config_file {
 	our $after_umount;
 	Squashmount->import();
 	my $ret = do($file);
-	&fatal("failed to parse $file:", $@) if($@);
-	&fatal("failed to read $file:", $!) unless(defined($ret));
+	&fatal("failed to parse $file:", "$@") if($@);
+	&fatal("failed to read $file:", "$!") unless(defined($ret));
 	&warning("failed to run $file",
 		'perhaps the last executed command was not a true expression')
 		unless($ret);
@@ -4135,7 +4135,7 @@ sub rmdir_recurse {
 		return 1 if(-l $dir);
 		&info("trying to remove directory $dir") if($verbose > 2);
 		unless(rmdir($dir)) {
-			&info("did not remove directory", $!) if($verbose > 2);
+			&info("did not remove directory", "$!") if($verbose > 2);
 			return 1
 		}
 		if($parents > 0) {
