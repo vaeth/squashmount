@@ -1,0 +1,34 @@
+#!/bin/sh
+# This file remounts the squashmount mount-point "gentoo" after each syncing
+# of the "gentoo" repository.
+# Do not use this file if you want to use a mount-point named "gentoo" with
+# squashmount without using sync-type = squashdelta
+
+repository_name=${1}
+sync_uri=${2}
+repository_path=${3}
+
+# Run only for repository gentoo:
+[ "${repository_name}" != gentoo ] && exit
+
+# Run only if mount-point gentoo is configured
+[ "`squashmount --quiet print-tag gentoo 2>/dev/null`" != gentoo ] && exit
+
+echo "* In post-repository hook for ${repository_name}"
+echo "** synced from remote repository ${sync_uri}"
+echo "** synced into ${repository_path}"
+echo '* Using squashmount to (re)mount "gentoo" with squashmount'
+
+# Suppress all output in the following commands:
+{
+	# Forcibly umount, even if portage should have messed up our mount...
+	squashmount --lazy --ignore --force --quiet --quiet umount gentoo
+
+	# If portage should still have mounted DIR, we umount it:
+	umount -- "${repository_path}" || umount --lazy -- "${repository_path}"
+
+} >/dev/null 2>&1
+
+# Finally the main purpose of this script: Mount gentoo with squashmount:
+
+exec squashmount mount gentoo

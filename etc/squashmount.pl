@@ -162,13 +162,44 @@ my $non_binary = {
 	#	RESQUASH_ON_START => ''
 	# },
 	# because added_hash() "adds" our values to that from $defaults.
+
+	# If you want to use portage's sync-type = squashdelta
+	# a similar setup is useful. Start by putting the following into your
+	# /etc/portage/repos.conf:
+
+	# [gentoo]
+	# location = /srv/repo-gentoo # Do *not* use /var/db/... (see below)
+	# sync-type = squashdelta
+	# sync-uri = mirror://gentoo/../snapshots/squashfs
+	# auto-sync = yes
+
+	# (Do *not* use the default location /var/db/repos/gentoo, if you
+	# mount also /var/db with the recommended mount-point below,
+	# since "stacking" mount-points is not a good idea: You would have to
+	# take care about the order whenever you mount/umount.)
+
+	# With squashmount, we can now mount the downloaded squashfile
+	# read-writable. In this case, we keep all changes only temporary.
+	# We will also have to hook into portage's sync mechanism to remount
+	# after syncing:
+	# The file etc/portage/repo.postsync.d/50-squashmount-gentoo is such a
+	# hook (which requires that this mount-point be called "gentoo").
+	added_hash($defaults, $non_binary, {
+		TAG => 'gentoo',
+		DIR => '/srv/repo-gentoo',
+		FILE => '/var/cache/portage/squashfs/gentoo-current.sqfs',
+		KILL => 1,
+		RM_CHANGES => 1, RM_WORKDIR => 1, RM_READONLY => 1,
+		RESQUASH_ON_START => ''
+	}),
+	# Here is yet another useful example:
 	added_hash($defaults, $non_binary,  {
 		TAG => 'db',
 		DIR => '/var/db',
 		FILE => '/var/db.mount/db.sfs',
 		BACKUP => '.bak', # keep a backup in /var/db.mount/db.sfs.bak
-		             # For an absolute path, we could have written:
-		             # BACKUP => '/backup-disk/db.sfs'
+			# For an absolute path, we could have written:
+			# BACKUP => '/backup-disk/db.sfs'
 		CHANGES => '/var/db.mount/changes',
 		WORKDIR => '/var/db.mount/workdir',
 		READONLY => '/var/db.mount/readonly',
@@ -223,6 +254,9 @@ my $non_binary = {
 			qr{^tex(?:/generic(?:/config(?:/language(?:\.(?:dat(?:\.lua)?|def)))?)?)?$}
 		]
 	}),
+# The following example is useful if you use portage with a "traditional"
+# sync-type (like rsync, webrsync or also git). An example for
+# sync-type = squashdelta is given later.
 	standard_mount('portage', '/usr/portage', $defaults, $non_binary, {
 		# We know that no hardlinks or similar "tricky" things are used
 		# in the portage tree, hence we "can" omit the umount helpers
@@ -254,9 +288,10 @@ my $non_binary = {
 	})
 );
 
+
 # In the following example, we use mount --bind to provide a copy of
 # /usr/portage (from the mount-point portage) to /srv/copy
-# (This example can also be seen with "squashmount man"):
+# (This is an extension of the example from "squashmount man"):
 
 $after_mount = sub {
 	my ($mountpoint, $store, $config) = @_;
@@ -272,8 +307,8 @@ $before_umount = sub {
 	1 # return a true value!
 };
 
-# In case the user has called "mount --bind ..." manually,
-# we umount tacitly before the mounting...
+# In case the user mounted /srv/copy without using squashmount,
+# we undo this, before mounting the portage directory with squashmount:
 
 $before_mount = sub {
 	my ($mountpoint, $store, $config) = @_;
@@ -281,6 +316,8 @@ $before_mount = sub {
 	system('umount /srv/copy >/dev/null 2>&1');
 	1 # return a true value!
 }
+
+
 
 # Now we give an example of a mount-point "custom" which is only available
 # if a corresponding path to a squash file was passed with the option
@@ -295,9 +332,9 @@ my $custom = @ARGV;
 my $file = undef;
 if($custom) {
 	$file = pop(@ARGV);
-	fatal("argument '$file' of --args is not a file") unless(-f $file);
+	fatal("argument '$file' of --arg is not a file") unless(-f $file);
 
-	# If B<--args> was provided once, store it for later usage
+	# If B<--arg> was provided once, store it for later usage
 	$locking = $storing = 1 # don't set $storing without $locking!
 }
 

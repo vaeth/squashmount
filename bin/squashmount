@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v10.1.0;
+package Squashmount v11.0.0;
 
 use strict;
 use warnings;
@@ -863,7 +863,19 @@ see the remarks at the end of this manpage.)
 
 =over 16
 
-=item TAG => 'portage',
+=item # B<squashmount> plays nicely with the portage's
+
+=item # B<sync-type = squashdelta>
+
+=item # However, this requires another setup - see example configuration.
+
+=item # The following example is only useful for a "traditional"
+
+=item # sync-type (like rsync, webrsync or also git).
+
+=item TAG => 'portage',  # Do not use TAG => 'gentoo' here if you use
+
+=item # /etc/portage/repo.postsync.d/50-squashmount-gentoo
 
 =item DIR => '/usr/portage,
 
@@ -1935,7 +1947,7 @@ documented behaviour of B<forget> and B<stop>!
 
 Here is an example which is more advanced than the previous one:
 With this example, you can specify the path of the squashfile by
-calling B<squashmount> with the arguments B<-a> I<path> or B<--args=>I<path>.
+calling B<squashmount> with the arguments B<-a> I<path> or B<--arg=>I<path>.
 When mounted, this path will be stored for later usage, until the setting
 is forgotten with B<squashmount stop> or B<squashmount forget>.
 The mount-point is only visible if either the argument B<-a> is used or if
@@ -1953,9 +1965,9 @@ the path is already stored.
 
 =item (-f ($file = pop(@ARGV))) or
 
-=item fatal("argument '$file' of --args is not a file");
+=item fatal("argument '$file' of --arg is not a file");
 
-=item # If --args was provided once, store it for later usage
+=item # If --arg was provided once, store it for later usage
 
 =item $locking = $storing = 1 # don't set $storing without $locking!
 
@@ -2048,26 +2060,6 @@ from the "portage" mount point to /srv/copy
 =item return 1 unless($mountpoint eq 'portage');
 
 =item system('umount /srv/copy');
-
-=item 1 # return a true value!
-
-=back
-
-=item };
-
-=item # In case the user has called "mount --bind ..." manually,
-
-=item # we umount tacitly before the mounting...
-
-=item $before_mount = sub {
-
-=over 16
-
-=item my ($mountpoint, $store, $config) = @_;
-
-=item return 1 unless($mountpoint eq 'portage');
-
-=item system('umount /srv/copy >/dev/null 2>&1');
 
 =item 1 # return a true value!
 

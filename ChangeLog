@@ -1,5 +1,14 @@
 # ChangeLog for squashmount
 
+*squashmount-11.0.0
+	Martin Väth <martin at mvath.de>:
+	- Provide etc/portage/repo.postsync.d/50-squashmount-gentoo
+	  and instructions for a special treatment of the mount point
+	  "gentoo" in connection with portage's sync-type = squashdelta
+	- WARNING: The above file treats the mount-point "gentoo" specially!
+	  Do not use that name as a mount-point if you install this file but
+	  do not inted to use portage's sync-type = squashdelta!
+
 *squashmount-10.1.0
 	Martin Väth <martin at mvath.de>:
 	- Support $before_{u,mount} $after_{u,mount}

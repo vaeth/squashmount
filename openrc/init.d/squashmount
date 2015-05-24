@@ -5,7 +5,7 @@ depend() {
 	need localmount tmpfiles.setup
 }
 
-description='start/stop all squashmount configured mountpoints'
+description='start/stop all squashmount configured mount points'
 
 start() {
 	ebegin 'mounting with squashmount'
