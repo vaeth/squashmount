@@ -54,6 +54,7 @@ fatal('The default /etc/squashmount.pl is only an example config!',
 # Uncomment the corresponding line if you want to have different defaults.
 # Normally, this is not needed.
 # $lazy = '';
+# $lsof = 0;
 # $squash_verbose = '';
 # $modprobe_loop = '';
 # $modprobe_squash = '';

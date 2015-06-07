@@ -15,6 +15,6 @@ start() {
 
 stop() {
 	ebegin 'umounting/stopping squashmount'
-	squashmount -f stop
+	squashmount -f --lsof=0 stop
 	eend ${?}
 }

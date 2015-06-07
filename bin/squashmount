@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v11.0.1;
+package Squashmount v12.0.0;
 
 use strict;
 use warnings;
@@ -173,7 +173,8 @@ To output particular data use the B<print-...> commands (and specify B<mask1>).
 Check whether B<DIR> is empty; usually this should always be the case.
 Normally, this command requires that the corresopnding mount-point is umounted.
 Use option B<-f> to force an umount temporarily.
-In this case, B<--lazy> always defaults to false unless specified by the option.
+In this case, B<--lazy=0> and B<--lsof=1> are the defaults unless specified
+by the option.
 
 B<check> cannote be used if B<DIR> is unknown, that is, if B<DIR> is a defined
 by a function which was never called before.
@@ -277,7 +278,6 @@ For usage in scripts, combine this with B<-q> and pass a tag.
 =item B<print-threshold>
 
 Output the currently active threshold value.
-Every negative value is normalized to B<-1>.
 For usage in scripts, combine this with B<-q> and pass a tag.
 
 =item B<print-kill>
@@ -455,7 +455,7 @@ configured (without actually changing the configuration, of course).
 
 (This is an alias for B<--threshold=0> which is normally the default.)
 If used with B<umount> or B<remount> squash the directories if they have
-been changed.
+been changed. (See also B<--force-squash>.)
 
 If used with B<set>, set the state in F</run/squashmount>
 so that this happens for all subsequent umounts/remounts.
@@ -463,10 +463,17 @@ so that this happens for all subsequent umounts/remounts.
 If used with B<status> or B<print*> act as if mount-point was correspondingly
 configured (without actually changing the configuration, of course).
 
+=item B<--force-squash> or B<--squash-force>
+
+(This is an alias for B<--threshold=-2>.)
+If used with B<umount> or B<remount> squash the directories,
+even if they have not been changed.
+
 =item B<--threshold=>I<size> or B<-t> I<size>
 
-For negative I<size> act as described for B<--no-squash>, and for zero I<size>
-act as described for B<--squash>.
+For I<size>=B<-1> act as described for B<--no-squash>, and for I<size>=B<0>
+act as described for B<--squash>, and for I<size>=B<-2> act as decsribed
+for B<--force-squash>.
 
 For positive I<size>, if the length of the changes is less than I<size> bytes,
 squashmount will act with B<umount> as if B<--no-squash> is active, otherwise
@@ -596,15 +603,51 @@ In this case, the best attempt is to call
 C<squashmount -fI umount> or C<squashmount -nfI umount> for trying to force
 umounting unconditionally all configured directories.
 
-=item B<--lazy>
+=item B<--lazy=>I<value>
 
-When umounting fails, attempt also lazy umounting.
+B<value> must be one of the following:
 
-=item B<--no-lazy> or B<--nolazy>
+=over 16
 
-Do not attempt lazy umounting when normal umounting failed.
-Whether B<--lazy> or B<--no-lazy> is the default depends on F</etc/squashmount.pl>;
-if not specified there the default is B<--lazy>.
+=item B<0> (or the empty string)
+
+Fail if umounting fails.
+
+=item B<1> (default unless configured in F</etc/squashmount.pl>)
+
+If umounting fails, retry B<umount --lazy>.
+
+=item B<-1>
+
+Try only B<umount --lazy>. Note that lazy umounting can be dangerous.
+Use B<-1> only if you know what you are doing.
+
+=back
+
+=item B<--lsof=>I<value>
+
+B<value> must be one of the following:
+
+=over 16
+
+=item (the empty string)
+
+Never execute B<lsof>.
+
+=item B<0>
+
+If B<lsof> indicates that umounting would fail, act as if B<$lazy=1>.
+
+=item B<1> (default if B<$lsof> is unchanged in F</etc/squashmount.pl>)
+
+Fail if B<lsof> indicates that umounting would fail.
+
+=item B<-1>
+
+If B<lsof> indicates that umounting would fail, act as if B<$lazy=-1>.
+Use B<-1> only if you know what you are doing!
+
+=back
 
 =item B<--locking>
 
@@ -726,7 +769,7 @@ In addition, the array B<@order> can be filled with the available tools,
 the order in which they should be tried, and flags whether modprobe should
 be called, how to test the existence of tools and what to do if tools appear
 unavailable.
-Also the default variables B<$lazy>, B<$locking>, B<$modprobe_loop>,
+Also the default variables B<$lazy>, B<$lsof>, B<$locking>, B<$modprobe_loop>,
 B<$modprobe_squash>, B<$obsolete_overlayfs>, B<$resquash_on_start>
 can be initialized:
 They are initialized to B<1> (perl interprets this as I<true>)
@@ -755,7 +798,7 @@ see the remarks at the end of this manpage.)
 
 =over 8
 
-=item $lazy = 1; # unnecessary; this is the default
+=item $lazy = $lsof = 1; # unnecessary; this is the default
 
 =item $nosquash = '/etc/killpower'; # ignore /etc/nosquash
 
@@ -947,7 +990,12 @@ Except for B<@mounts>, the meaning of the variables is easily explained:
 
 =item B<$lazy>
 
-This determines whether B<--lazy> or B<--no-lazy> is the default.
+This determines the default I<value> of B<--lazy>.
+This variable defaults to the value B<1> (I<true>).
+
+=item B<$lsof>
+
+This determines the default I<value> of B<--lsof>.
 This variable defaults to the value B<1> (I<true>).
 
 =item B<$killpower>
@@ -1242,8 +1290,10 @@ B<squashmount print-readonly ...>
 
 This is the threshold value used for that mount-point
 (unless changed by command line options).
-Set it to a negtive value for an infinite threshold,
+Set it to B<-1> for an infinite threshold,
 that is, to get the effect of B<--no-squash>.
+Set it to B<-2> to force squashing even if there were no changes,
+that is, to get the effect of B<--force-squash>.
 The default is B<0>.
 
 =item B<KILL>
@@ -2096,6 +2146,7 @@ my $mem = undef;
 my $opt_color = undef;
 my $star = undef;
 my $lazy = undef;
+my $lsof = undef;
 my $locking = undef;
 my $force = '';
 my $ignore_state = '';
@@ -2122,6 +2173,7 @@ my $title = undef;
 my $funionfs = undef;
 my $unionfs_fuse = undef;
 my $mksquashfs = undef;
+my $lsof_bin = undef;
 my $mount = undef;
 my $umount = undef;
 my $modprobe = undef;
@@ -2446,9 +2498,28 @@ sub mount_main {
 # $will_squash and $will_remove will be calculated if they are not passed
 # as the second or third argument, respectively.
 
+sub lsof {
+	my ($dir) = @_;
+	return 1 unless(&is_abspath($dir));
+	return 1 unless(&which_store(\$lsof_bin, 'lsof'));
+	return 1 if(&my_system(2, \$lsof_bin, 'lsof', '--', $dir) == 0x100);
+	if($lsof && ($lsof > 0)) {
+		&error('umount skipped: dir in use: ' . $dir,
+			'(this test can be skipped with --lsof=0)')
+	} elsif($verbose) {
+		&warning('bad report of lsof ' . $dir)
+	}
+	''
+}
+
 sub umount_main {
 	my $stop_cmd = (shift() // '');
 	my $type = $current->{'TYPE'};
+	if($lsof && ($lsof > 0)) {
+		if(&is_nonempty($current->{'MOUNT_RO'})) {
+			return '' unless(&lsof(&get_abspath('READONLY')))
+		}
+	}
 	return(&run_hook($CFG::before_umount, '$before_umount') &&
 		&umount_readonly($stop_cmd, $quiet ? '' : 'umounting READONLY') &&
 		&run_hook($CFG::after_umount, '$after_umount'))
@@ -2460,6 +2531,9 @@ sub umount_main {
 	my $tempfile;
 	my $dir = &get_abspath('DIR');
 	$dir = undef unless(&is_abspath($dir));
+	if($lsof && ($lsof > 0)) {
+		return '' unless(&lsof($dir));
+	}
 	if($will_squash && defined($dir)) {
 		&info('squashing (this may take a while)') unless($quiet);
 		if(&is_abspath($tempdir)) {
@@ -2993,7 +3067,7 @@ sub set_know_quiet {
 	close($fh)
 }
 
-# Umount the directoy, possibly lazily:
+# Umount the directoy, possibly lazily and/or checking with lsof first:
 
 sub umount_dir {
 	my ($dir, $readonly) = @_;
@@ -3005,18 +3079,28 @@ sub umount_dir {
 		push(@addopt, ($readonly ? @CFG::umount_ro : @CFG::umount))
 	}
 	push(@addopt, '-v') if($verbose > 3);
-	my $ret = (&my_system(1, \$umount, 'umount', @addopt, '--', $dir) == 0);
-	unless($ret) {
-		if($lazy) {
-			&error('non-lazy umount failed,',
-				"using lazy umount of $dir") unless($quiet > 1);
-			$ret = (&my_system(1, \$umount, 'umount', '-l', @addopt, '--', $dir) == 0);
-			&error("lazy umount failed: $dir") unless($ret)
+	my $loclazy = $lazy;
+	if(($lsof ne '') && !&lsof($dir)) {
+		if($lsof == 0) {
+			$loclazy = 1
+		} elsif($lsof < 0) {
+			$loclazy = -1
 		} else {
-			&error('non-lazy umount failed')
+			return ''
 		}
 	}
-	$ret
+	if($loclazy >= 0) {
+		return 1 if(&my_system(1, \$umount, 'umount', @addopt, '--', $dir) == 0);
+		unless($loclazy) {
+			&error('non-lazy umount failed for ', $dir);
+			return ''
+		}
+		&error('non-lazy umount failed,',
+			"using lazy umount of $dir") unless($quiet > 1)
+	}
+	return 1 if(&my_system(1, \$umount, 'umount', '-l', @addopt, '--', $dir) == 0);
+	&error("lazy umount failed for $dir");
+	''
 }
 
 # Check whether squashing is necessary, taking $current and options into account
@@ -3025,7 +3109,9 @@ sub umount_dir {
 
 sub check_squash {
 	my ($threshold, $kill) = @_;
-	return ('', 0) if(($threshold < 0) || !&is_resquash_type());
+	return ('', 0) unless(&is_resquash_type());
+	return (1, 1) if($threshold == -2);
+	return ('', 0) if($threshold < 0);
 	return ('', 1) if($kill);
 	my $thr = &threshold_dir($threshold);
 	if($thr == 0) {
@@ -3099,6 +3185,7 @@ sub kernelprobe {
 {
 	package CFG;
 	our $lazy = 1;
+	our $lsof = 1;
 	our $killpower = [ '/etc/killpower', '/etc/nosquash' ];
 	our $mksquash_verbose = 'q?n-n+!';
 	our $squash_verbose = undef;
@@ -3153,6 +3240,7 @@ sub read_config_file {
 	&info("reading config file $file") if($verbose > 2);
 	package CFG;
 	our $lazy;
+	our $lsof;
 	our $killpower;
 	our $mksquash_verbose;
 	our $squash_verbose;
@@ -3357,7 +3445,7 @@ sub set_globals {
 	$compression = ($opt_compression // $current->{'COMPRESSION'});
 	$threshold = (($opt_threshold ne '') ?
 		&parse_threshold($opt_threshold) : $current->{'THRESHOLD'});
-	if($threshold < 0) {
+	if(($threshold < 0) && ($threshold != -2)) {
 		$kill = ''
 	} else {
 		$kill = ($opt_kill // $current->{'KILL'})
@@ -3396,6 +3484,7 @@ sub parse_threshold {
 	return 0 unless($threshold =~ m{^(\-?\d+)([kmgt])?$}i);
 	use bigint;
 	my ($num, $ext) = ($1, $2);
+	return (-2) if(($num == -2) && !&is_nonempty($ext));
 	return (-1) if($num < 0);
 	return $num unless(&is_nonempty($ext));
 	for my $i (qr{k}i, qr{m}i, qr{g}i) {
@@ -3971,6 +4060,12 @@ sub use_ansicolor {
 	$ansicolor = !$@
 }}
 
+# Is argument empty or an integer?
+
+sub is_integer {
+	(shift() // '') =~ /^[+-]?\d*$/
+}
+
 # Is argument defined and nonempty?
 
 sub is_nonempty {
@@ -4179,7 +4274,8 @@ Getopt::Long::GetOptions(
 	'interactice|i', \$interactive,
 	'threshold|t=s', \$opt_threshold,
 	'no-squash|nosquash|n', sub { $opt_threshold = '-1' },
-	'squash|squash|s', sub { $opt_threshold = '0' },
+	'squash|s', sub { $opt_threshold = '0' },
+	'force-squash|squash-force', sub { $opt_threshold = '-2' },
 	'kill|k', \$opt_kill,
 	'no-kill|nokill|K', sub { $opt_kill = '' },
 	'compression|comp|x=s', \$opt_compression,
@@ -4189,7 +4285,8 @@ Getopt::Long::GetOptions(
 	'mksquash-verbose=s', \$mksquash_verbose,
 	'processors|p=s', \$processors,
 	'mem|m=s', \$mem,
-	'lazy!', \$lazy,
+	'lazy=s', \$lazy,
+	'lsof=s', \$lsof,
 	'locking!', \$locking,
 	'force|f', \$force,
 	'ignore-state|I', \$ignore_state,
@@ -4291,6 +4388,7 @@ my $action = (shift(@ARGV) // '');
 		$cmd = 'check';
 		$run_ro = 1;
 		$lazy = '' unless(defined($lazy));
+		$lsof = 1 unless(defined($lsof));
 		$action = \&cmd_check
 	} elsif($action =~ m{set}i) {
 		if($action =~ m{[ur]}i) {
@@ -4357,6 +4455,9 @@ $|=1;
 # Modify options according to config:
 
 $lazy = $CFG::lazy unless(defined($lazy));
+&fatal('--lazy=' . $lazy . ' is non-integer') unless(&is_integer($lazy));
+$lsof = $CFG::lsof unless(defined($lsof));
+&fatal('--lsof=' . $lsof . ' is non-integer') unless(&is_integer($lsof));
 $locking = $CFG::locking unless(defined($locking));
 $modprobe_loop = $CFG::modprobe_loop;
 $modprobe_squash = $CFG::modprobe_squash;

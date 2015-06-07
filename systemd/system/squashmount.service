@@ -9,7 +9,7 @@ TimeoutStopSec=0
 Type=oneshot
 RemainAfterExit=true
 ExecStart=/usr/bin/squashmount start
-ExecStop=/usr/bin/squashmount -f stop
+ExecStop=/usr/bin/squashmount -f --lsof=0 stop
 
 [Install]
 WantedBy=multi-user.target

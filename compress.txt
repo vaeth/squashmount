@@ -15,7 +15,7 @@ lzo                       125   52
 lz4 -Xhc                  134   10
 lz4                       157    2
 
-portage and some overlays:
+The gentoo repository (including some overlays):
 
 uncompressed              332
 xz                         77 2:01
@@ -27,7 +27,7 @@ lzo                       105   59
 lz4 -Xhc                  112   53
 lz4                       137   51
 
-/var/db:
+Gentoo's database of installed packages (/var/db):
 
 uncompressed               78
 xz -Xbcj x86               44 2:51 1:46 6:46

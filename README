@@ -45,14 +45,20 @@ might be desired (see the examples section below), and moreover,
 it might be necessary to override these rules temporarily.
 For such things a powerful user interface is provided.
 
-If the Gentoo portage tree /usr/portage is compressed with squashmount
-(without DISTDIR which you should store somewhere else when using this script),
-the required disk space is only about 50 MB (instead of about 180 MB,
-the actual space requirement depending essentially on the filesystem),
-and usually the access is even faster.
+This project can be useful for any linux distribution.
+Historically, the main motivations was to keep the Gentoo main repository
+compressed. This is still one of the most striking examples:
+
+If the Gentoo main repository (/usr/portage or /var/db/repos/gentoo)
+is compressed with squashmount (without DISTDIR which you should store
+somewhere else when using this script), the required disk space is only
+about 50-100 MB (depending on your compression method), instead of
+200-400 MB (or much higher, the actual space requirement
+depending essentially on the filesystem, e.g. how inodes are used).
+Usually, also the access is much faster.
 
 It is possible to combine squashmount with portage's sync-type = squashdelta
-to mount the gentoo repository writable.
+to mount the Gentoo repository writable.
 
 Requirements
 ============
@@ -81,7 +87,7 @@ https://github.com/vaeth/runtitle (version >=2.3) is required in your path.
 Installation
 ============
 
-If you are a gentoo user, you can just emerge squashmount from the mv overlay.
+If you are a Gentoo user, you can just emerge squashmount from the mv overlay.
 
 Otherwise you just have to copy bin/squashmount into /usr/bin/squashmount
 or any other directory of your $PATH.
@@ -96,7 +102,7 @@ so that things like
 will work in your zsh as intended without the need to quote *.
 (I assume that you do not use any poor shell instead of zsh.) ;)
 
-If you use revdep-rebuild from gentoo or similar distributions, and
+If you use revdep-rebuild from Gentoo or similar distributions, and
 if you use the default naming schme, it is recommended to copy the content of
 etc/revdep-rebuild into /etc/revdep-rebuild to cancel duplicate or obsolete
 paths search of revdep-rebuild.
@@ -108,7 +114,7 @@ systemd system folder (typically /usr/lib/systemd/system)
 and activate it in the usual way.
 
 If you use systemd *BE SURE TO COMPILE THE "mount" BINARY WITH SYSTEMD SUPPORT*
-(this should be the case in most distributions providing systemd; in gentoo
+(this should be the case in most distributions providing systemd; in Gentoo
 this means to enable USE=systemd for the util-linux package. If you compile
 util-linux manually, make sure to pass --with-systemd to ./configure).
 In this case, systemd will probably work for you in "standard" setups.
@@ -134,7 +140,7 @@ create /etc/systemd/system/squashmount.service.d/exec.conf with the content
 ExecStart=
 ExecStart=/sbin/squashmount start
 ExecStop=
-ExecStop=/sbin/squashmount -f stop
+ExecStop=/sbin/squashmount -f --lsof=0 stop
 
 Also copy tmpfiles.d/squashmount.conf to /usr/lib/tmpfiles.d, although this
 is not absolutely necessary (squashmount will create the corresponding
@@ -170,7 +176,7 @@ Some Examples
 Essentially, the init-system (or you) has to call
 	squashmount start
 on start and
-	squashmount -f stop
+	squashmount -f --lsof=0 stop
 on shutdown (at a time when the local filesystems are already/still mounted).
 The provided installation files for systemd and openrc do just this.
 
@@ -183,13 +189,13 @@ This is a perl file, so you can use perl code in this file to source other
 files at your discretion.
 
 The provided example configuration file etc/squashmount.pl is rather
-realistic if you are a gentoo user: It provides the following mount points
+realistic if you are a Gentoo user: It provides the following mount points
 
 (a)  guest:    A guest user's home directory /home/guest
 (b)  tex:      The installed files from texlive /usr/share/texmf-dist
-(c1) portage:  The gentoo repository /usr/portage
-(c2) gentoo:   The gentoo repository when using sync-type = squashdelta
-(d)  db:       The gentoo installed files /var/db
+(c1) portage:  The Gentoo repository /usr/portage
+(c2) gentoo:   The Gentoo repository when using sync-type = squashdelta
+(d)  db:       The Gentoo database of installed packages /var/db
 [further mount points are in the config-file but not listed here].
 
 For all the mount points it is reasonable to use squashmount with them for
@@ -203,7 +209,7 @@ home directory which the user sees; see below how to do this).
 (b) The tex directory is huge, and it saves considerable space to keep it
 compressed on disk.
 
-(c1) Keeping the portage directory compressed does not only save an enormous
+(c1) Keeping the Gentoo repository compressed does not only save an enormous
 amount of disk space but actually also speeds up portage considerable,
 because the disk access is faster on a single (squashed) file.
 Moreover, after changes with eix --sync you might want to compare the
@@ -355,7 +361,7 @@ Patching squashfs-tools
 It is recommended to use a patched version of squashfs-tools which
 has the -quiet option. Cf. the description of --mksquash-verbose
 and the $mksquash_verbose variable in ./squashmount man for details.
-As a gentoo user you can install such a patched version from the mv overlay.
+As a Gentoo user you can install such a patched version from the mv overlay.
 
 However, this patching is only an eye-candy: squashmount will work without
 any problems also with an unpatched version of squashfs-tools; just the

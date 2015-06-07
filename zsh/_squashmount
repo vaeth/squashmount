@@ -16,9 +16,10 @@ _arguments -C -s -S -A '-*' : \
 '(--backup -b '{'--no-backup --nobackup)-B','--nobackup -B)--no-backup','--no-backup -B)--nobackup'}'[do not make a backup]' \
 {'(--tempdir)-D+','(-D)--tempdir='}'[DIR (override TEMPDIR)]:tempdir:_files -/' \
 {'(--compression --comp)-x','(--comp -x)--compression','(--compression -x)--comp'}'[MODE (override COMPRESSION)]:compression mode:(xz lzma gzip lzo)' \
-'(--squash --no-squash --nosquash -s -n '{'--threshold)-t+','-t)--threshold='}'[THRESHOLD (set threshold size)]:threshold size:(0 1m 10m 20m 30m 40m 500k 600k 700k 800k 900k "")' \
-'(--threshold --no-squash --nosquash -t -n '{'--squash)-s','-s)--squash'}'[do resquash\: -t 0]' \
-'(--threshold --squash -t -s '{'--no-squash --nosquash)-n','--nosquash -n)--no-squash','--no-squash -n)--nosquash'}'[no resquash\: -t -1]' \
+'(--force-squash --squash-force --squash --no-squash --nosquash -s -n '{'--threshold)-t+','-t)--threshold='}'[THRESHOLD (set threshold size)]:threshold size:(0 1m 10m 20m 30m 40m 500k 600k 700k 800k 900k "")' \
+'(--threshold --no-squash --nosquash --squash -t -s -n '{'--force-squash)--squash-force','--squash-force)--force-squash'}'[force resquash\: -t -2]' \
+'(--threshold --force-squash --squash-force --no-squash --nosquash -t -n '{'--squash)-s','-s)--squash'}'[do resquash\: -t 0]' \
+'(--threshold --force-squash --squash-force --squash -t -s '{'--no-squash --nosquash)-n','--nosquash -n)--no-squash','--no-squash -n)--nosquash'}'[no resquash\: -t -1]' \
 {'(--separator)-S+','(-S)--separator='}'[SEP (separator for print-...)]:separator' \
 '--squash-verbose=[SYMBOLS (verbosity of mksquash)]:symbols [inpqrINPQR], flags (1-2+?!):(q nq ip pi r)' \
 {'(--processors)-p+','(-p)--processors='}'[NUM (mksquashfs -processors)]:processors:(\  1 2 3 4 5 6 7 8 9)' \
@@ -34,14 +35,14 @@ _arguments -C -s -S -A '-*' : \
 '(--color -F '{'--no-color --nocolor)-C','--nocolor -C)--no-color','--no-color -E)--nocolor'}'[non-colored output]' \
 '(--no-star --nostar)--star[print stars for info commands]' \
 '(--star '{'--nostar)--no-star','--no-star)--nostar'}'[do not print stars]' \
-'(--no-lazy --nolazy)--lazy[lazy umount after failure]' \
-'(--lazy '{'--nolazy)--no-lazy','--no-lazy)--nolazy'}'[no lazy umount after failure]' \
 '(--no-locking --nolocking)--locking[use file locking]' \
 '(--locking '{'--nolocking)--no-locking','--no-locking)--nolocking'}'[do not use file locking]' \
 '(--no-fatal --nofatal)--fatal[return nonzero on every failure]' \
 '(--fatal '{'--nofatal)--no-fatal','--no-fatal)--nofatal'}'[return nonzero only on fatal failure]' \
 '(--no-error -noerror -E '{'-e)--error','(--error)-e'}'[break on error]' \
 '(--error -e '{'--no-error --noerror)-E','--noerror -E)--no-error','--no-error -E)--noerror'}'[no break on error]' \
+'--lazy=[0: not lazy, 1: lazy retry, -1: only lazy]:lazy mode:(0 1 -1)' \
+'--lsof=["": no lsof, 0: retry lazy, 1: error, -1: only lazy]:lsof mode:("" 0 1 -1)' \
 {'*--title=','*-T+'}'[Set title option OPT]:title option:_title_opt' \
 '1:command:->cmds' \
 '*:mask:->mask'

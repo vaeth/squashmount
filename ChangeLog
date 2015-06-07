@@ -1,5 +1,16 @@
 # ChangeLog for squashmount
 
+*squashmount-12.0.0
+	Martin Väth <martin at mvath.de>:
+	- Introduce --lsof and $lsof.
+	- Note that --lsof=0 should be passed in init-scripts with stop
+	- Now --lazy and $lazy are non-binary, but can be 0, 1, or -1.
+	  However, -1 (*only* lazy) is not recommended
+	- On frequent request introduce magic meaning of THRESHOLD -2
+	  (shortcut: --force-squash)
+	- Reformulate some passages of documentation (e.g. "gentoo repository"
+	  instead of "portage tree")
+
 *squashmount-11.0.1
 	Martin Väth <martin at mvath.de>:
 	- Fix error output in config file parsing
