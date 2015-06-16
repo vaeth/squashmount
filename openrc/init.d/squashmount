@@ -10,11 +10,11 @@ description='start/stop all squashmount configured mount points'
 start() {
 	ebegin 'mounting with squashmount'
 	squashmount start
-	eend ${?}
+	eend $?
 }
 
 stop() {
 	ebegin 'umounting/stopping squashmount'
 	squashmount -f --lsof=0 stop
-	eend ${?}
+	eend $?
 }

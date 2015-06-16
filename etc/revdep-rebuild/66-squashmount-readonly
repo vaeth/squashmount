@@ -1,1 +1,1 @@
-SEARCH_DIRS_MASK="*.mount/readonly"
+SEARCH_DIRS_MASK=*.mount/readonly

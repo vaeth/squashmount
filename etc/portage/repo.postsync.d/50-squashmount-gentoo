@@ -4,19 +4,19 @@
 # Do not use this file if you want to use a mount-point named "gentoo" with
 # squashmount without using sync-type = squashdelta
 
-repository_name=${1}
-sync_uri=${2}
-repository_path=${3}
+repository_name=$1
+sync_uri=$2
+repository_path=$3
 
 # Run only for repository gentoo:
-[ "${repository_name}" != gentoo ] && exit
+[ "$repository_name" != gentoo ] && exit
 
 # Run only if mount-point gentoo is configured
 [ "`squashmount --quiet print-tag gentoo 2>/dev/null`" != gentoo ] && exit
 
-echo "* In post-repository hook for ${repository_name}"
-echo "** synced from remote repository ${sync_uri}"
-echo "** synced into ${repository_path}"
+echo "* In post-repository hook for $repository_name"
+echo "** synced from remote repository $sync_uri"
+echo "** synced into $repository_path"
 echo '* Using squashmount to (re)mount "gentoo" with squashmount'
 
 # Suppress all output in the following commands:
@@ -25,7 +25,7 @@ echo '* Using squashmount to (re)mount "gentoo" with squashmount'
 	squashmount --lazy --ignore --force --quiet --quiet umount gentoo
 
 	# If portage should still have mounted DIR, we umount it:
-	umount -- "${repository_path}" || umount --lazy -- "${repository_path}"
+	umount -- "$repository_path" || umount --lazy -- "$repository_path"
 
 } >/dev/null 2>&1
 
