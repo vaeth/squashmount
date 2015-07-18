@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v12.0.1;
+package Squashmount v12.1.0;
 
 use strict;
 use warnings;
@@ -438,6 +438,13 @@ Using I<file> instead of B</run/squashmount>.
 =item B<--interactice> or B<-i>
 
 Ask for confirmation before cleaning a directory.
+
+=item B<--order=>I<order> or B<-o> I<order>
+
+Override the value of B<@order> from the configuration.
+Any symbol which has no special meaning in I<order> can be used as a separator.
+As a practical example, using B<--order=bind> with remount forces that the
+corresponding mount-points are mounted readonly with --bind.
 
 =item B<--no-squash> or B<--nosquash> or B<-n>
 
@@ -1138,7 +1145,7 @@ The content of this array should be strings with one of the texts
 
 =over 16
 
-=item B<overlay>, B<overlayfs>, B<aufs>, B<unionfs-fuse>, B<unionfs>, B<funionfs>
+=item B<overlay>, B<overlayfs>, B<aufs>, B<unionfs-fuse>, B<unionfs>, B<funionfs>, B<bind>
 
 =back
 
@@ -1146,10 +1153,15 @@ for the corresponding tool. (Note that B<overlayfs> refers only to overlayfs
 up to version 22 (available as a patch for <=linux-3.17); for >=linux-3.18
 the corresponding filesystem is called B<overlay> in B<squashmount>.)
 
-By default, it is attempted to B<modprobe> the
-corresponding module, and if that B<modprobe> fails, the corresponding tool
-is tacitly skipped. Optionally, you can append or prepend the following
-special flags to change this default behaviour:
+By default, it is attempted to B<modprobe> the corresponding module,
+and if that B<modprobe> fails, the corresponding tool is tacitly skipped,
+passing to the next tool in the list until the first succeeds.
+
+If none succeeds, the fallback B<bind> is used (with an error message).
+If B<bind> occurs explicitly in the list, no error message is emitted.
+
+Optionally, you can append or prepend the following special flags to change
+the default behaviour with B<modeprobe>.
 
 =over 16
 
@@ -2157,6 +2169,8 @@ my $opt_kill = undef;
 my $opt_backup = undef;
 my $opt_tempdir = undef;
 my $opt_compression = undef;
+my $opt_order = undef;
+my $order; # reference to actual @order
 my $pass_dir = '';
 my $errorbreak = '';
 my $fatalreturn = undef;
@@ -2777,7 +2791,7 @@ sub mount_rw {
 			return undef
 		}
 	}
-	for my $i (@CFG::order) {
+	for my $i (@$order) {
 		my $probemod = (($i =~ m{\!}) ? (($i =~ m{\!\!}) ? '' : -1) : 1);
 		my $check_bin = ($i =~ m{\#});
 		my $check_gz = (($i =~ m{\?}) ? (($i =~ m{\?\?}) ? -1 : 1) : '');
@@ -2792,8 +2806,10 @@ sub mount_rw {
 			return 'unionfs-fuse' if(&mount_unionfs_fuse($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		} elsif($i =~ m{funion}i) {
 			return 'funionfs' if(&mount_funionfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
-		} else { # ($i =~ m{union}i)
+		} elsif($i =~ m{union}i) {
 			return 'unionfs' if(&mount_unionfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
+		} else { # ($i =~ m{bind}i)
+			return (&mount_bind($ro, $rw) ? 'bind' : undef)
 		}
 	}
 	&error('fallback to mount --bind');
@@ -4268,6 +4284,7 @@ Getopt::Long::GetOptions(
 	'config|c=s', \@configs,
 	'umount|u=s', \@CFG::umount,
 	'umount-ro|U=s', \@CFG::umount_ro,
+	'order|o=s', \$opt_order,
 	'arg|a=s', \@argv,
 	'rundir=s', \$rundir,
 	'separator|S=s', \$separator,
@@ -4487,6 +4504,12 @@ if(defined($CFG::killpower)) {
 		$opt_threshold = '-1'
 	}
 }
+if(defined($opt_order)) {
+	$order = [ split(/[^a-zA-Z\!\#\?\-]+/, $opt_order) ]
+} else {
+	$order = \@CFG::order
+}
+@$order = grep($_ ne '', @$order);
 
 # Fill the %tags array in the appropriate order.
 # As a side result calculate $taglen.

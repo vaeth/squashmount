@@ -1,6 +1,11 @@
 # ChangeLog for squashmount
 
-*squashmount-12.0.0
+*squashmount-12.1.0
+	Martin Väth <martin at mvath.de>:
+	- Support option --order (-o) to override @order
+	- Support the value "bind" in @order to skip error message
+
+*squashmount-12.0.1
 	Martin Väth <martin at mvath.de>:
 	- Remove redundant quoting in shell scripts
 

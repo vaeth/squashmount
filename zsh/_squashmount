@@ -43,6 +43,7 @@ _arguments -C -s -S -A '-*' : \
 '(--error -e '{'--no-error --noerror)-E','--noerror -E)--no-error','--no-error -E)--noerror'}'[no break on error]' \
 '--lazy=[0: not lazy, 1: lazy retry, -1: only lazy]:lazy mode:(0 1 -1)' \
 '--lsof=["": no lsof, 0: retry lazy, 1: error, -1: only lazy]:lsof mode:("" 0 1 -1)' \
+{'-o+','--order='}'[ORDER (set \@order)]:tool order:("overlay!?,overlayfs!?,aufs!,unionfs-fuse!,unionfs!,funionfs!" "overlay,overlayfs,aufs!,unionfs-fuse!" bind aufs overlay overlayfs unionfs unionfs-fuse funionfs)' \
 {'*--title=','*-T+'}'[Set title option OPT]:title option:_title_opt' \
 '1:command:->cmds' \
 '*:mask:->mask'
