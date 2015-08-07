@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-12.1.1
+	Martin Väth <martin at mvath.de>:
+	- Add /etc/nut/killpower to $killpower by default
+
 *squashmount-12.1.0
 	Martin Väth <martin at mvath.de>:
 	- Support option --order (-o) to override @order
