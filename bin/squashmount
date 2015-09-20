@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v12.1.1;
+package Squashmount v12.2.0;
 
 use strict;
 use warnings;
@@ -1494,12 +1494,26 @@ If undefined (the default), the mode B<0644> is taken.
 
 If defined and nonempty this should be either an array reference B<[> I<uid>B<,> I<gid> B<]>
 or a string of the form I<uid>B<:>I<gid>; in this case, the user/group id of
-the file is changed to I<uid>/I<gid>, resepectively.
+the file is changed to I<uid>/I<gid>, respectively.
 Use the undefined or empty value or B<-1> to indicate that I<uid>/I<gid>
 should not be changed (typically remains B<0>).
 If you want to pass the user or group name (instead of the user or group id),
 you can use e.g. the perl construct B<(getpwnam('>I<username>B<'))[2]> or
 B<(getgrnam('>I<groupname>B<'))[2]>, respectively.
+
+=item B<CHMOD_DIR>
+
+If this is defined and a number (see B<CHMOD> for octal numbers),
+then it is attempted to change the mode of B<DIR> to this number
+after succesfully mounting B<DIR>.
+
+=item B<CHOWN_DIR>
+
+If defined and nonmepty this should be in the same format as in B<CHOWN>.
+In this case, B<DIR> is changed to the corresponding user/group after
+succesfully mounting. Note that this usually implicitly changes the
+permissions of B<CHANGES> as well, but this can depend on the tool which
+is used to merge the directories.
 
 =item B<TEMPDIR>
 
@@ -2388,6 +2402,12 @@ sub cmd_status {
 	my ($uid, $gid) = &get_chown();
 	push(@status, 'CHOWN: ' .
 		(defined($uid) ? "$uid:$gid" : 'unchanged (0:0)'));
+	my $chmod_dir = &get_chmod('CHMOD_DIR');
+	push(@status, 'CHMOD_DIR: ' . (($chmod_dir eq '') ? 'unchanged' :
+		sprintf('%#o', $chmod_dir)));
+	my ($uid_dir, $gid_dir) = &get_chown('CHOWN_DIR');
+	push(@status, 'CHOWN_DIR: ' .
+		(defined($uid_dir) ? "$uid_dir:$gid_dir" : 'unchanged'));
 	&print_status(\@status)
 }
 
@@ -2500,6 +2520,7 @@ sub mount_main {
 	return '' unless(defined($type));
 	$current->{'TYPE'} = $type;
 	if($ret) {
+		&set_permissions($dir, 1);
 		return '' unless(&run_hook($CFG::after_mount, '$after_mount'))
 	}
 	return $ret unless($start_cmd && $ret && (!$first_create) &&
@@ -2734,20 +2755,21 @@ sub first_create {
 # Chmod and chown according to mount-point defaults
 
 sub set_permissions {
-	my ($squashfile) = @_;
+	my $filedir = shift();
+	my $dir = shift() // '';
 	my $ret = 1;
-	my $chmod = &get_chmod();
+	my $chmod = &get_chmod($dir ? 'CHMOD_DIR' : undef);
 	unless($chmod eq '') {
-		unless(chmod($chmod, $squashfile)) {
+		unless(chmod($chmod, $filedir)) {
 			my $octal = sprintf('%#o', $chmod);
-			&warning("chmod $octal $squashfile failed");
+			&warning("chmod $octal $filedir failed");
 			$ret = ''
 		}
 	}
-	my ($uid, $gid) = &get_chown();
+	my ($uid, $gid) = &get_chown($dir ? 'CHOWN_DIR' : undef);
 	return $ret unless(defined($uid));
-	unless(chown($uid, $gid, $squashfile)) {
-		&warning("chown $uid:$gid $squashfile failed");
+	unless(chown($uid, $gid, $filedir)) {
+		&warning("chown $uid:$gid $filedir failed");
 		$ret = ''
 	}
 	$ret
@@ -2756,15 +2778,15 @@ sub set_permissions {
 # Return sanitized CHMOD value or empty
 
 sub get_chmod {
-	my $chmod = $user_config->{'CHMOD'};
-	return 0644 unless(defined($chmod));
+	my $chmod = $user_config->{$_[0] // 'CHMOD'};
+	return (defined($_[0]) ? '' : 0644) unless(defined($chmod));
 	$chmod
 }
 
 # Return CHOWN values as array.
 
 sub get_chown {
-	my $chown = $user_config->{'CHOWN'};
+	my $chown = $user_config->{$_[0] // 'CHOWN'};
 	my ($uid, $gid) = (undef, undef);
 	return (undef, undef) unless(defined($chown));
 	if(ref($chown) eq 'ARRAY') {

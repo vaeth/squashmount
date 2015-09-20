@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-12.2.0
+	Martin Väth <martin at mvath.de>:
+	- Support CHMOD_DIR and CHOWN_DIR
+
 *squashmount-12.1.1
 	Martin Väth <martin at mvath.de>:
 	- Add /etc/nut/killpower to $killpower by default
