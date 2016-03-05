@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v12.2.0;
+package Squashmount v12.2.1;
 
 use strict;
 use warnings;
@@ -783,7 +783,7 @@ They are initialized to B<1> (perl interprets this as I<true>)
 or B<''> (I<false>).
 The arrays B<@umount> or B<@umount_ro> can carry default values for
 B<UMOUNT> and B<UMOUNT_RO>, respectively.
-The variable B<$rm_rundir> can be set to determined whether (and how)
+The variable B<$rm_rundir> can be set to determine whether (and how)
 the directory B</run/squashmount> should be removed.
 Simlarly, also the variables B<$rm_dir>, B<$rm_change>, B<$rm_workdir>,
 B<$rm_readonly> can be set to determine default values for
@@ -1847,7 +1847,7 @@ B<squashmount umount>), since you probably want that the mount-point is
 umounted during shutdown.
 
 For this reason, you can see the currently used command in the perl variable
-B<$command>. This variable constains the actual command (even if the user
+B<$command>. This variable contains the actual command (even if the user
 used a shortcut like B<l> instead of B<list> on the command line);
 the command B<list> appears as B<status>.
 
@@ -2012,8 +2012,8 @@ a mount-point, it will not "know" that it did this afterwards, if the
 data is not stored!
 
 In a similar way, a non-true return value of B<$before_mount> or
-B<$before_umount> indicates that the (u(mounting failed without actually
-attempting to (u(mount, and a non-true return value of B<$after_mount> or
+B<$before_umount> indicates that the (u)mounting failed without actually
+attempting to (u)mount, and a non-true return value of B<$after_mount> or
 B<$after_umount> indicates that the (u)mounting failed.
 
 In the functions from B<$after>, you should not add/modify any data to the
