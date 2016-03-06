@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-12.2.1
+	Martin Väth <martin at mvath.de>:
+	- Bump to play a round of the systemd insanity game "all users:
+	  change your configs since our previous ideas were stupid again"
+
 *squashmount-12.2.0
 	Martin Väth <martin at mvath.de>:
 	- Support CHMOD_DIR and CHOWN_DIR
