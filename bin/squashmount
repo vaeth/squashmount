@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.012;
-package Squashmount v12.2.1;
+package Squashmount v12.2.2;
 
 use strict;
 use warnings;
@@ -42,22 +42,21 @@ To get an extended help, type B<squashmount man>
 
 For each configured mount-point (resp. if I<mask1>, I<mask2>, ... are given,
 for all mount-points whose tag matches at least one of the masks),
-the corresponding directory is mounted readonly using squash as a readonly
+the corresponding directory is mounted readonly, using squash as a readonly
 filesystem and additionally using overlay/aufs/... as a writable filesystem.
 
 When the filesystem is umounted or remounted, the changed data is recompressed
 (unless the mount-point is configured otherwise).
 
-Normally, your init-system should call B<squashmount start> and
-B<squashmount -f stop> on starting or shutdown of your system, respectively,
-so that you data is regularly resquashed.
-You can manually get this effect of resquashing by calling
-B<squashmount remount>.
+Normally, the init-system should call B<squashmount start> and
+B<squashmount -f stop> on starting or shutdown of the system, respectively,
+so that the data is regularly resquashed.
+You can manually force this resquashing by calling B<squashmount remount>.
 
 B<squashmount> reads its mount-points from F</etc/squashmount.pl> which is
 documented later (the path can be changed with B<--config>).
-Configured directories are created if necessary; squashmount never removes
-directories (not even configured temporary directories.)
+Configured directories are created if necessary; B<squashmount> never removes
+directories (not even configured temporary directories).
 
 B<squashmount> keeps its current state in F</run/squashmount> (the path
 can be changed with B<--rundir>) in a format which may depend on tools used
@@ -67,9 +66,9 @@ in F</run/squashmount> and the actually mounted directories coincide, that is,
 that they are not mounted/umounted without using B<squashmount> and, in
 particular, that you do not reboot without calling B<squashmount stop>
 and without cleaning the directory.
-Therefore, if you modify F</etc/squashmount.pl> (even more if you
-change to a different version of B<squashmount>) you must make sure to
-update F</run/squashmount>; see the documentation of the B<stop> and
+Therefore, if you modify F</etc/squashmount.pl> (in some cases also if you
+upgrade or downgrade B<squashmount>) you must make sure to update
+F</run/squashmount>; see the documentation of the B<stop> and
 B<forget> commands.
 
 B<squashmount set> can be used to set/unset certain
@@ -113,7 +112,7 @@ unless the option B<-r> (B<--reset>) is used.
 
 This is somewhat like calling B<umount> followed by B<mount>.
 This is skipped if it is neither necessary to resquash nor to delete data
-(when skipping also the option B<-r> is ignored.)
+(when skipping, also the option B<-r> is ignored).
 Use B<--force> to omit this skipping.
 
 =item B<create>
@@ -135,7 +134,6 @@ when this mount-point is used), B<squashmount create> is executed in advance.
 analogue of the following sequence of commands is executed
 
 B<squashmount mount>, B<squashmount remount>, B<squashmount -n set>,
-
 that is, a (presumably postponed) resquash happens at B<squashmount start>
 and will by default not happen on subsequent B<squashmount umount> or
 B<squashmount stop> commands.
@@ -665,7 +663,7 @@ Use perl's flock() to avoid simulatenous usage of the same mount-point.
 This is the opposite of B<--locking>.
 Whether B<--locking> or B<--no-locking> is the default depends on the
 variable B<$locking> in F</etc/squashmount.pl> (the default in the latter
-is true except if it is clear that no writing will be required.)
+is true except if it is clear that no writing will be required).
 
 =item B<--threshold=>I<size> or B<-t> I<size>
 
@@ -1369,7 +1367,7 @@ are appended automatically.
 These should be a (possibly empty) strings or references arrays of strings:
 These strings are used as additional options when calling B<mksquashfs>
 (the latter only if the corresponding B<COMPRESSION> option is used;
-B<COMPOPT_> is used if B<COMPRESSION> is empty.)
+B<COMPOPT_> is used if B<COMPRESSION> is empty).
 The option B<-noappend> is used automatically.
 Depending on B<$squashfs_verbose>, B<COMPRESSION>, B<DEFAULT_FRAGMENTS>
 also the options B<-no-progress>, B<-comp>, or B<-always-use-fragments>
@@ -1653,8 +1651,8 @@ In any case, it is recommended to not use B<too> much code since the code
 will be parsed/executed with every call of B<squashmount>.
 In particular, if you want some more complex code to setup B<@order> according
 to you system, it is recommended to enclose this code into C<if(@order)> so
-that this code is only executed if the value of B<@order> is really needed
-(recall that the default of B<@order> is nonempty only if B<squashmount> is
+that this code is only executed if the value of B<@order> is really needed.
+(Recall that the default of B<@order> is nonempty only if B<squashmount> is
 used with a command for which it might be necessary to know its value.)
 
 To use some of the mentioned features you need some perl knowledge, of course.
