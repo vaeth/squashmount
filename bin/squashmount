@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
-require 5.012;
-package Squashmount v12.2.3;
+require 5.022;
+package Squashmount v13.0.0;
 
 use strict;
 use warnings;
@@ -16,10 +16,11 @@ use File::Find ();
 use File::Path v2.6.5 ();
 use File::Spec ();
 use File::Temp 0.19 ();
-# use File::Which (); # not mandatory but recommended; there are fallbacks
-# use IO::Uncompress::Gunzip (); # if not available, flag ?/?? is ignored
+# use File::Which ();  # not mandatory but recommended; there are fallbacks
+# use IO::Uncompress::Gunzip ();  # if not available, flag ?/?? is ignored
 # use Pod::Usage (); not mandatory, but no help/manpage without this
-# use Term::ANSIColor (); # not mandatory but recommended: fallback to no color
+# use String::ShellQuote ();  # not mandatory but recommended: poor fallback
+# use Term::ANSIColor ();  # not mandatory but recommended: fallback to no color
 
 =head1 NAME
 
@@ -803,33 +804,33 @@ see the remarks at the end of this manpage.)
 
 =over 8
 
-=item $lazy = $lsof = 1; # unnecessary; this is the default
+=item $lazy = $lsof = 1;  # unnecessary; this is the default
 
-=item $nosquash = '/etc/killpower'; # ignore /etc/nosquash, /etc/nut/killpower
+=item $nosquash = '/etc/killpower';  # ignore /etc/nosquash, /etc/nut/killpower
 
-=item $locking = 1; # lock always, even for status and print-* commands
+=item $locking = 1;  # lock always, even for status and print-* commands
 
-=item $modprobe_squash = ''; # Differ from default: No modprobe squashfs
+=item $modprobe_squash = '';  # Differ from default: No modprobe squashfs
 
-=item $modprobe_loop = 1; # Keep default: modprobe loop
+=item $modprobe_loop = 1;  # Keep default: modprobe loop
 
-=item $mksquash_verbose = 'qn-'; # quicker if we know mksquash -quiet works
+=item $mksquash_verbose = 'qn-';  # quicker if we know mksquash -quiet works
 
-=item $processors = ''; # unnecessary; this is the default
+=item $processors = '';  # unnecessary; this is the default
 
-=item $mem = ''; # unnecessary; this is the default
+=item $mem = '';  # unnecessary; this is the default
 
-=item $resquash_on_start = ''; # unnecessary; this is the default
+=item $resquash_on_start = '';  # unnecessary; this is the default
 
-=item $rm_rundir = 0; # keep /run/squashmount
+=item $rm_rundir = 0;  # keep /run/squashmount
 
-=item $rm_dir = $rm_workdir = $rm_changes = $rm_readonly = 0; # keep dirs
+=item $rm_dir = $rm_workdir = $rm_changes = $rm_readonly = 0;  # keep dirs
 
-=item @umount = ('-i'); # default to UMOUNT => [ '-i' ], ignoring --umount
+=item @umount = ('-i');  # default to UMOUNT => [ '-i' ], ignoring --umount
 
-=item @umount_ro = (); # ignore option --umount-ro
+=item @umount_ro = ();  # ignore option --umount-ro
 
-=item $obsolete_overlayfs = undef; # no fallback: require >=kernel-3.15
+=item $obsolete_overlayfs = undef;  # no fallback: require >=kernel-3.15
 
 =item @order = qw(overlay? overlayfs? aufs! unionfs-fuse! unionfs??# funionfs??#);
 
@@ -863,25 +864,25 @@ see the remarks at the end of this manpage.)
 
 =item FILE => '/home/guest-skelton.sfs'
 
-=item CHMOD => 0200, # squashfile readonly by user
+=item CHMOD => 0200,  # squashfile readonly by user
 
-=item CHOWN => [ (getpwnam('guest'))[2], 1000 ], # uid/gid
+=item CHOWN => [ (getpwnam('guest'))[2], 1000 ],  # uid/gid
 
 =item # CHOWN => '2000:1000' would also be possible
 
-=item KILL => 1, # Forget all changes when umounting
+=item KILL => 1,  # Forget all changes when umounting
 
 =item # For the exception that the user wants to resquash:
 
 =item # We must not postpone resquashing since CHANGES is temporary:
 
-=item RESQUASH_ON_START => '', # Ignore setting of $resquash_on_start
+=item RESQUASH_ON_START => '',  # Ignore setting of $resquash_on_start
 
-=item RM_CHANGES => 1, # remove temporary CHANGES on stop
+=item RM_CHANGES => 1,  # remove temporary CHANGES on stop
 
-=item RM_READONLY => 1, # remove temporary READONLY on stop
+=item RM_READONLY => 1,  # remove temporary READONLY on stop
 
-=item RM_WORKDIR => 1, # remove temporary WORKDIR on stop
+=item RM_WORKDIR => 1,  # remove temporary WORKDIR on stop
 
 =back
 
@@ -903,7 +904,7 @@ see the remarks at the end of this manpage.)
 
 =item DIFF => [ qr{^ls-R$},
 
-=item qr{^tex(?:/generic(?:/config(?:/language(?:\.(?:dat(?:\.lua)?|def)))?)?)?$} ]
+=item qr{^tex(/generic(/config(/language(\.(dat(\.lua)?|def)))?)?)?$}n ]
 
 =back
 
@@ -935,11 +936,11 @@ see the remarks at the end of this manpage.)
 
 =item READONLY => '/usr/portage.mount/readonly',
 
-=item THRESHOLD => '40m', # resquash on umount if 40 MB changed, or
+=item THRESHOLD => '40m',  # resquash on umount if 40 MB changed, or
 
 =item # if local/* (with * not .git, profiles, metadata) changed:
 
-=item FILL => qr{^local/(?!(?:\.git|profiles|metadata)(?:/|$))}
+=item FILL => qr{^local/(?!(\.git|profiles|metadata)(/|$))}n
 
 =back
 
@@ -959,13 +960,13 @@ see the remarks at the end of this manpage.)
 
 =item READONLY => \&make_temporary_subdir,
 
-=item RESQUASH_ON_START => '', # we must not postpone resquashing
+=item RESQUASH_ON_START => '',  # we must not postpone resquashing
 
 =item FILE => '/just/a/crazy/example.sfs',
 
-=item SKIP => '\A\.', # A string is also possible (note: multline mode)
+=item SKIP => '\A\.',  # A string is also possible (note: multline mode)
 
-=item SKIPDIR => qr{(?:^|/)tmp}i, # tmp* Tmp* TMP*
+=item SKIPDIR => qr{(^|/)tmp}ni,  # tmp* Tmp* TMP*
 
 =item SKIPFUNC => sub { my ($rel, $abs, $ro) = @_; return (-d $abs) }
 
@@ -985,7 +986,7 @@ see the remarks at the end of this manpage.)
 
 =back
 
-=item 1;# The last executed command should be a true expression
+=item 1;  # The last executed command should be a true expression
 
 =back
 
@@ -1533,8 +1534,12 @@ threshold is essentially based on the number of files (instead of their size).
 
 =item B<SKIP>
 
-This is a regular expression (or a string representing regular expressions
-for multiline mode) or a reference to an array of regular expressions/strings.
+This is a regular expression (or a string which will be interpreted as
+a regular expression in multiline mode), or a reference to an array of
+regular expressions/strings.
+If you use braces () in a regular expression, it is recommended to use
+the C<n> flag to speed up the processing, e.g. C<qr{root/(foo|bar)}n>.
+
 For each file/directory in B<CHANGES> (except F<.> and F<..> directories)
 its path (relative to B<CHANGES>) is matched against these regular expressions.
 If the file matches, it is not considered as being changed.
@@ -1745,7 +1750,7 @@ Here is such an example which also demonstrates the use of B<added_hash()>:
 
 =over 24
 
-=item READONLY => undef # cancel standard definition
+=item READONLY => undef  # cancel standard definition
 
 =back
 
@@ -1767,7 +1772,7 @@ making the behaviour depend on the hostname. Here is such an example:
 
 =over 8
 
-=item use Sys::Hostname; # Use a module to fetch the hostname
+=item use Sys::Hostname;  # Use a module to fetch the hostname
 
 =item # The environment variable B<HOSTNAME> can override the hostname
 
@@ -1784,7 +1789,7 @@ making the behaviour depend on the hostname. Here is such an example:
 =over 8
 
 
-=item if($hostname =~ m{^(?:foo|bar)$}) {
+=item if($hostname =~ m{^(foo|bar)$}n) {
 
 =over 16
 
@@ -1907,7 +1912,7 @@ to B<squashmount>.
 
 =over 8
 
-=item my $cd = ''; # We set $cd = 1 if the mount-point is available
+=item my $cd = '';  # We set $cd = 1 if the mount-point is available
 
 =back
 
@@ -1955,7 +1960,7 @@ to B<squashmount>.
 
 =back
 
-=item })) if($cd); # under the condition that $cd is true
+=item })) if($cd);  # under the condition that $cd is true
 
 =back
 
@@ -1963,7 +1968,7 @@ to B<squashmount>.
 
 =item # If this is the end of the file, do not forget:
 
-=item 1;# The last executed command should be a true expression
+=item 1;  # The last executed command should be a true expression
 
 =back
 
@@ -2044,7 +2049,7 @@ the path is already stored.
 
 =item # If --arg was provided once, store it for later usage
 
-=item $locking = $storing = 1 # don't set $storing without $locking!
+=item $locking = $storing = 1  # don't set $storing without $locking!
 
 =back
 
@@ -2068,7 +2073,7 @@ the path is already stored.
 
 =item $config->{FILE} = ($store->{FILE} //= $file);
 
-=item 1 # return a true value!
+=item 1  # return a true value!
 
 =back
 
@@ -2120,7 +2125,7 @@ from the "portage" mount point to /srv/copy
 
 =item system('mount', '--bind', $config->{DIR} // $store->{DIR}, '/srv/copy');
 
-=item 1 # return a true value!
+=item 1  # return a true value!
 
 =back
 
@@ -2136,7 +2141,7 @@ from the "portage" mount point to /srv/copy
 
 =item system('umount /srv/copy');
 
-=item 1 # return a true value!
+=item 1  # return a true value!
 
 =back
 
@@ -2183,7 +2188,7 @@ my $opt_backup = undef;
 my $opt_tempdir = undef;
 my $opt_compression = undef;
 my $opt_order = undef;
-my $order; # reference to actual @order
+my $order;  # reference to actual @order
 my $pass_dir = '';
 my $errorbreak = '';
 my $fatalreturn = undef;
@@ -2208,10 +2213,10 @@ my $modprobe = undef;
 # Global/State variables:
 
 our $VERSION;
-my $run_ro;             # handle /run/squashmount as readonly
-my $modprobe_loop;      # will modprobe loop
-my $modprobe_squash;    # will modprobe squash
-my $resquash_on_start;  # default for resquash_on_start
+my $run_ro;                # handle /run/squashmount as readonly
+my $modprobe_loop;         # will modprobe loop
+my $modprobe_squash;       # will modprobe squash
+my $resquash_on_start;     # default for resquash_on_start
 my $rm_rundir_on_end;
 my $rm_rundir;
 my $rm_dir;
@@ -2219,24 +2224,24 @@ my $rm_changes;
 my $rm_workdir;
 my $rm_readonly;
 my $lockfh = undef;
-my $stdoutterm = ((-t STDOUT) // ''); # whether stdout is a terminal
-my $stderrterm = undef; # whether stderr is a terminal
-my $know_quiet = undef; # whether mksquash accepts -quiet
+my $stdoutterm = ((-t STDOUT) // '');  # whether stdout is a terminal
+my $stderrterm = undef;    # whether stderr is a terminal
+my $know_quiet = undef;    # whether mksquash accepts -quiet
 my $mksquash_symbols = undef;
 my $exitstatus = 0;
 my $had_error = '';
-my $current = undef;    # current configuration in /run/squashmount
-my $current_empty;      # if defined and equal to $current, will remove file
-my $user_config = undef;# current configuration in /etc/squashmount.pl
-my $tag = '';           # $user_config->{'TAG'}
-my $printed_title = ''; # Have we printed a statusline?
-my $taglen;             # Length of the longest tag
-my $threshold;          # currently active threshold (integer)
-my $kill;               # currently active kill (boolean)
-my $backup;             # currently active backup (string)
-my $tempdir;            # currently active tempdir (string)
-my $compression;        # currently active compression (string)
-my $name = 'squashmount'; # name of the program (this is actually a constant)
+my $current = undef;       # current configuration in /run/squashmount
+my $current_empty;         # if defined and equal to $current, will remove file
+my $user_config = undef;   # current configuration in /etc/squashmount.pl
+my $tag = '';              # $user_config->{'TAG'}
+my $printed_title = '';    # Have we printed a statusline?
+my $taglen;                # Length of the longest tag
+my $threshold;             # currently active threshold (integer)
+my $kill;                  # currently active kill (boolean)
+my $backup;                # currently active backup (string)
+my $tempdir;               # currently active tempdir (string)
+my $compression;           # currently active compression (string)
+my $name = 'squashmount';  # name of the program (this is actually a constant)
 
 #
 # Commands
@@ -2393,7 +2398,7 @@ sub cmd_status {
 	push(@status, "TEMPDIR: $tempdir") if(&is_abspath($tempdir));
 	push(@status, "BACKUP: $backup") if(&is_nonempty($backup));
 	&mksquashfs_options(\my @options);
-	push(@status, "mksquashfs options: " . &join_quoted(@options));
+	push(@status, &shell_quote_best_effort('mksquashfs-options:', @options));
 	my $chmod = &get_chmod();
 	push(@status, 'CHMOD: ' . (($chmod eq '') ? 'unchanged (0400)' :
 		sprintf('%#o', $chmod)));
@@ -2829,7 +2834,7 @@ sub mount_rw {
 			return 'funionfs' if(&mount_funionfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		} elsif($i =~ m{union}i) {
 			return 'unionfs' if(&mount_unionfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
-		} else { # ($i =~ m{bind}i)
+		} else {  # ($i =~ m{bind}i)
 			return (&mount_bind($ro, $rw) ? 'bind' : undef)
 		}
 	}
@@ -2932,11 +2937,11 @@ sub mount_unionfs_fuse {
 	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
 	push(@options, "${changes}\=RW\:${ro}\=RO", $rw);
 	return 1 if(&my_system('', \$unionfs_fuse, 'unionfs', @options) == 0);
-	if(&which_which() eq '') { # We have no which
+	if(&which_which() eq '') {  # We have no which
 		my $fuse = 'unionfs-fuse ';  # perhaps this will work
-		if($unionfs_fuse ne $fuse) { # unless we already tried
+		if($unionfs_fuse ne $fuse) {  # unless we already tried
 			if(&my_system('', \$fuse, $fuse, @options) == 0) {
-				$unionfs_fuse = $fuse; # remember: this is ok
+				$unionfs_fuse = $fuse;  # remember: this is ok
 				return 1
 			}
 		}
@@ -3030,7 +3035,7 @@ sub mksquashfs {
 	my $redirect = &mksquashfs_options(\my @options);
 	my $oldout = undef;
 	my $ret = (&my_system($redirect, \$mksquashfs, 'mksquashfs', $dir, $squashfile, @options) == 0);
-	&error($verbose ? 'failed: ' . &join_quoted($mksquashfs, $dir, $squashfile, @options)
+	&error($verbose ? 'failed: ' . &shell_quote_best_effort($mksquashfs, $dir, $squashfile, @options)
 		: 'mksquashfs failed') unless($ret);
 	$ret
 }
@@ -3152,7 +3157,7 @@ sub check_squash {
 	return ('', 1) if($kill);
 	my $thr = &threshold_dir($threshold);
 	if($thr == 0) {
-		('', -1) # clean "empty" directory
+		('', -1)  # clean "empty" directory
 	} elsif($thr > 0) {
 		(1, 1)
 	} else {
@@ -3162,16 +3167,16 @@ sub check_squash {
 
 # Execute modprobe for the argument
 
-{ my %probed = (); # A closure static variable
+{ my %probed = ();  # A closure static variable
 sub my_modprobe {
 	my ($module) = @_;
 	$probed{$module} //= (&my_system(2, \$modprobe, 'modprobe',
 		(($verbose > 3) ? '-v' : ()), $module) == 0)
 }}
 
-# use IO::Uncompress::Gunzip qw(gunzip) and return whether successful
+# use IO::Uncompress::Gunzip () and return whether successful
 
-{ my $gunzip = undef; # A closure static variable
+{ my $gunzip = undef;  # A closure static variable
 sub use_gunzip {
 	return $gunzip if(defined($gunzip));
 	eval {
@@ -3197,7 +3202,7 @@ sub read_kernel_config {
 
 # Probe module and/or check the kernel configuration. Return 1 on success
 
-{ my $gz = undef; # A closure static variable
+{ my $gz = undef;  # A closure static variable
 sub kernelprobe {
 	my ($probemod, $check_gz, $module) = @_;
 	if($probemod) {
@@ -3366,7 +3371,7 @@ sub read_settings {
 	my $file = &settings_file();
 	if(open(my $fh, '<', $file)) {
 		if($locking) {
-			$lockfh = $fh; # unlock even if we die
+			$lockfh = $fh;  # unlock even if we die
 			flock($lockfh, Fcntl::LOCK_SH())
 		}
 		{
@@ -3402,7 +3407,7 @@ sub write_settings {
 			return ''
 		}
 		if($locking) {
-			$lockfh = $fh; # unlock even if we die
+			$lockfh = $fh;  # unlock even if we die
 			flock($lockfh, Fcntl::LOCK_EX())
 		}
 	}
@@ -3532,7 +3537,7 @@ sub parse_threshold {
 		$num *= 1024;
 		return $num if($ext =~ $i)
 	}
-	$num * 1024 # if($ext =~ m{t}i)
+	$num * 1024  # if($ext =~ m{t}i)
 }
 
 # Turn argument into a human-readable string
@@ -3713,7 +3718,7 @@ sub threshold_dir {
 	my ($dirv, @dir) = &split_dir($dir);
 	&shift_empty(\@dir);
 	my ($readonlyv, @readonly) = &split_dir(&get_abspath('READONLY'));
-	my $found = ''; # Flag whether there is at least some data
+	my $found = '';  # Flag whether there is at least some data
 	my $blocksize;
 	{
 		use bigint;
@@ -3733,17 +3738,17 @@ sub threshold_dir {
 	# aufs to overlay and thus suddenly aufs-hidden files are visible.
 	# However, more exact would be to use the if-clauses of the comments:
 	# my $type = $current->{'TYPE'};
-	push(@$skip, qr{^\._funionfs}); # if($type eq 'funionfs');
-	push(@$skipdir, qr{^\.unionfs});# if($type =~ m{^unionfs});
+	push(@$skip, qr{^\._funionfs});   # if($type eq 'funionfs');
+	push(@$skipdir, qr{^\.unionfs});  # if($type =~ m{^unionfs});
 	push(@$skip, qr{^\.wh\.\.wh\.aufs$}) &&
-		push(@$skipdir, qr{^\.wh\.\.wh\.(?:pli?nk|\.tmp|orph)});
+		push(@$skipdir, qr{^\.wh\.\.wh\.(pli?nk|\.tmp|orph)}n);
 		# if($type eq 'aufs');
 
-	my @compare = (); # postponed file content comparison...
+	my @compare = ();  # postponed file content comparison...
 	File::Find::find({
 		no_chdir => 1,
 		follow => '',
-		follow_fast => 1,
+		follow_fast => '',
 		follow_skip => 2,
 		dangling_symlinks => '',
 		wanted => sub {
@@ -3918,7 +3923,7 @@ sub info {
 
 # Main action of fatal, error, warning, info:
 
-{ my %colorhash = (); # A closure static variable
+{ my %colorhash = ();  # A closure static variable
   my $resethash = undef;
 sub output {
 	my ($array, $to_stderr, $colorname, $label, $notag) = @_;
@@ -4028,7 +4033,7 @@ sub my_system {
 		return 127
 	}
 	if($verbose > 2) {
-		print(&join_quoted($$a, @_), "\n");
+		print(&shell_quote_best_effort($$a, @_), "\n");
 		$redirect = ''
 	}
 	my $oldout = undef;
@@ -4074,7 +4079,7 @@ sub my_which {
 # use File::Which module and return ':'
 # As a fallback a path to "which" or the empty string is returned
 
-{ my $which = undef; # A closure static variable
+{ my $which = undef;  # A closure static variable
 sub which_which {
 	return $which if(defined($which));
 	eval {
@@ -4092,7 +4097,7 @@ sub which_which {
 
 # use Term::ANSIColor and return whether successful
 
-{ my $ansicolor = undef; # A closure static variable
+{ my $ansicolor = undef;  # A closure static variable
 sub use_ansicolor {
 	return $ansicolor if(defined($ansicolor));
 	eval {
@@ -4170,6 +4175,17 @@ sub push_ref {
 	push(@$arr, $s) if($s ne '')
 }
 
+# use String::ShellQuote () and return whether successful
+
+{ my $shellquote = undef;  # A closure static variable
+sub use_shellquote {
+	return $shellquote if(defined($shellquote));
+	eval {
+		require String::ShellQuote
+	};
+	$shellquote = !$@
+}}
+
 # like join(' ', @_), but shell-quote arguments
 
 sub join_quoted {
@@ -4184,10 +4200,15 @@ sub join_quoted {
 	join(' ', @r)
 }
 
+sub shell_quote_best_effort {
+	(&use_shellquote() ?
+		&String::ShellQuote::shell_quote_best_effort : &join_quoted)
+}
+
 # Run hook functions from the configuration file:
 
 sub run_hook {
-	my ($value , $var) = @_;
+	my ($value, $var) = @_;
 	return 1 unless(defined($value));
 	# Make a copy for arrays to allow callback functions modifiying array
 	for my $i ((ref($value) eq 'ARRAY') ? @$value : ($value)) {
@@ -4410,7 +4431,7 @@ my $action = (shift(@ARGV) // '');
 			$cmd = 'print-kill';
 			$action = \&cmd_print_kill
 		}
-	} elsif($action =~ m{^(?:stat|l)}i) {
+	} elsif($action =~ m{^(stat|l)}ni) {
 		$cmd = 'status';
 		$run_ro = 1;
 		$action = \&cmd_status
@@ -4468,7 +4489,7 @@ my $action = (shift(@ARGV) // '');
 	}
 	&pod2usage(2) unless(ref($action) eq 'CODE');
 	$fatalreturn = '' unless(defined($fatalreturn));
-	$star = 1 # !$run_ro # Use this to make --no-star the default for infos
+	$star = 1  # !$run_ro  # Use this to make --no-star the default for infos
 		unless(defined($star));
 	$run_ro = '' if($force || $ignore_state);
 	$CFG::storing = $CFG::locking = !$run_ro;
@@ -4570,7 +4591,7 @@ while(my ($i, $mountpoint) = each(@CFG::mounts)) {
 			if(ref($a) eq 'Regexp') {
 				$mountpoint->{$j} = [ $a ]
 			} elsif((ref(\$a) eq 'SCALAR') && ($a ne '')) {
-				$mountpoint->{$j} = [ qr{$a}m ]
+				$mountpoint->{$j} = [ qr{$a}nm ]
 			} else {
 				&fatal("config error: \[$tag\]: $j no Regexp or string")
 			}
@@ -4580,7 +4601,7 @@ while(my ($i, $mountpoint) = each(@CFG::mounts)) {
 			next if(ref($r) eq 'Regexp');
 			&fatal("config error: \[$tag\]: entry in $j no Regexp or string")
 				unless((ref(\$r) eq 'SCALAR') && ($r ne ''));
-			$r = qr{$r}m
+			$r = qr{$r}nm
 		}
 	}
 }
@@ -4602,7 +4623,7 @@ if($pass_dir) {
 			$i =~ s{([^\w\*\?\[\]])}{\\$1}g;
 			$i =~ s{\*}{.*}g;
 			$i =~ s{\?}{.}g;
-			my $reg = qr{\A$i\z}m;
+			my $reg = qr{\A$i\z}nm;
 			for my $j (@CFG::mounts) {
 				next unless($j->{'TAG'} =~ $reg);
 				next if(exists($j->{'DONE'}));

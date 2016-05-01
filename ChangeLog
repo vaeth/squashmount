@@ -1,5 +1,15 @@
 # ChangeLog for squashmount
 
+*squashmount-13.0.0
+	Martin Väth <martin at mvath.de>:
+	- Require perl-5.22 to use the convenient qr{...}n feature; otherwise,
+	  perl-5.12 would be sufficient (// was the newest feature used)
+	- Rewrite documentation for the qr{...}n feature
+	- Serious bugfix: with current versions of File::Find, symlinks
+	  had mistakenly been followed for the size calculation
+	- Support String::ShellQuote for improved output
+	- Internal: new comment style
+
 *squashmount-12.2.1
 	Martin Väth <martin at mvath.de>:
 	- Bump to play a round of the systemd insanity game "all users:

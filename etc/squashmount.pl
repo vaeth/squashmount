@@ -62,7 +62,7 @@ fatal('The default /etc/squashmount.pl is only an example config!',
 # Uncomment the following if you prefer (globally) resquashing on start
 # instead of resquashing on umount/stop. You can override this individually
 # per mount-point by setting RESQUASH_ON_START for that mount-point:
-# $resquash_on_start = 1; # the default is ''
+# $resquash_on_start = 1;  # the default is ''
 
 # Uncomment the following line if you do not want to remove /run/squashmount
 # on "squashmount stop". The default is 1 which means to remove it if empty
@@ -74,20 +74,20 @@ fatal('The default /etc/squashmount.pl is only an example config!',
 # Specify the default for RM_DIR, RM_CHANGES, RM_WORKDIR, RM_READONLY.
 # The number has the analogous meaning to $rm_rundir for the corresponding
 # directories.
-# $rm_dir = 0; # This is the default
-# $rm_changes = $rm_workdir = $rm_readonly = 1; # This is the default.
+# $rm_dir = 0;  # This is the default
+# $rm_changes = $rm_workdir = $rm_readonly = 1;  # This is the default.
 # Unless you use temporary directories (not recommended),
 # you will probably want to keep the created directories:
 $rm_changes = $rm_workdir = $rm_readonly = 0;
 
 # The default of $locking depends on the command used.
 # Normally, there is no reason to uncomment the following line:
-# $locking = 1; # lock always, even if it appears unnecessary
+# $locking = 1;  # lock always, even if it appears unnecessary
 
 # Do not override the default of $squashmount_quiet for a flexible config.
 # For quicker execution, specify which version of mksquashfs is installed:
-# $squashmount_quiet = 'qn-'; # if mksquashfs knows about -quiet
-# $squashmount_quiet = 'rn+'; # if mksquashfs redirects progress to stderr
+# $squashmount_quiet = 'qn-';  # if mksquashfs knows about -quiet
+# $squashmount_quiet = 'rn+';  # if mksquashfs redirects progress to stderr
 # $squashmount_quiet = 'n-';  # if <=mksquashfs-4.3 is unpatched
 # $squashmount_quiet = 'r-n-r+n+';# for silent output only on terminals
 
@@ -110,15 +110,15 @@ $rm_changes = $rm_workdir = $rm_readonly = 0;
 # mount-points can be changed without modifying every mount-point manually.
 
 my $defaults = {
-	COMPRESSION => 'lz4', # We could omit this line as lz4 is default.
-	COMPOPT_LZ4 => '-Xhc', # We could omit this line as -Xhc is default
+	COMPRESSION => 'lz4',   # We could omit this line as lz4 is default.
+	COMPOPT_LZ4 => '-Xhc',  # We could omit this line as -Xhc is default
 	# In case of COMPRESSION => 'xz', we use the following option.
 	# Note that this option roughly doubles the squashing time for only
 	# slightly better compression of binaries.
 	COMPOPT_XZ => ['-Xbcj', 'x86']
 };
 my $non_binary = {
-	COMPOPT_XZ => undef # "-Xbcj x86" is slower for pure text archives
+	COMPOPT_XZ => undef  # "-Xbcj x86" is slower for pure text archives
 };
 
 # We use here the @mounts = ( ... ); syntax (do not forget the semicolon!)
@@ -132,17 +132,17 @@ my $non_binary = {
 		TAG => 'fixed',
 		DIR => '/fixed/dir',
 		FILE => '/fixed/content.sfs',
-		READONLY => 1 # Do not use overlayfs/aufs/...
+		READONLY => 1  # Do not use overlayfs/aufs/...
 	},
 	# To make $defaults effective, we use the added_hash() function:
 	added_hash($defaults, {
 		TAG => 'guest',
 		DIR => '/home/guest',
 		FILE => '/home/guest-skeleton.sfs',
-		CHMOD => 0400, # squashfile readonly by user
-		CHOWN => [ (getpwnam('guest'))[2], # user and group of ...
-			(getgrnam('guest'))[2] ],  # ... new squashfile's owner
-		KILL => 1, # normally remove data on every umount/remount
+		CHMOD => 0400,  # squashfile readonly by user
+		CHOWN => [ (getpwnam('guest'))[2],  # user and group of new ...
+			(getgrnam('guest'))[2] ],   # ... squashfile's owner
+		KILL => 1,  # normally remove data on every umount/remount
 		# Clean temporary directories, independent of defaults:
 		RM_CHANGES => 1, RM_WORKDIR => 1, RM_READONLY => 1,
 		# If you want to cancel this KILL temporarily
@@ -169,7 +169,7 @@ my $non_binary = {
 	# /etc/portage/repos.conf:
 
 	# [gentoo]
-	# location = /srv/repo-gentoo # Do *not* use /var/db/... (see below)
+	# location = /srv/repo-gentoo  # Do *not* use /var/db/... (see below)
 	# sync-type = squashdelta
 	# sync-uri = mirror://gentoo/../snapshots/squashfs
 	# auto-sync = yes
@@ -198,7 +198,7 @@ my $non_binary = {
 		TAG => 'db',
 		DIR => '/var/db',
 		FILE => '/var/db.mount/db.sfs',
-		BACKUP => '.bak', # keep a backup in /var/db.mount/db.sfs.bak
+		BACKUP => '.bak',  # keep a backup in /var/db.mount/db.sfs.bak
 			# For an absolute path, we could have written:
 			# BACKUP => '/backup-disk/db.sfs'
 		CHANGES => '/var/db.mount/changes',
@@ -252,7 +252,7 @@ my $non_binary = {
 	standard_mount('tex', '/usr/share/texmf-dist', $defaults, $non_binary, {
 		DIFF => [
 			qr{^ls-R$},
-			qr{^tex(?:/generic(?:/config(?:/language(?:\.(?:dat(?:\.lua)?|def)))?)?)?$}
+			qr{^tex(/generic(/config(/language(\.(dat(\.lua)?|def)))?)?)?$}n
 		]
 	}),
 # The following example is useful if you use portage with a "traditional"
@@ -274,7 +274,7 @@ my $non_binary = {
 		# Any change in the local/ subdirectory (except in .git,
 		# profiles, metadata) should lead to a resquash, even if
 		# the threshold is not reached:
-		FILL => qr{^local/(?!(?:\.git|profiles|metadata)(?:/|$))}
+		FILL => qr{^local/(?!(\.git|profiles|metadata)(/|$))}n
 	}),
 	standard_mount('games', '/usr/share/games', $defaults, {
 		# games is huge: use the fastest compression algorithm for it.
@@ -298,14 +298,14 @@ $after_mount = sub {
 	my ($mountpoint, $store, $config) = @_;
 	return 1 unless($mountpoint eq 'portage');
 	system('mount', '--bind', $config->{DIR} // $store->{DIR}, '/srv/copy');
-	1 # return a true value!
+	1  # return a true value!
 }
 
 $before_umount = sub {
 	my ($mountpoint, $store, $config) = @_;
 	return 1 unless($mountpoint eq 'portage');
 	system('umount /srv/copy');
-	1 # return a true value!
+	1  # return a true value!
 };
 
 # In case the user mounted /srv/copy without using squashmount,
@@ -315,7 +315,7 @@ $before_mount = sub {
 	my ($mountpoint, $store, $config) = @_;
 	return 1 unless($mountpoint eq 'portage');
 	system('umount /srv/copy >/dev/null 2>&1');
-	1 # return a true value!
+	1  # return a true value!
 }
 
 
@@ -336,7 +336,7 @@ if($custom) {
 	fatal("argument '$file' of --arg is not a file") unless(-f $file);
 
 	# If B<--arg> was provided once, store it for later usage
-	$locking = $storing = 1 # don't set $storing without $locking!
+	$locking = $storing = 1  # don't set $storing without $locking!
 }
 
 # The following is important:
@@ -386,12 +386,12 @@ $before = sub {
 	# (provided $stored is defined; if it undefined do not touch anything)
 	$config->{FILE} = $stored if(defined($stored));
 
-	1 # return a true value!
+	1  # return a true value!
 };
 
 # Finally, we make the mount-point available if $custom is true
 
-push(@mounts, # append the following to @mounts:
+push(@mounts,  # append the following to @mounts:
 
 # In this example, we use /var/custom as DIR, and
 # /var/custom.mount/{readonly,changes,workdir} as READONLY,CHANGES,WORKDIR.
