@@ -26,8 +26,9 @@ _arguments -C -s -S -A '-*' : \
 {'(--mem)-m+','(-m)--mem='}'[SIZE (mksquashfs -mem)]:memory:(\  210M 466M 1954M 3054M 7054M)' \
 '--pass-dir[Args are paths]' \
 {'(--interactive)-i','(-i)--interactive'}'[ask before cleaning directories]' \
-'(--no-kill --nokill -K '{'--kill)-k','-k)--kill'}'[clean without resquashing]' \
-'(--kill -k '{'--nokill --no-kill)-K','--nokill -K)--no-kill','--no-kill -K)--nokill'}'[Remove effect of --kill]' \
+'(--no-kill --nokill -K --kill-or-resquash -R '{'--kill)-k','-k)--kill'}'[clean without resquashing]' \
+'(--no-kill --nokill -K --kill -k '{'--kill-or-resquash)-R','-R)--kill-or-resquash'}'[clean if not resquashing]' \
+'(--kill -k --kill-or-resquash -R '{'--nokill --no-kill)-K','--nokill -K)--no-kill','--no-kill -K)--nokill'}'[Remove effect of --kill*]' \
 {'(--force)-f','(-f)--force'}'[force action even if unreasonable]' \
 {'(--ignore-state)-I','(-I)--ignore-state'}'[ignore state of mounts/umounts]' \
 {'(--reset)-r','(-r)--reset'}'[reset after umounting]' \
@@ -41,9 +42,9 @@ _arguments -C -s -S -A '-*' : \
 '(--fatal '{'--nofatal)--no-fatal','--no-fatal)--nofatal'}'[return nonzero only on fatal failure]' \
 '(--no-error -noerror -E '{'-e)--error','(--error)-e'}'[break on error]' \
 '(--error -e '{'--no-error --noerror)-E','--noerror -E)--no-error','--no-error -E)--noerror'}'[no break on error]' \
-'--lazy=[0: not lazy, 1: lazy retry, -1: only lazy]:lazy mode:(0 1 -1)' \
-'--lsof=["": no lsof, 0: retry lazy, 1: error, -1: only lazy]:lsof mode:("" 0 1 -1)' \
-{'-o+','--order='}'[ORDER (set \@order)]:tool order:("overlay!?,overlayfs!?,aufs!,unionfs-fuse!,unionfs!,funionfs!" "overlay,overlayfs,aufs!,unionfs-fuse!" bind aufs overlay overlayfs unionfs unionfs-fuse funionfs)' \
+{'(--lazy)-L+','(-L)--lazy='}'[0: not lazy, 1: lazy retry, -1: only lazy]:lazy mode:(0 1 -1)' \
+{'(--lsof)-L+','(-l)--lsof='}'["": no lsof, 0: retry lazy, 1: error, -1: only lazy]:lsof mode:("" 0 1 -1)' \
+{'(--order)-o+','(-o)--order='}'[ORDER (set \@order)]:tool order:("overlay!?,overlayfs!?,aufs!,unionfs-fuse!,unionfs!,funionfs!" "overlay,overlayfs,aufs!,unionfs-fuse!" bind aufs overlay overlayfs unionfs unionfs-fuse funionfs)' \
 {'*--title=','*-T+'}'[Set title option OPT]:title option:_title_opt' \
 '1:command:->cmds' \
 '*:mask:->mask'

@@ -2,7 +2,7 @@
 
 # To use squashmount, remove this comment and the following "fatal()"
 # command from the file and write into the subsequent configuration
-# of the variables (in particular of @mounts) what is approrpriate for
+# of the variables (in particular of @mounts) what is appropriate for
 # your system!
 #
 # It is impossible to guess which mount-points you want and for which purpose;
@@ -20,7 +20,7 @@ fatal('The default /etc/squashmount.pl is only an example config!',
 # The configuration might depend on the hostname: Test the variable $hostname
 # to use the same file for different configs on different machines.
 # (We do not employ this possibility in this example file).
-# The followng line initializes $hostname appropriately:
+# The following line initializes $hostname appropriately:
 # use Sys::Hostname;
 # my $hostname = ($ENV{'HOSTNAME'} // hostname());
 
@@ -127,7 +127,7 @@ my $non_binary = {
 # successively add mount-points.
 
 @mounts = (
-	# This first example does not honour anything set in $defaults:
+	# This first example does not honor anything set in $defaults:
 	{
 		TAG => 'fixed',
 		DIR => '/fixed/dir',
@@ -139,9 +139,9 @@ my $non_binary = {
 		TAG => 'guest',
 		DIR => '/home/guest',
 		FILE => '/home/guest-skeleton.sfs',
-		CHMOD => 0400,  # squashfile readonly by user
+		CHMOD => 0400,  # squash-file readonly by user
 		CHOWN => [ (getpwnam('guest'))[2],  # user and group of new ...
-			(getgrnam('guest'))[2] ],   # ... squashfile's owner
+			(getgrnam('guest'))[2] ],   # ... squash-file's owner
 		KILL => 1,  # normally remove data on every umount/remount
 		# Clean temporary directories, independent of defaults:
 		RM_CHANGES => 1, RM_WORKDIR => 1, RM_READONLY => 1,
@@ -149,7 +149,7 @@ my $non_binary = {
 		# (e.g. to make modifications on guest-skeleton.sqsf)
 		# use something like "squashmount --nokill set"
 		# In such a case, we must no postpone resquashing
-		# even if $resquash_on_start should be true, becuse
+		# even if $resquash_on_start should be true, because
 		# CHANGES is a temporary directory:
 		RESQUASH_ON_START => ''
 	}),
@@ -179,7 +179,7 @@ my $non_binary = {
 	# since "stacking" mount-points is not a good idea: You would have to
 	# take care about the order whenever you mount/umount.)
 
-	# With squashmount, we can now mount the downloaded squashfile
+	# With squashmount, we can now mount the downloaded squash-file
 	# read-writable. In this case, we keep all changes only temporary.
 	# We will also have to hook into portage's sync mechanism to remount
 	# after syncing:
@@ -188,7 +188,7 @@ my $non_binary = {
 	added_hash($defaults, $non_binary, {
 		TAG => 'gentoo',
 		DIR => '/srv/repo-gentoo',
-		FILE => '/var/cache/portage/squashfs/gentoo-current.sqfs',
+		FILE => '/var/cache/portage/squashfs/gentoo-current.sfs',
 		KILL => 1,
 		RM_CHANGES => 1, RM_WORKDIR => 1, RM_READONLY => 1,
 		RESQUASH_ON_START => ''
@@ -206,7 +206,7 @@ my $non_binary = {
 		READONLY => '/var/db.mount/readonly',
 
 		# If /var is on a separate partition, you want probably that
-		# the squashfile is first generated in /var/tmp so that it
+		# the squash-file is first generated in /var/tmp so that it
 		# can be moved without actually copying the data.
 		# In this case, uncomment the following line:
 		#TEMPDIR => '/var/tmp',
@@ -218,7 +218,7 @@ my $non_binary = {
 		# we cheat with this size by using that each file takes
 		# at least a full block:
 		# Hence, the number of files is more important for THRESHOLD
-		# than their size. In gentoo, one installed package thus
+		# than their size. In Gentoo, one installed package thus
 		# "counts" about 2m in size
 		# (although it produces actually only 20 very short files):
 		BLOCKSIZE => 65536
@@ -247,6 +247,17 @@ my $non_binary = {
 #		COMPRESSION => 'xz'
 #	},
 # (the WORKDIR is omitted if $no_workdir = 1 is set)
+#
+# You might want to add (before the end of the above brace:
+# {
+#	BACKUP => '.bak',  # Always keep a backup.
+#	THRESHOLD => 1m,   # Do not recompress for less than 1 MB changes
+#	KILL => -1         # If there are less than 1 MB, kill them at "umount"
+# }
+# Note that the KILL => -1 means for kernel directory that e.g. a temporary
+# kernel reconfiguration is "forgotten" unless it is used to recompile most
+# of the kernel data: Thus, "tiny experiments" are cleaned up automatically.
+# (Be aware that this feature can be very irritating if you forget about it...)
 
 # We configure tex as in the "squashmount man" example:
 	standard_mount('tex', '/usr/share/texmf-dist', $defaults, $non_binary, {

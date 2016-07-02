@@ -1,5 +1,11 @@
 # ChangeLog for squashmount
 
+*squashmount-14.0.0
+	Martin Väth <martin at mvath.de>:
+	- Support KILL => -1 (and --kill-or-resquash)
+	- New short options -R -l -L
+	- Fix many typos in documentation
+
 *squashmount-13.0.0
 	Martin Väth <martin at mvath.de>:
 	- Require perl-5.22 to use the convenient qr{...}n feature; otherwise,

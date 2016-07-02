@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.022;
-package Squashmount v13.0.0;
+package Squashmount v14.0.0;
 
 use strict;
 use warnings;
@@ -74,7 +74,7 @@ B<forget> commands.
 
 B<squashmount set> can be used to set/unset certain
 temporary states for the matching mount-tags into F</run/squashmount> which
-will be honoured during umount, stop, restart, or remount.
+will be honored during umount, stop, restart, or remount.
 For example, combining with B<--no-squash> or B<--kill> you can instruct
 B<squashmount> to keep or kill the new data without resquashing when
 umounting, remounting, or shutting down.
@@ -88,7 +88,7 @@ B<squashmount reset> to propagate the modification to the running system.
 
 Each I<command> applies to all configured mount-points
 (resp. to those selected by the additional B<mask1> B<mask2> ... arguments).
-The following values for I<command> are availabe:
+The following values for I<command> are available:
 
 =over 8
 
@@ -106,7 +106,7 @@ Umount all configured mount-points, resquashing if data was changed
 (and has reached a configured threshold).
 Moreover, the modified data in the CHANGES and WORKDIR directory is removed
 (the directories are "cleaned").
-This command keeps the local setting made with B<quashmount set>
+This command keeps the local setting made with B<squashmount set>
 unless the option B<-r> (B<--reset>) is used.
 
 =item B<remount>
@@ -149,7 +149,7 @@ Moreover, previous directories are removed according to the setting of
 B<RM_CHANGE>/B<$rm_change>, B<RM_WORKDIR>/B<$rm_workdir>,
 B<RM_READONLY>/B<$rm_readonly>, B<RM_DIR>/B<$rm_dir>, and B<$rm_rundir>.
 
-In order to change F</etc/squashmount.pl> after B<squasmount mount> was called,
+In order to change F</etc/squashmount.pl> after B<squashmount mount> was called,
 the safe way is to call first B<squashmount stop> (at least for the
 mount-points you want to modify) and then do your modifications.
 
@@ -170,12 +170,12 @@ To output particular data use the B<print-...> commands (and specify B<mask1>).
 =item B<check>
 
 Check whether B<DIR> is empty; usually this should always be the case.
-Normally, this command requires that the corresopnding mount-point is umounted.
+Normally, this command requires that the corresponding mount-point is umounted.
 Use option B<-f> to force an umount temporarily.
 In this case, B<--lazy=0> and B<--lsof=1> are the defaults unless specified
 by the option.
 
-B<check> cannote be used if B<DIR> is unknown, that is, if B<DIR> is a defined
+B<check> cannot be used if B<DIR> is unknown, that is, if B<DIR> is a defined
 by a function which was never called before.
 You can use B<squashmount -f print-dir> in advance to force B<DIR> to be known.
 
@@ -203,10 +203,10 @@ the corresponding mount-points. It works only for umounted mount-points.
 (You can use F<--force> to make it work anyway, but this is very dangerous;
 see below).
 
-In order to change F</etc/squashmount.pl> after B<squasmount mount> was called
+In order to change F</etc/squashmount.pl> after B<squashmount mount> was called
 (or when changing to a different version of F<squashmount>),
 the safe way is to call first B<squashmount stop>, i.e. B<squashmount umount>
-followed by B<squasmount forget> (at least for the mount-points you want to
+followed by B<squashmount forget> (at least for the mount-points you want to
 modify) and only then do your modification/upgrade F<squashmount>.
 
 If you shortcut this (e.g. because you forgot calling B<squashmount stop>
@@ -218,8 +218,8 @@ With this knowledge you should be able to call B<squashmount stop> even
 after you made your changes.
 
 If you plan to use B<forget> with the B<--force> flag on a mounted mount-point,
-you must know what you are doing: B<squasmount> is then no longer aware that
-the correspondig mount-point is actually mounted; you are then responsible
+you must know what you are doing: B<squashmount> is then no longer aware that
+the corresponding mount-point is actually mounted; you are then responsible
 for umounting these mount-points without using B<squashmount>.
 
 =item B<print-tag>
@@ -281,7 +281,8 @@ For usage in scripts, combine this with B<-q> and pass a tag.
 
 =item B<print-kill>
 
-Output 1 if kill is active.
+Output 1, -1, or 0, depending on whether B<--kill> or B<--kill-or-resquash>
+is active.
 For usage in scripts, combine this with B<-q> and pass a tag.
 
 =item B<help>
@@ -356,7 +357,7 @@ so you might want to use a flag to check whether this is the case.
 Using flags makes the configuration more flexible, but costs running time,
 of course, since the checks have to be executed.
 However, B<squashmount> caches the results of checks, so that the checks
-are made at most once per call of B<squaashmount>.
+are made at most once per call of B<squashmount>.
 
 =over 16
 
@@ -434,7 +435,7 @@ differently (for examples, see the description of B<@umount> and B<UMOUNT>).
 
 Using I<file> instead of B</run/squashmount>.
 
-=item B<--interactice> or B<-i>
+=item B<--interactive> or B<-i>
 
 Ask for confirmation before cleaning a directory.
 
@@ -478,7 +479,7 @@ even if they have not been changed.
 =item B<--threshold=>I<size> or B<-t> I<size>
 
 For I<size>=B<-1> act as described for B<--no-squash>, and for I<size>=B<0>
-act as described for B<--squash>, and for I<size>=B<-2> act as decsribed
+act as described for B<--squash>, and for I<size>=B<-2> act as described
 for B<--force-squash>.
 
 For positive I<size>, if the length of the changes is less than I<size> bytes,
@@ -487,11 +488,11 @@ it acts normally, that is, the data is resquashed.
 
 For convenience, you can append B<k>, B<m>, B<g>, B<t> to the number to denote
 kilobytes (1024), megabytes (1024^2), gigabytes (1024^3),
-or terrabytes (1024^4), respectively.
+or terabytes (1024^4), respectively.
 
 For the particular case that I<size> is empty the value of the current
 F</etc/squashmount.pl> is taken (cf. the B<unset> command).
-This is useful B<set> has been used:
+This is useful if B<set> has been used:
 
 If used with B<set>, set the state in F</run/squashmount>
 so that this happens for all subsequent umounts/remounts.
@@ -504,9 +505,25 @@ configured (without actually changing the configuration, of course).
 When umounting/remounting do not resquash the data but delete all new data.
 Use with care!
 For safety reasons, this has no effect if the currently active B<--threshold>
-values is negative.
+value is negative.
 
-If used with B<set>, set the state in F</run/squashmount>
+If used with B<set>, set the B<KILL> state in F</run/squashmount> to B<1>,
+so that this happens for all subsequent umounts/remounts.
+
+If used with B<status> or B<print*> act as if mount-point was correspondingly
+configured (without actually changing the configuration, of course).
+
+=item B<--kill-or-resquash> or B<-R>
+
+When umounting/remounting a directory whose threshold is not reached,
+remove all the data.
+In other words: Only major changes are stored by resquashing;
+all minor changes are lost.
+Use with care!
+For safety reasons, this has no effect if the currently active B<--threshold>
+value is negative.
+
+If used with B<set>, set the B<KILL> state in F</run/squashmount> to B<-1>,
 so that this happens for all subsequent umounts/remounts.
 
 If used with B<status> or B<print*> act as if mount-point was correspondingly
@@ -514,9 +531,9 @@ configured (without actually changing the configuration, of course).
 
 =item B<--no-kill> or B<--nokill> or B<-K>
 
-Remove the effect of B<--kill>.
+Undo the effect of B<--kill>, B<--kill-or-resquash>, and of the B<KILL> key.
 
-If used with B<set>, set the state in F</run/squashmount>
+If used with B<set>, set the B<KILL> state in F</run/squashmount> to B<0>,
 so that this happens for all subsequent umounts/remounts.
 
 If used with B<status> or B<print*> act as if mount-point was correspondingly
@@ -602,14 +619,14 @@ Similarly, whenever mounting, try to mount even if apparently already
 mounted according to the setting in F</run/squashmount>.
 If combined with B<-f> proceed even if mounting of B<READONLY> seems to fail.
 
-This option should only be necessary in exceptional caseas like bugs in
+This option should only be necessary in exceptional cases like bugs in
 B<squashmount> or F</etc/squashmount.pl> or if you manually interfered
 or removed or corrupted F</run/squashmount>.
 In this case, the best attempt is to call
 C<squashmount -fI umount> or C<squashmount -nfI umount> for trying to force
 umounting unconditionally all configured directories.
 
-=item B<--lazy=>I<value>
+=item B<--lazy=>I<value> or B<-L> I<value>
 
 B<value> must be one of the following:
 
@@ -630,7 +647,7 @@ Use B<-1> only if you know what you are doing.
 
 =back
 
-=item B<--lsof=>I<value>
+=item B<--lsof=>I<value> or B<-l> I<value>
 
 B<value> must be one of the following:
 
@@ -657,7 +674,7 @@ Use B<-1> only if you know what you are doing!
 
 =item B<--locking>
 
-Use perl's flock() to avoid simulatenous usage of the same mount-point.
+Use perl's flock() to avoid simultaneous usage of the same mount-point.
 
 =item B<--no-locking> or B<--nolocking>
 
@@ -697,7 +714,7 @@ The default is a newline.
 =item B<--pass-dir>
 
 When this option is used, the passed arguments I<mask1> I<mask2> ... are
-interpreteted as names of mounted readonly or writable directories.
+interpreted as names of mounted readonly or writable directories.
 This is to allow this script to be used as a callback from umount-wrappers
 like /sbin/umount.overlayfs or /sbin/umount.squashfs
 
@@ -710,7 +727,7 @@ Try to color even if output is not a terminal.
 Do not color the output.
 Setting the environment variable B<ANSI_COLORS_DISABLED> has the same effect.
 
-=item B<--no-star> or B<-nostar>
+=item B<--no-star> or B<--nostar>
 
 Omit printing C< * > at beginning of messages.
 
@@ -742,7 +759,7 @@ In particular, the status will be zero even if the (u)mounting of some
 mount-points failed.
 
 This is the default with the commands B<start>, B<stop>, or B<restart>, because
-this is probably  the appropriate behaviour if called from an initsystem.
+this is probably  the appropriate behavior if called from an init-system.
 For all other commands the default is:
 
 =item B<--no-fatal> or  B<--nofatal>
@@ -784,7 +801,7 @@ The arrays B<@umount> or B<@umount_ro> can carry default values for
 B<UMOUNT> and B<UMOUNT_RO>, respectively.
 The variable B<$rm_rundir> can be set to determine whether (and how)
 the directory B</run/squashmount> should be removed.
-Simlarly, also the variables B<$rm_dir>, B<$rm_change>, B<$rm_workdir>,
+Similarly, also the variables B<$rm_dir>, B<$rm_change>, B<$rm_workdir>,
 B<$rm_readonly> can be set to determine default values for
 B<RM_DIR>, B<RM_CHANGE>, B<RM_WORKDIR>, and B<RM_READONLY>.
 Finally, also the variables B<$mksquash_verbose>,
@@ -795,7 +812,7 @@ For advanced configuration, you can access the variables B<@ARGV>, B<$command>,
 B<$storing>, and you can set callback functions/function arrays B<$before>,
 B<$after>, B<$before_mount>, B<$after_mount>, B<$before_umount>, B<$after_umount>
 which are explained in the section B<ADVANCED CONFIGURATION>.
-There also some auxiliary perl functions available which are eplained later on.
+There also some auxiliary perl functions available which are explained later on.
 
 Here is an example for this file.
 (You can use this syntax if you do not have much knowledge about perl;
@@ -840,7 +857,7 @@ see the remarks at the end of this manpage.)
 
 =item # push(@mounts, { ... }, { ... });
 
-=item # (The latter can be used successsively to append mount-points...)
+=item # (The latter can be used successively to append mount-points...)
 
 =item @mounts = ( {
 
@@ -850,7 +867,7 @@ see the remarks at the end of this manpage.)
 
 =item DIR => '/usr/local',
 
-=item FILE => '/usr/local.sfs',
+=item FILE => '/usr/local.sfs'
 
 =back
 
@@ -862,9 +879,9 @@ see the remarks at the end of this manpage.)
 
 =item DIR => '/home/guest'
 
-=item FILE => '/home/guest-skelton.sfs'
+=item FILE => '/home/guest-skeleton.sfs'
 
-=item CHMOD => 0200,  # squashfile readonly by user
+=item CHMOD => 0200,  # squash-file readonly by user
 
 =item CHOWN => [ (getpwnam('guest'))[2], 1000 ],  # uid/gid
 
@@ -882,7 +899,7 @@ see the remarks at the end of this manpage.)
 
 =item RM_READONLY => 1,  # remove temporary READONLY on stop
 
-=item RM_WORKDIR => 1,  # remove temporary WORKDIR on stop
+=item RM_WORKDIR => 1  # remove temporary WORKDIR on stop
 
 =back
 
@@ -964,7 +981,7 @@ see the remarks at the end of this manpage.)
 
 =item FILE => '/just/a/crazy/example.sfs',
 
-=item SKIP => '\A\.',  # A string is also possible (note: multline mode)
+=item SKIP => '\A\.',  # A string is also possible (note: multiline mode)
 
 =item SKIPDIR => qr{(^|/)tmp}ni,  # tmp* Tmp* TMP*
 
@@ -1061,25 +1078,25 @@ but it might lead to undesired warning/kernel messages and can cost some time.
 =item B<$modprobe_loop>
 
 This determines whether C<modprobe loop> is executed before the first
-squashfile is mounted.
+squash-file is mounted.
 This variable defaults to the value B<1> (I<true>).
 
 =item B<$modprobe_squash>
 
 This determines whether C<modprobe squashfs> is executed before the first
-squashfile is mounted.
+squash-file is mounted.
 This variable defaults to the value B<1> (I<true>).
 
 =item B<$resquash_on_start>
 
 If this variable is B<1> (true), this becomes the default for
-B<RESQUASH_ON_START> for all mount-points for which B<RESQUSH_ON_START>
+B<RESQUASH_ON_START> for all mount-points for which B<RESQUASH_ON_START>
 is not explicitly set differently. It defaults to B<''> (I<false>).
 
 =item B<$rm_rundir>
 
 If this variable is a nonzero integer number then at B<squashmount stop>
-the directory F</run/squashmount> is removed if it is nonempty.
+the directory F</run/squashmount> is removed if it is empty.
 If the number is bigger than 1, also the corresponding number of parent
 directories (minus one) are removed (if nonempty). If the number is negative,
 all parent directories are removed (if nonempty).
@@ -1116,20 +1133,20 @@ If not set, the default is the empty string.
 
 =item B<@umount>
 
-This array determiness the default for the values B<UMOUNT> if the
+This array determines the default for the values B<UMOUNT> if the
 latter is not defined. Note that the default for B<@umount> in turn
 is defined by the option B<--umount>.
 In particular, if you set B<@umount> to a fixed value like C<@umount = ('-i');>,
 the option B<--umount> will have no effect. You can use perl-code to combine
 the option. For instance, when you use instead C<push(@umount, '-i');>,
 the option B<-i> will be added to the options specified by B<--umount>.
-Similarly, you can make a case destinction like
+Similarly, you can make a case distinction like
 C<@umount = ('-i') unless(@umount);> in which case the option B<-i> will be
 only used if no option was specified with B<--umount>.
 
 =item B<@umount_ro>
 
-This array determiness the default for the values B<UMOUNT_RO> if the
+This array determines the default for the values B<UMOUNT_RO> if the
 latter is not defined. Note that the default for B<@umount_ro> in turn
 is defined by the option B<--umount-ro>.
 See the description of B<@umount> on the consequences of this.
@@ -1161,7 +1178,7 @@ If none succeeds, the fallback B<bind> is used (with an error message).
 If B<bind> occurs explicitly in the list, no error message is emitted.
 
 Optionally, you can append or prepend the following special flags to change
-the default behaviour with B<modeprobe>.
+the default behavior with B<modprobe>.
 
 =over 16
 
@@ -1173,7 +1190,7 @@ In particular you should use this if it might happen (or you know) that the
 corresponding tool is compiled directly into the kernel.
 Note that B<overlayfs>, B<aufs>, B<unionfs> have their own kernel modules
 while B<unionfs-fuse> and B<funionfs> both require the B<fuse> module and
-need special userspace binaries.
+need special user space binaries.
 
 =item B<?> or B<??>
 
@@ -1189,7 +1206,7 @@ B<??> variant is used, the tool is considered as unavailable.
 
 If this flag is used, it is checked whether the binary
 (B<mount> in case of B<overlay>, B<overlayfs>, B<aufs>, or B<unionfs>
-or the special userspace binary for B<unionfs-fuse> or B<funionfs>,
+or the special user space binary for B<unionfs-fuse> or B<funionfs>,
 respectively) is available in your path. If it is unavailable, the tool is
 tacitly skipped. This flag is ignored if neither B<File::Which> nor the
 B<which> program are available.
@@ -1240,11 +1257,11 @@ the directory or alternatively a B<File::Temp::Dir> object.
 This function is executed only once if B<DIR> is unknown and in this case
 it gets passed the tag as an argument.
 The intention is that this function can be used to return e.g. a temporary
-dirname by using something like as in the B<fancy_temporary> example above.
+dir name by using something like as in the B<fancy_temporary> example above.
 
 Be aware that if this function uses B<File::Temp::newdir>, it should pass
 B<CLEANUP =E<gt> ''> to avoid that the directory is magically removed recursively:
-Forgetting this can severly damage your data!
+Forgetting this can severely damage your data!
 
 As an exception, if the function returns the corresponding created object
 (and not only a filename as in the B<make_temporary_subdir> example above),
@@ -1290,7 +1307,7 @@ If this is nonempty but not an absolute path, then B<DIR> is mounted readonly.
 If this is an absolute path then a readonly version of the content of B<DIR>
 is mounted here.
 It is not possible to omit this directory if B<DIR> should be writable.
-For the special case that B<READONLY> is empty, a temporary directy is used.
+For the special case that B<READONLY> is empty, a temporary directly is used.
 
 The same rules as for B<DIR> hold, that is, you can also pass a function which
 explicitly calls File::Temp::newdir with appropriate data.
@@ -1310,8 +1327,14 @@ The default is B<0>.
 
 =item B<KILL>
 
-If true (nonempty and not 0), B<--kill> is active for that mount-point
-(unless changed by command line options).
+If this is a positive number, B<--kill> is active for that mount-point.
+If this is a negative number, B<--kill-or-resquash> is active for that
+mount-point, that is, changes are killed unless they reach B<THRESHOLD>
+(in the latter case, they are resquashed, as usual).
+The value can be overridden by the corresponding command line options.
+
+For backward compatibility, if B<KILL> is a nonempty string, it is treated
+as a positive number.
 
 =item B<RESQUASH_ON_START>
 
@@ -1349,7 +1372,7 @@ B<$rm_dir>, B<$rm_changes>, B<$rm_workdir>, or B<$rm_readonly> is used
 instead, respectively.
 
 If the effective value is a nonzero number then with B<squashmount stop>
-the corresponding directory is removed if it is nonempty.
+the corresponding directory is removed if it is empty.
 If the number is bigger than 1, also the corresponding number of parent
 directories (minus one) is removed (if nonempty). If the number is negative,
 all parent directories are removed (if nonempty).
@@ -1484,7 +1507,7 @@ If B<BACKUP> is empty, no backup is made.
 If defined and nonempty this should be a number (if you want an octal number,
 do not enclose into quotes and start with a leading B<0>, or otherwise
 use perl's B<oct(>I<decimal number>B<)> function).
-The number defines the mode to which the squashfile is changed with B<chmod>
+The number defines the mode to which the squash-file is changed with B<chmod>
 whenever it is created.
 The empty string means that the mode remains B<0400>.
 If undefined (the default), the mode B<0644> is taken.
@@ -1504,13 +1527,13 @@ B<(getgrnam('>I<groupname>B<'))[2]>, respectively.
 
 If this is defined and a number (see B<CHMOD> for octal numbers),
 then it is attempted to change the mode of B<DIR> to this number
-after succesfully mounting B<DIR>.
+after successfully mounting B<DIR>.
 
 =item B<CHOWN_DIR>
 
-If defined and nonmepty this should be in the same format as in B<CHOWN>.
+If defined and nonempty this should be in the same format as in B<CHOWN>.
 In this case, B<DIR> is changed to the corresponding user/group after
-succesfully mounting. Note that this usually implicitly changes the
+successfully mounting. Note that this usually implicitly changes the
 permissions of B<CHANGES> as well, but this can depend on the tool which
 is used to merge the directories.
 
@@ -1548,7 +1571,7 @@ file has changed in this directory which you do not care about.
 
 When all changes are skipped during umounting, the B<CHANGES> directory
 is cleaned anyway, i.e. skipping a file means that changes to
-this file are usually lost (unless the directory is ressquashed anyway).
+this file are usually lost (unless the directory is resquashed anyway).
 
 If a file you want to skip resides in a subdirectory (not in the root
 of B<CHANGES>) you probably also want to skip all parent directories,
@@ -1684,7 +1707,7 @@ This function returns a reference to a hash which merges all hashes,
 that is, it is like B<standard_mount()> except that it does
 not fill a hash with certain values first.
 The idea is that this function can be used to start with a "default" hash
-and override/modify/add some data at your descretion.
+and override/modify/add some data at your discretion.
 
 For perl specialists: This function is practically the same as that provided
 by B<Hash::Merge::Simple>, but it does not require the existence of that
@@ -1768,7 +1791,7 @@ Since the configuration file consists of perl code, you can do all sort of
 conditional configuration in the configuration code.
 
 For instance, you can use the same configuration file for different machines,
-making the behaviour depend on the hostname. Here is such an example:
+making the behavior depend on the hostname. Here is such an example:
 
 =over 8
 
@@ -1856,7 +1879,7 @@ the command B<list> appears as B<status>.
 
 Special care has to be taken with "variable data" (that is, with data
 in mount-points which may differ for different calls of B<squashmount>):
-In many occassions, B<squashmount> will store the effective data for later
+In many occasions, B<squashmount> will store the effective data for later
 calls of B<squashmount>, and once this has happened, the stored data usually
 overrides the paths from the configuration file.
 This is almost always what you want:
@@ -1906,7 +1929,7 @@ It is recommended to use only this function and the callback
 mechanisms described later on when you want to know something about
 the data stored by B<squashmount>.
 
-Here is an example which generates a mount-point from a squashfile of a CD
+Here is an example which generates a mount-point from a squash-file of a CD
 (from a fixed path) only if the option B<-a -c> or B<--arg=--cd> is passed
 to B<squashmount>.
 
@@ -1938,7 +1961,7 @@ to B<squashmount>.
 
 =item # even if you do not pass any special options.
 
-=item # In particular, when the init system calls B<squashmount stop>,
+=item # In particular, when the init-system calls B<squashmount stop>,
 
 =item # it will also shut down the mount-point 'cd' properly.
 
@@ -1978,7 +2001,7 @@ B<$before_umount>, $B<$after_umount> to a function or a reference
 to an array of functions, respectively.
 These functions are called for each mount-point immediately before/after
 B<squashmount> executes its main task (specified by B<$command>), or
-before/after B<squashmount> is excutes its main mount/umount command(s).
+before/after B<squashmount> is executes its main mount/umount command(s).
 
 Note that e.g. B<$before_mount> can be called several times successively
 for the same mount point if B<RESQUASH_ON_START> is true.
@@ -1991,7 +2014,7 @@ to indicate an error with a special functionality, see below).
 Note that the "stored" data usually overrides the "configuration" data.
 
 You can not only read these hashes but also modify them: Modifying data in
-a function from B<$before> can influence of course also the behaviour of the
+a function from B<$before> can influence of course also the behavior of the
 subsequent main task, while modifying the hash of "stored" data in a function
 from B<$after> only influences what will be stored for later calls of
 B<squashmount>. You can add new keys to the hash of "stored" data, but the
@@ -2023,10 +2046,10 @@ In the functions from B<$after>, you should not add/modify any data to the
 hash of "stored" data if B<$command> is B<forget> or B<stop>:
 Otherwise, the data is stored, as required by you, and so the above mentioned
 function B<have_stored_data> will return a true value, contradicting the
-documented behaviour of B<forget> and B<stop>!
+documented behavior of B<forget> and B<stop>!
 
 Here is an example which is more advanced than the previous one:
-With this example, you can specify the path of the squashfile by
+With this example, you can specify the path of the squash-file by
 calling B<squashmount> with the arguments B<-a> I<path> or B<--arg=>I<path>.
 When mounted, this path will be stored for later usage, until the setting
 is forgotten with B<squashmount stop> or B<squashmount forget>.
@@ -2237,7 +2260,7 @@ my $tag = '';              # $user_config->{'TAG'}
 my $printed_title = '';    # Have we printed a statusline?
 my $taglen;                # Length of the longest tag
 my $threshold;             # currently active threshold (integer)
-my $kill;                  # currently active kill (boolean)
+my $kill;                  # currently active kill (integer)
 my $backup;                # currently active backup (string)
 my $tempdir;               # currently active tempdir (string)
 my $compression;           # currently active compression (string)
@@ -2266,9 +2289,9 @@ sub cmd_create {
 	my $squashfile = &get_abspath('FILE', 1);
 	if(-f $squashfile) {
 		if($force) {
-			&warning("squashfile $squashfile already exists") unless($quiet);
+			&warning("squash-file $squashfile already exists") unless($quiet);
 		} else {
-			&error("squashfile $squashfile already exists");
+			&error("squash-file $squashfile already exists");
 			return ''
 		}
 	}
@@ -2362,24 +2385,31 @@ sub cmd_check {
 	$status;
 }
 
+{ my %msg = (
+	UNMODIFIED => 'unmodified',
+	RESQUASH => 'will resquash modifications',
+	THRESHOLD => 'modified, but will not resquash',
+	KILL => 'will kill modifications',
+	KILLEMPTY => 'unmodified (kill)',
+	KILLNEGEMPTY => 'unmodified (kill-or-resquash)'
+);
 sub cmd_status {
 	my @status = ( &human_type() );
 	if(&is_resquash_type()) {
 		my $human = &human_threshold($threshold);
-		$status[0] .= (' ' x (5 - length($human))) . "(${human})" unless($verbose);
-		my ($newdata, undef) = &check_squash($kill ? 0 : $threshold, '');
-		if($newdata) {
-			push(@status, $kill ?
-				'will kill modifications' :
-				'will resquash modifications')
-		} elsif($kill) {
-			push(@status,
-				'will kill, but yet unmodified')
-		} else {
-			my ($nonempty, undef) = &check_squash(0, '');
-			push(@status, $nonempty ?
-				'modified, but will not resquash' :
-				'unmodified')
+		$status[0] .= (' ' x (5 - length($human))) . "(${human})"
+			unless($verbose);
+		my $thr = &threshold_dir(($threshold > 0) ? $threshold : 0);
+		if($threshold < 0) {
+			push(@status, $msg{($thr == 0) ? 'UNMODIFIED' :
+				(($threshold == -1) ? 'THRESHOLD' : 'RESQUASH')})
+		} elsif($thr == 0) {
+			push(@status, $msg{($kill == 0) ? 'UNMODIFIED' :
+				(($kill > 0) ? 'KILLEMPTY' : 'KILLNEGEMPTY')})
+		} elsif($thr > 0) {
+			push(@status, $msg{($kill > 0) ? 'KILL' : 'RESQUASH'})
+		} else {  # ($thr < 0)
+			push(@status, $msg{$kill ? 'KILL' : 'THRESHOLD'})
 		}
 		push(@status, 'THRESHOLD: ' .
 			(($verbose > 1) ? "$threshold" : $human)) if($verbose)
@@ -2412,7 +2442,7 @@ sub cmd_status {
 	push(@status, 'CHOWN_DIR: ' .
 		(defined($uid_dir) ? "$uid_dir:$gid_dir" : 'unchanged'));
 	&print_status(\@status)
-}
+}}
 
 sub cmd_print_tag {
 	&do_print($tag)
@@ -2464,8 +2494,7 @@ sub cmd_print_threshold {
 }
 
 sub cmd_print_kill {
-	my $result = $kill ? '1' : '';
-	&do_print($quiet ? $result : ('KILL: ' . $result));
+	&do_print($quiet ? $kill : ('KILL: ' . $kill));
 }
 
 #
@@ -2482,7 +2511,7 @@ sub mount_main {
 	if(-f $squashfile) {
 		$first_create = ''
 	} elsif(!$first_create) {
-		&error("squashfile $squashfile not found");
+		&error("squash-file $squashfile not found");
 		return ''
 	}
 	return '' unless(&create_dir('DIR', 1));
@@ -2736,7 +2765,7 @@ sub error_if_mounted {
 sub first_create {
 	my ($squashfile, $dir) = @_;
 	&info('It seems this is mounted for the first time:',
-		"The squashed file $squashfile does not exist yet;",
+		"The squash-file $squashfile does not exist yet;",
 		"it will be initialized now from $dir") unless($quiet);
 	return '' unless(&mksquashfs($squashfile, $dir));
 	&set_permissions($squashfile);
@@ -2747,7 +2776,7 @@ sub first_create {
 		$success = '' unless(&umount_dir($tmp->dirname, 1))
 	}
 	unless($success) {
-		&error('failed to mount generated squashfile ' . $squashfile,
+		&error('failed to mount generated squash-file ' . $squashfile,
 			'skipping deletion of original DIR ' . $dir);
 		return ''
 	}
@@ -3013,11 +3042,11 @@ sub mount_squash {
 	push(@options, '-v') if($verbose > 3);
 	return 1 if(&my_system('', \$mount, 'mount', @options,
 		'--', $squashfile, $dir) == 0);
-	&error('failed to mount squashfile');
+	&error('failed to mount squash-file');
 	''
 }
 
-# Create the squash file:
+# Create the squash-file:
 
 sub mksquashfs {
 	my ($squashfile, $dir) = @_;
@@ -3154,15 +3183,14 @@ sub check_squash {
 	return ('', 0) unless(&is_resquash_type());
 	return (1, 1) if($threshold == -2);
 	return ('', 0) if($threshold < 0);
-	return ('', 1) if($kill);
+	return ('', 1) if($kill > 0);
 	my $thr = &threshold_dir($threshold);
 	if($thr == 0) {
-		('', -1)  # clean "empty" directory
+		return ('', -1)  # clean "empty" directory
 	} elsif($thr > 0) {
-		(1, 1)
-	} else {
-		('', 0)
+		return (1, 1)  # squash and clean nonempty directory
 	}
+	('', (($kill < 0) ? 1 : 0))  # no squash but possibly kill
 }
 
 # Execute modprobe for the argument
@@ -3492,9 +3520,9 @@ sub set_globals {
 	$threshold = (($opt_threshold ne '') ?
 		&parse_threshold($opt_threshold) : $current->{'THRESHOLD'});
 	if(($threshold < 0) && ($threshold != -2)) {
-		$kill = ''
+		$kill = 0
 	} else {
-		$kill = ($opt_kill // $current->{'KILL'})
+		$kill = ($opt_kill // &parse_kill($current->{'KILL'}))
 	}
 }
 
@@ -3538,6 +3566,16 @@ sub parse_threshold {
 		return $num if($ext =~ $i)
 	}
 	$num * 1024  # if($ext =~ m{t}i)
+}
+
+# Turn argument into a number.
+
+sub parse_kill {
+	my ($kill) = @_;
+	return 0 unless(&is_nonempty($kill));
+	return 1 unless(&is_integer($kill));
+	return 0 if($kill == 0);
+	(($kill > 0) ? 1 : -1)
 }
 
 # Turn argument into a human-readable string
@@ -4339,8 +4377,9 @@ Getopt::Long::GetOptions(
 	'no-squash|nosquash|n', sub { $opt_threshold = '-1' },
 	'squash|s', sub { $opt_threshold = '0' },
 	'force-squash|squash-force', sub { $opt_threshold = '-2' },
-	'kill|k', \$opt_kill,
-	'no-kill|nokill|K', sub { $opt_kill = '' },
+	'kill-or-resquash|R', sub { $opt_kill = -1 },
+	'kill|k', sub { $opt_kill = 1 },
+	'no-kill|nokill|K', sub { $opt_kill = 0 },
 	'compression|comp|x=s', \$opt_compression,
 	'tempdir|D=s', \$opt_tempdir,
 	'backup|b=s', \$opt_backup,
@@ -4348,8 +4387,8 @@ Getopt::Long::GetOptions(
 	'mksquash-verbose=s', \$mksquash_verbose,
 	'processors|p=s', \$processors,
 	'mem|m=s', \$mem,
-	'lazy=s', \$lazy,
-	'lsof=s', \$lsof,
+	'lazy|L=s', \$lazy,
+	'lsof|l=s', \$lsof,
 	'locking!', \$locking,
 	'force|f', \$force,
 	'ignore-state|I', \$ignore_state,
