@@ -103,7 +103,7 @@ $rm_changes = $rm_workdir = $rm_readonly = 0;
 # push(@umount_ro, '-i') unless(@umount_ro);
 
 # The following is the default: If these files exist, we do not squash
-# $killpower = [ '/etc/killpower', '/etc/nosquash' ]
+# $killpower = [ '/etc/killpower', '/etc/nut/killpower', '/etc/nosquash' ]
 
 # Even if we would not set anything in the following hash, it is recommended
 # to use this local variable throughout, so that "defaults" for all
