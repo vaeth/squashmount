@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.022;
-package Squashmount v14.0.0;
+package Squashmount v14.1.0;
 
 use strict;
 use warnings;
@@ -2400,6 +2400,11 @@ sub cmd_status {
 		$status[0] .= (' ' x (5 - length($human))) . "(${human})"
 			unless($verbose);
 		my $thr = &threshold_dir(($threshold > 0) ? $threshold : 0);
+		if($thr eq '') {
+			&error('no CHANGES dir: ' .
+				&get_abspath('CHANGES', $force, 1));
+			return ''
+		}
 		if($threshold < 0) {
 			push(@status, $msg{($thr == 0) ? 'UNMODIFIED' :
 				(($threshold == -1) ? 'THRESHOLD' : 'RESQUASH')})
@@ -2516,6 +2521,7 @@ sub mount_main {
 	}
 	return '' unless(&create_dir('DIR', 1));
 	my $dir = $current->{'DIR'};
+	return '' unless(-d $dir);
 	if($first_create) {
 		return '' unless(&first_create($squashfile, $dir))
 	}
@@ -2633,7 +2639,7 @@ sub umount_main {
 	}
 	if(($type eq 'overlay') || ($type eq 'overlayfs')) {
 		my $workdir = &get_abspath('WORKDIR');
-		if(&is_abspath($workdir)) {
+		if(&is_abspath($workdir) && (-d $workdir)) {
 			&info('cleaning workdir...') unless($quiet);
 			if(&clean_directory($workdir)) {
 				&rmdir_recurse($workdir, ($user_config->{'RM_WORKDIR'} // $rm_workdir))
@@ -2671,7 +2677,7 @@ sub umount_main {
 	}
 	return $ret unless($will_remove);
 	my $changes = &get_abspath('CHANGES');
-	if(&is_abspath($changes)) {
+	if(&is_abspath($changes) && (-d $changes)) {
 		&title("$tag cleaning");
 		&info('cleaning changes...') unless($quiet);
 		if(&clean_directory($changes)) {
@@ -3185,6 +3191,7 @@ sub check_squash {
 	return ('', 0) if($threshold < 0);
 	return ('', 1) if($kill > 0);
 	my $thr = &threshold_dir($threshold);
+	return ('', 0) if($thr eq '');
 	if($thr == 0) {
 		return ('', -1)  # clean "empty" directory
 	} elsif($thr > 0) {
@@ -3748,11 +3755,16 @@ sub dir_is_empty {
 }
 
 # Check whether CHANGES tree is empty or is more than $to_find long.
-# Return value 1 means $to_find is reached, -1 means nonempty but not reached.
+# Return value:
+# '' dir does not exit
+# 0 dir is empty
+# 1 $to_find is reached
+# -1 nonempty, but $to_find not reached
 
 sub threshold_dir {
 	my ($to_find) = @_;
 	my $dir = &get_abspath('CHANGES');
+	return '' unless(-d $dir);
 	my ($dirv, @dir) = &split_dir($dir);
 	&shift_empty(\@dir);
 	my ($readonlyv, @readonly) = &split_dir(&get_abspath('READONLY'));

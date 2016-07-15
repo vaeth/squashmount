@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-14.1.0
+	Martin Väth <martin at mvath.de>:
+	- Deal better with vanished directories
+
 *squashmount-14.0.0
 	Martin Väth <martin at mvath.de>:
 	- Support KILL => -1 (and --kill-or-resquash)
@@ -447,4 +451,3 @@
 *squashmount-0.01
 	Martin Väth <martin at mvath.de>:
 	- Initial implementation, using some ideas of the squash_dir project
-
