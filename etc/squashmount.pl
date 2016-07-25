@@ -310,7 +310,7 @@ $after_mount = sub {
 	return 1 unless($mountpoint eq 'portage');
 	system('mount', '--bind', $config->{DIR} // $store->{DIR}, '/srv/copy');
 	1  # return a true value!
-}
+};
 
 $before_umount = sub {
 	my ($mountpoint, $store, $config) = @_;
@@ -327,7 +327,7 @@ $before_mount = sub {
 	return 1 unless($mountpoint eq 'portage');
 	system('umount /srv/copy >/dev/null 2>&1');
 	1  # return a true value!
-}
+};
 
 
 

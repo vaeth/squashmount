@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-14.1.2
+	Martin Väth <martin at mvath.de>:
+	- Fix perl syntax errors in example config
+
 *squashmount-14.1.1
 	Martin Väth <martin at mvath.de>:
 	- Inform about found $killpower file (without -q)
