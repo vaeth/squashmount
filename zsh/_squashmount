@@ -11,6 +11,8 @@ _arguments -C -s -S -A '-*' : \
 {'*-c+','*--config='}'[CONFIGFILE (add CONFIGFILE to list)]:configfile:_files' \
 {'*-u+','*--umount='}'[OPT (add OPT to umount DIR)]:umount option:("-r")' \
 {'*-U+','*--umount-ro='}'[OPT (add OPT to umount ro dir)]:umount option:("-r")' \
+'*--fumount=[OPT (add OPT to fusermount -u DIR)]:umount option:()' \
+'*--fumount-ro=[OPT (add OPT to fusermount -u ro dir)]:umount option:()' \
 '--rundir=[DIR (runtime config dir /run/squash_dir)]:runtime config dir:_files -/' \
 '(--no-backup --nobackup -B '{'--backup)-b+','-b)--backup='}'[FILE_OR_APPENDIX (override BACKUP)]:file or appendix:_files' \
 '(--backup -b '{'--no-backup --nobackup)-B','--nobackup -B)--no-backup','--no-backup -B)--nobackup'}'[do not make a backup]' \
@@ -42,9 +44,14 @@ _arguments -C -s -S -A '-*' : \
 '(--fatal '{'--nofatal)--no-fatal','--no-fatal)--nofatal'}'[return nonzero only on fatal failure]' \
 '(--no-error -noerror -E '{'-e)--error','(--error)-e'}'[break on error]' \
 '(--error -e '{'--no-error --noerror)-E','--noerror -E)--no-error','--no-error -E)--noerror'}'[no break on error]' \
+'(--allow --noallow-other --no allow)--allow[allow_other default]' \
+'(--allow '{'--noallow)--no-allow','--no-allow)--noallow'}'[no allow_other default]' \
+'--user[user mode mounting]' \
 {'(--lazy)-L+','(-L)--lazy='}'[0: not lazy, 1: lazy retry, -1: only lazy]:lazy mode:(0 1 -1)' \
 {'(--lsof)-L+','(-l)--lsof='}'["": no lsof, 0: retry lazy, 1: error, -1: only lazy]:lsof mode:("" 0 1 -1)' \
-{'(--order)-o+','(-o)--order='}'[ORDER (set \@order)]:tool order:("overlay!?,overlayfs!?,aufs!,unionfs-fuse!,unionfs!,funionfs!" "overlay,overlayfs,aufs!,unionfs-fuse!" bind aufs overlay overlayfs unionfs unionfs-fuse funionfs)' \
+'--lsof-ro=["": no lsof, 0: retry lazy, 1: error, -1: only lazy]:lsof mode:("" 0 1 -1)' \
+{'(--order)-o+','(-o)--order='}'[ORDER (set \@order)]:tool order:("overlay!?,overlayfs!?,aufs!,unionfs-fuse!,unionfs!,funionfs!" "unionfs-fuse!!,funionfs!!" "overlay,overlayfs,aufs!,unionfs-fuse!" bind aufs overlay overlayfs unionfs unionfs-fuse funionfs)' \
+{'(--squashorder)-O+','(-O)--squashorder='}'[SQUASHORDER (set \@squashorder)]:tool order:("squashfs!?,squashfuse!" "squasfuse!!" squashfs squashfuse)' \
 {'*--title=','*-T+'}'[Set title option OPT]:title option:_title_opt' \
 '1:command:->cmds' \
 '*:mask:->mask'
@@ -72,6 +79,7 @@ case $state in
 	'print-changes:print CHANGES directory'
 	'print-file:print squash-file path'
 	'print-type:print mount type'
+	'print-squashtype:print squash mount type'
 	'print-new:print 1 if there is new data'
 	'print-will-squash:print 1 if data is resquashed'
 	'print-threshold:print active threshold value'

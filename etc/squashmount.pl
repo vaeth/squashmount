@@ -54,10 +54,13 @@ fatal('The default /etc/squashmount.pl is only an example config!',
 # Uncomment the corresponding line if you want to have different defaults.
 # Normally, this is not needed.
 # $lazy = '';
-# $lsof = 0;
 # $squash_verbose = '';
 # $modprobe_loop = '';
 # $modprobe_squash = '';
+
+# These are the defaults:
+# $lsof = 1;
+# $lsof_ro = 0;
 
 # Uncomment the following if you prefer (globally) resquashing on start
 # instead of resquashing on umount/stop. You can override this individually
@@ -101,6 +104,10 @@ $rm_changes = $rm_workdir = $rm_readonly = 0;
 # --umount or --umount-ro, respectively (in which case nothing is added).
 # push(@umount, '-i') unless(@umount);
 # push(@umount_ro, '-i') unless(@umount_ro);
+
+# This is the default:
+# @fumount = ();
+# @fumount_ro = ();
 
 # The following is the default: If these files exist, we do not squash
 # $killpower = [ '/etc/killpower', '/etc/nut/killpower', '/etc/nosquash' ]

@@ -1,5 +1,16 @@
 # ChangeLog for squashmount
 
+*squashmount-15.0.0
+	Martin Väth <martin at mvath.de>:
+	- Support mounting as a user with squashfuse.
+	  See the --user option in squashmount --man
+	- Introduce $lsof_ro and --lsof-ro
+	- Introduce @squash_order and remove obsolete $modprobe_squash
+	- Be aware the $modprobe_loop slightly changed its meaning
+	- Introduce --allow and --no-allow for fine-tuning options
+	- Introduce FUMOUNT, FUMOUNT_RO, @fumount, @fumount_ro,
+	  and the options --fumount, --fumount-ro for fusermount -u.
+
 *squashmount-14.1.2
 	Martin Väth <martin at mvath.de>:
 	- Fix perl syntax errors in example config

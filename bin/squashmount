@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.022;
-package Squashmount v14.1.2;
+package Squashmount v15.0.0;
 
 use strict;
 use warnings;
@@ -260,8 +260,15 @@ For usage in scripts, combine this with B<-q>/B<-S> and pass a tag.
 
 Output the tool actually used for mounting.
 Possible output is C<overlay>, C<overlayfs>, C<overlayfs-obsolete>, C<aufs>,
-C<unionfs-fuse>, C<unionfs>, C<funionfs>, C<bind>, or C<readonly>.
+C<unionfs-fuse>, C<unionfs>, C<funionfs>, C<bind>, C<readonly>, or the
+empty string (for not mounted or incompletely mounted; you can check
+the details with B<print-squashtype).
 For usage in scripts, combine this with B<-q> and pass a tag.
+
+=item B<print-squashtype>
+
+Output the tool actually used for mounting the squash file.
+Possible output is C<squashfs>, C<squashfuse>, C<unknown>, or the empty string.
 
 =item B<print-new>
 
@@ -424,16 +431,62 @@ differently (for examples, see the description of B<@umount> and B<UMOUNT>).
 
 =item B<--umount-ro=>I<opt> or B<-U> I<opt> (accumulative)
 
-Add option I<opt> to the default B<@umount> array.
+Add option I<opt> to the default B<@umount_ro> array.
 If this option is repeated, all passed options are added to the array.
 By default, this means that the option are used in the call to B<umount>
 when umounting a readonly directory.
 There might be code in B</etc/squashmount.pl> which treats this array value
 differently (for examples, see the description of B<@umount> and B<UMOUNT>).
 
+=item B<--fumount=>I<opt> (accumulative)
+
+Add option I<opt> to the default B<@fumount> array (see also B<--umount>).
+If this option is repeated, all passed options are added to the array.
+By default, this means that the option are used in the call to B<fusermount -u DIR>.
+There might be code in B</etc/squashmount.pl> which treats this array value
+differently.
+
+=item B<--fumount-ro=>I<opt> (accumulative)
+
+Add option I<opt> to the default B<@fumount_ro array (see also B<--umount-ro>).
+If this option is repeated, all passed options are added to the array.
+By default, this means that the option are used in the call to B<fusermount -u DIR>
+when umounting a readonly directory.
+There might be code in B</etc/squashmount.pl> which treats this array value
+differently.
+
+=item B<--user>
+
+Set all options to support user mode mounting:
+
+=over 16
+
+=item Use B<$HOME/.squashmount.pl> instead of B</etc/squasmount.pl>
+
+You can avoid/change this effect by specifying B<--config>
+
+=item Use B<$TEMPDIR/squashmount$UID> instead of B</run/squashmount>
+
+Here, B<$TEMPDIR> defaults to B</tmp>.
+You can avoid/change the effect by specifying B<--rundir>.
+
+=item Remove all C<-o allow_other> defaults
+
+You can avoid this effect by specifying B<--allow>
+
+=item Use default @order = qw(unionfs-fuse!! funionfs!!)
+
+You can avoid this effect by specifying B<--order>
+
+=item Use default @squashorder = qw(squashfuse!!)
+
+You can avoid this effect by specfiying B<--squashorder
+
+=back
+
 =item B<--rundir=>I<dir>
 
-Using I<file> instead of B</run/squashmount>.
+Use I<dir> instead of B</run/squashmount>.
 
 =item B<--interactive> or B<-i>
 
@@ -445,6 +498,12 @@ Override the value of B<@order> from the configuration.
 Any symbol which has no special meaning in I<order> can be used as a separator.
 As a practical example, using B<--order=bind> with remount forces that the
 corresponding mount-points are mounted readonly with --bind.
+
+=item B<--squashorder=>I<squashorder> or B<-O> I<squashorder>
+
+Override the value of B<@squashorder> from the configuration.
+Any symbol which has no special meaning in I<squashorder>
+can be used as a separator.
 
 =item B<--no-squash> or B<--nosquash> or B<-n>
 
@@ -670,7 +729,25 @@ Fail if B<lsof> indicates that umounting would fail.
 If B<lsof> indicates that umounting would fail, act as if B<$lazy=-1>.
 Use B<-1> only if you know what you are doing!
 
+=item B<--lsof-ro=>I<value>
+
+As B<--lsof>, but for the B<READONLY> directory.
+
 =back
+
+=item B<--allow>
+
+Use the option C<-o allow_other> for B<MOUNT_UNIONFS_FUSE>,
+B<MOUNT_FUNIONFS>, and B<MOUNT_SQUASHFUSE> as default if these variables
+are not specified.
+This is the default unless B<--user> is in use.
+
+=item B<--no-allow> or B<--noallow>
+
+Do not use the option C<-o allow_other> for B<MOUNT_UNIONFS_FUSE>,
+B<MOUNT_FUNIONFS>, and B<MOUNT_SQUASHFUSE> as default if these variables
+are not specified.
+This overrides the setting of B<--user>.
 
 =item B<--locking>
 
@@ -788,17 +865,18 @@ Last option
 
 The file F</etc/squashmount.pl> can be any perl code which fills
 the array B<@mounts> with references to hashes; one hash for every tag.
-In addition, the array B<@order> can be filled with the available tools,
-the order in which they should be tried, and flags whether modprobe should
-be called, how to test the existence of tools and what to do if tools appear
-unavailable.
-Also the default variables B<$lazy>, B<$lsof>, B<$locking>, B<$modprobe_loop>,
-B<$modprobe_squash>, B<$obsolete_overlayfs>, B<$resquash_on_start>
-can be initialized:
+In addition, the arrays B<@order> and B<@squashorder> can be filled with
+the available tools, the order in which they should be tried,
+and flags whether modprobe should be called, how to test the existence of
+tools and what to do if tools appear unavailable.
+Also the default variables B<$lazy>, B<$lsof>, B<$lsof_ro>,
+B<$locking>, B<$modprobe_loop>, B<$obsolete_overlayfs>,
+B<$resquash_on_start> can be initialized:
 They are initialized to B<1> (perl interprets this as I<true>)
 or B<''> (I<false>).
-The arrays B<@umount> or B<@umount_ro> can carry default values for
-B<UMOUNT> and B<UMOUNT_RO>, respectively.
+The arrays B<@umount>, B<@umount_ro>, B<@fumount>, B<@fumount_ro>
+can carry default values for B<UMOUNT>, B<UMOUNT_RO>, B<FUMOUNT>, and
+B<FUMOUNT_RO>, respectively.
 The variable B<$rm_rundir> can be set to determine whether (and how)
 the directory B</run/squashmount> should be removed.
 Similarly, also the variables B<$rm_dir>, B<$rm_change>, B<$rm_workdir>,
@@ -821,13 +899,11 @@ see the remarks at the end of this manpage.)
 
 =over 8
 
-=item $lazy = $lsof = 1;  # unnecessary; this is the default
+=item $lazy = $lsof = 1; $lsof_ro = 0; # unnecessary (default)
 
 =item $killpower = '/etc/killpower';  # ignore /etc/nosquash /etc/nut/killpower
 
 =item $locking = 1;  # lock always, even for status and print-* commands
-
-=item $modprobe_squash = '';  # Differ from default: No modprobe squashfs
 
 =item $modprobe_loop = 1;  # Keep default: modprobe loop
 
@@ -1019,7 +1095,12 @@ This variable defaults to the value B<1> (I<true>).
 =item B<$lsof>
 
 This determines the default I<value> of B<--lsof>.
-This variable defaults to the value B<1> (I<true>).
+This variable defaults to the value B<1>.
+
+=item B<$lsof_ro>
+
+This determines the default I<value> of B<--lsof_ro>.
+This variable defaults to the value B<0>.
 
 =item B<$killpower>
 
@@ -1077,14 +1158,7 @@ but it might lead to undesired warning/kernel messages and can cost some time.
 
 =item B<$modprobe_loop>
 
-This determines whether C<modprobe loop> is executed before the first
-squash-file is mounted.
-This variable defaults to the value B<1> (I<true>).
-
-=item B<$modprobe_squash>
-
-This determines whether C<modprobe squashfs> is executed before the first
-squash-file is mounted.
+This determines whether C<modprobe loop> is implied by modprobing for squashfs.
 This variable defaults to the value B<1> (I<true>).
 
 =item B<$resquash_on_start>
@@ -1150,6 +1224,16 @@ This array determines the default for the values B<UMOUNT_RO> if the
 latter is not defined. Note that the default for B<@umount_ro> in turn
 is defined by the option B<--umount-ro>.
 See the description of B<@umount> on the consequences of this.
+
+=item B<@fumount>
+
+This array determines the default for the values B<FUMOUNT> if the
+latter is not defined.
+
+=item B<@fumount_ro>
+
+This array determines the default for the values B<FUMOUNT_RO> if the
+latter is not defined.
 
 =item B<@order>
 
@@ -1218,7 +1302,7 @@ If B<squashmount> is used with a command for which the order is possibly needed
 
 =over 16
 
-=item B<qw(overlay!? overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)>
+=item qw(overlay!? overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)
 
 =back
 
@@ -1229,6 +1313,26 @@ no matter whether the kernel provides support for it.
 
 If B<squashmount> is used with a different command, the default of this
 array is empty.
+
+=item B<@squashorder>
+
+This array is rather analogous to B<@order> with the difference that it
+determines the tool for mounting squash files.
+The available tools are
+
+=over 16
+
+=item B<squashfs>, B<squashfuse>
+
+=back
+
+The same flags are available as for B<@order>. The default value is
+
+=over 16
+
+=item qw(squashfs!? squashfuse!)
+
+=back
 
 =back
 
@@ -1447,6 +1551,12 @@ This should be a (possibly empty) string or a reference to an array of strings:
 These strings are used as additional options when mounting with funionfs.
 The default is B<['-o', 'allow_other', '-o', 'nonempty']>.
 
+=item B<MOUNT_SQUASHFUSE>
+
+This should be a (possibly empty) string or a reference to an array of strings:
+These strings are used as additional options when mounting with squashfuse.
+The default is B<['-o', 'allow_other', '-o', 'nonempty']>.
+
 =item B<UMOUNT>
 
 This should be a (possibly empty) string or a reference to an array of strings:
@@ -1462,6 +1572,10 @@ C<UMOUNT => ((@umount) ? '-r' : undef)> will use the option B<-r> if
 nothing was specified in B<@umount> (or through the option B<--umount>),
 otherwise, it will use the default (i.e. the value of B<@umount>).
 
+=item B<FUMOUNT>
+
+This is analogous to B<UMOUNT>, but when B<fusermount -u> is used.
+
 =item B<UMOUNT_RO>
 
 This should be a (possibly empty) string or a reference to an array of strings:
@@ -1469,6 +1583,10 @@ These strings are used as additional options when umounting a readonly
 directory. If nothing is specified, the value of B<@umount_ro> is used whose
 default in turn is set by the option B<--umount_ro>.
 See the description of B<UMOUNT> on the consequences of this.
+
+=item B<FUMOUNT_RO>
+
+This is analogous to B<UMOUNT_RO>, but when B<fusermount -u> is used.
 
 =item B<COMPRESSION>
 
@@ -2190,6 +2308,7 @@ my $devnull = File::Spec->devnull();
 
 # Default for the Options:
 
+my @allow_other = ('o', 'allow_other');
 my @title = ();
 my $verbose = 0;
 my $quiet = 0;
@@ -2200,6 +2319,7 @@ my $opt_color = undef;
 my $star = undef;
 my $lazy = undef;
 my $lsof = undef;
+my $lsof_ro = undef;
 my $locking = undef;
 my $force = '';
 my $ignore_state = '';
@@ -2211,7 +2331,11 @@ my $opt_backup = undef;
 my $opt_tempdir = undef;
 my $opt_compression = undef;
 my $opt_order = undef;
-my $order;  # reference to actual @order
+my $opt_squashorder = undef;
+my $opt_user = undef;
+my $opt_allow_other = undef;
+my @order = ();
+my @squashorder = ();
 my $pass_dir = '';
 my $errorbreak = '';
 my $fatalreturn = undef;
@@ -2219,26 +2343,27 @@ my $firstmatch = '';
 my @configs = ();
 my @argv = ();
 my $separator = "\n";
-my $rundir = File::Spec->catdir($root, 'run', 'squashmount');
-my $titleopt;
+my $rundir = undef;
+my $titleopt = undef;
 
 # Paths to executables:
 
 my $title = undef;
 my $funionfs = undef;
 my $unionfs_fuse = undef;
+my $squashfuse = undef;
 my $mksquashfs = undef;
 my $lsof_bin = undef;
 my $mount = undef;
 my $umount = undef;
+my $fusermount = undef;
 my $modprobe = undef;
 
 # Global/State variables:
 
 our $VERSION;
 my $run_ro;                # handle /run/squashmount as readonly
-my $modprobe_loop;         # will modprobe loop
-my $modprobe_squash;       # will modprobe squash
+my $modprobe_loop;         # modprobing loop is implies by modprobing squash
 my $resquash_on_start;     # default for resquash_on_start
 my $rm_rundir_on_end;
 my $rm_rundir;
@@ -2361,7 +2486,7 @@ sub cmd_check {
 			return 1
 		}
 		&info('umounting...') unless($quiet);
-		return '' unless(&umount_dir($dir));
+		return '' unless(&umount_dir($dir, '', &is_fuse_type()));
 		delete($current->{'TYPE'})
 	}
 	my $status = &dir_is_empty($dir);
@@ -2476,7 +2601,11 @@ sub cmd_print_file {
 }
 
 sub cmd_print_type {
-	&do_print(&human_type())
+	&do_print($current->{'TYPE'} // '')
+}
+
+sub cmd_print_squashtype {
+	&do_print($current->{'MOUNT_RO'} // '')
 }
 
 sub cmd_print_new {
@@ -2530,7 +2659,9 @@ sub mount_main {
 	&info('mounting...') unless($quiet);
 	return '' unless(&run_hook($CFG::before_mount, '$before_mount'));
 	if($ro_stat < 0) {
-		return '' unless(&mount_squash($squashfile, $dir));
+		my $squashtype = &mount_squash($squashfile, $dir);
+		return '' unless(&is_nonempty($squashtype));
+		$current->{'MOUNT_RO'} = $squashtype;
 		$current->{'TYPE'} = 'readonly';
 		delete($current->{'CHANGES'});
 		delete($current->{'WORKDIR'});
@@ -2546,12 +2677,14 @@ sub mount_main {
 			$mount_ro = '' unless($ignore_state)
 		}
 		if($mount_ro) {
-			unless(&mount_squash($squashfile, $dir_ro)) {
+			my $squashtype = &mount_squash($squashfile, $dir_ro);
+			unless(&is_nonempty($squashtype)) {
 				return '' unless($ignore_state && $force);
 				&warning('presuming mount was succesful due to -fI') unless($quiet > 1);
+				$squashtype = 'unknown';
 				$ret = ''
 			}
-			$current->{'MOUNT_RO'} = 1
+			$current->{'MOUNT_RO'} = $squashtype
 		}
 	}
 	my $type = &mount_rw($dir_ro, $dir);
@@ -2573,13 +2706,15 @@ sub mount_main {
 # as the second or third argument, respectively.
 
 sub lsof {
-	my ($dir) = @_;
+	my ($dir, $readonly) = @_;
 	return 1 unless(&is_abspath($dir));
 	return 1 unless(&which_store(\$lsof_bin, 'lsof'));
 	return 1 if(&my_system(2, \$lsof_bin, 'lsof', '--', $dir) == 0x100);
-	if($lsof && ($lsof > 0)) {
+	my $loclsof = ($readonly ? $lsof_ro : $lsof );
+	if($loclsof && ($loclsof > 0)) {
 		&error('umount skipped: dir in use: ' . $dir,
-			'(this test can be skipped with --lsof=0)')
+			'(this test can be skipped with ' .
+			($readonly ? '--lsof-ro=0' :  '--lsof=0') . ')')
 	} elsif($verbose) {
 		&warning('bad report of lsof ' . $dir)
 	}
@@ -2589,9 +2724,9 @@ sub lsof {
 sub umount_main {
 	my $stop_cmd = (shift() // '');
 	my $type = $current->{'TYPE'};
-	if($lsof && ($lsof > 0)) {
+	if($lsof_ro && $lsof_ro > 0) {
 		if(&is_nonempty($current->{'MOUNT_RO'})) {
-			return '' unless(&lsof(&get_abspath('READONLY')))
+			return '' unless(&lsof(&get_abspath('READONLY'), 1))
 		}
 	}
 	return(&run_hook($CFG::before_umount, '$before_umount') &&
@@ -2605,8 +2740,8 @@ sub umount_main {
 	my $tempfile;
 	my $dir = &get_abspath('DIR');
 	$dir = undef unless(&is_abspath($dir));
-	if($lsof && ($lsof > 0)) {
-		return '' unless(&lsof($dir));
+	if($lsof && $lsof > 0) {
+		return '' unless(&lsof($dir, ''));
 	}
 	if($will_squash && defined($dir)) {
 		&info('squashing (this may take a while)') unless($quiet);
@@ -2624,7 +2759,7 @@ sub umount_main {
 	my $umount_ret = (defined($dir) &&
 		&run_hook($CFG::before_umount, '$before_umount'));
 	if($umount_ret) {
-		$umount_ret = &umount_dir($dir);
+		$umount_ret = &umount_dir($dir, '', &is_fuse_type());
 		$umount_ret = '' unless(&run_hook($CFG::after_umount, '$after_umount'))
 	}
 	if($umount_ret) {
@@ -2715,7 +2850,8 @@ sub umount_readonly {
 	my $message = (shift() // '');
 	&info($message) if($message ne '');
 	my $dir_ro = &get_abspath('READONLY');
-	return '' unless(&is_abspath($dir_ro) && &umount_dir($dir_ro, 1));
+	return '' unless(&is_abspath($dir_ro) &&
+		&umount_dir($dir_ro, 1, &is_squashfuse_type()));
 	&rmdir_recurse($dir_ro, ($user_config->{'RM_READONLY'} // $rm_readonly))
 		if($stop_cmd // '');
 	delete($current->{'MOUNT_RO'});
@@ -2726,9 +2862,12 @@ sub umount_readonly {
 
 sub human_type {
 	my $type = $current->{'TYPE'};
-	return $type if(&is_nonempty($type));
-	return 'incompletely mounted' if(&is_nonempty($current->{'MOUNT_RO'}));
-	'not mounted'
+	my $squashtype = $current->{'MOUNT_RO'};
+	if(&is_nonempty($type)) {
+		return (&is_nonempty($squashtype) ? $type . '/' . $squashtype :
+			$type)
+	}
+	&is_nonempty($squashtype) ? $squashtype : 'not mounted'
 }
 
 # The main reset function.
@@ -2778,8 +2917,13 @@ sub first_create {
 	# Sanity check: do not wipe if e.g. kernel has no squashfs support
 	my $success = 1; {
 		my $tmp = File::Temp::newdir();
-		$success = '' unless(&mount_squash($squashfile, $tmp->dirname));
-		$success = '' unless(&umount_dir($tmp->dirname, 1))
+		my $name = $tmp->dirname;
+		my $squashtype = &mount_squash($squashfile, $name);
+		if(&is_nonempty($squashtype)) {
+			$success = '' unless(&umount_dir($name, 1, &is_squashfuse_type($squashtype)))
+		} else {
+			$success = ''
+		}
 	}
 	unless($success) {
 		&error('failed to mount generated squash-file ' . $squashfile,
@@ -2852,7 +2996,7 @@ sub mount_rw {
 			return undef
 		}
 	}
-	for my $i (@$order) {
+	for my $i (@order) {
 		my $probemod = (($i =~ m{\!}) ? (($i =~ m{\!\!}) ? '' : -1) : 1);
 		my $check_bin = ($i =~ m{\#});
 		my $check_gz = (($i =~ m{\?}) ? (($i =~ m{\?\?}) ? -1 : 1) : '');
@@ -2962,8 +3106,8 @@ sub mount_aufs {
 sub mount_unionfs_fuse {
 	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
 	&push_ref(\my @options, $user_config->{'MOUNT_UNIONFS_FUSE'},
-		['-o', 'cow', '-o', 'allow_other', '-o', 'use_ino',
-		'-o', 'nonempty', '-o', 'noatime', '-o', 'hide_meta_files']);
+		['-o', 'cow', @allow_other, '-o', 'use_ino', '-o', 'nonempty',
+		'-o', 'noatime', '-o', 'hide_meta_files']);
 	$ro =~ s{([=:])}{\\$1}g;
 	$changes =~ s{([=:])}{\\$1}g;
 	unless(&which_store(\$unionfs_fuse, 'unionfs', 'unionfs-fuse')) {
@@ -3009,7 +3153,7 @@ sub mount_funionfs {
 	return '' if($check_bin && !&which_store(\$funionfs, 'funionfs'));
 	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
 	&push_ref(\my @options, $user_config->{'MOUNT_FUNIONFS'},
-		['-o', 'allow_other', '-o', 'nonempty']);
+		[@allow_other, '-o', 'nonempty']);
 	$ro =~ s{\=}{\\\=}g;
 	return 1 if(&my_system('', \$funionfs, 'funionfs', $changes, $rw, @options,
 		'-o', "dirs\=${ro}\=ro") == 0);
@@ -3036,19 +3180,51 @@ sub mount_squash {
 		&error("no directory $dir");
 		return ''
 	}
+	for my $i (@squashorder) {
+		my $probemod = (($i =~ m{\!}) ? (($i =~ m{\!\!}) ? '' : -1) : 1);
+		my $check_bin = ($i =~ m{\#});
+		my $check_gz = (($i =~ m{\?}) ? (($i =~ m{\?\?}) ? -1 : 1) : '');
+		if($i =~ m{fuse}i) {
+			return 'squashfuse' if(&mount_squashfuse($probemod, $check_gz, $check_bin, $squashfile, $dir))
+		} else {
+			return 'squashfs' if(&mount_squashfs($probemod, $check_gz, $check_bin, $squashfile, $dir))
+		}
+	}
+	&error('failed to mount squash-file');
+	''
+}
+
+# Mount with squashfs
+
+sub mount_squashfs {
+	my ($probemod, $check_gz, $check_bin, $squashfile, $dir) = @_;
+	return '' unless(&kernelprobe($probemod, $check_gz, 'squashfs'));
 	if($modprobe_loop) {
-		$modprobe_loop = '';
-		&my_modprobe('loop')
+		return '' unless(&kernelprobe($probemod, $check_gz, 'loop'))
 	}
-	if($modprobe_squash) {
-		$modprobe_squash = '';
-		&my_modprobe('squashfs')
-	}
+	return '' if($check_bin && !&which_store(\$mount, 'mount'));
 	my @options = ('-t', 'squashfs', '-o', 'loop,ro,noatime');
 	push(@options, '-v') if($verbose > 3);
 	return 1 if(&my_system('', \$mount, 'mount', @options,
 		'--', $squashfile, $dir) == 0);
-	&error('failed to mount squash-file');
+	&warning('squashfs failed') unless($quiet > 1);
+	''
+}
+
+# Mount with squashfuse
+
+sub mount_squashfuse {
+	my ($probemod, $check_gz, $check_bin, $squashfile, $dir) = @_;
+	&push_ref(\my @options, $user_config->{'MOUNT_SQUASHFUSE'},
+		[@allow_other, '-o', 'nonempty']);
+	unless(&which_store(\$squashfuse, 'squashfuse')) {
+		return '' if($check_bin)
+	}
+	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
+	return 1 if(&my_system('', \$squashfuse, 'squashfuse', @options,
+	# Here should be '--', but squashfuse does not support it
+		$squashfile, $dir) == 0);
+	&warning('squashfuse failed') unless($quiet > 1);
 	''
 }
 
@@ -3144,30 +3320,51 @@ sub set_know_quiet {
 	close($fh)
 }
 
-# Umount the directoy, possibly lazily and/or checking with lsof first:
+# Umount the directory, possibly lazily and/or checking with lsof first.
+# $readonly: Umount READONLY
+# $fuse: Umount using fusermount -u; try both if undefined
 
 sub umount_dir {
-	my ($dir, $readonly) = @_;
-	my @addopt = ();
-	my $addopt = $user_config->{$readonly ? 'UMOUNT_RO' : 'UMOUNT'};
-	if(defined($addopt)) {
-		push(@addopt, ref($addopt eq 'ARRAY') ? @$addopt : $addopt)
-	} else {
-		push(@addopt, ($readonly ? @CFG::umount_ro : @CFG::umount))
+	my ($dir, $readonly, $fuse) = @_;
+	my @uopt = ();
+	if($fuse // '') {
+		my $uopt = $user_config->{$readonly ? 'UMOUNT_RO' : 'UMOUNT'};
+		if(defined($uopt)) {
+			push(@uopt, ref($uopt eq 'ARRAY') ? @$uopt : $uopt)
+		} else {
+			push(@uopt, ($readonly ? @CFG::umount_ro : @CFG::umount))
+		}
+		push(@uopt, '-v') if($verbose > 3);
 	}
-	push(@addopt, '-v') if($verbose > 3);
+	my @fopt = ();
+	if($fuse // 1) {
+		my $fopt = $user_config->{$readonly ? 'FUMOUNT_RO' : 'FUMOUNT'};
+		if(defined($fopt)) {
+			push(@fopt, ref($fopt eq 'ARRAY') ? @$fopt : $fopt)
+		} else {
+			push(@fopt, ($readonly ? @CFG::fumount_ro : @CFG::fumount))
+		}
+	}
 	my $loclazy = $lazy;
-	if(($lsof ne '') && !&lsof($dir)) {
-		if($lsof == 0) {
+	my $loclsof = ($readonly ? $lsof_ro : $lsof );
+	if(($loclsof ne '') && !&lsof($dir, $readonly)) {
+		if($loclsof == 0) {
 			$loclazy = 1
-		} elsif($lsof < 0) {
+		} elsif($loclsof < 0) {
 			$loclazy = -1
 		} else {
 			return ''
 		}
 	}
 	if($loclazy >= 0) {
-		return 1 if(&my_system(1, \$umount, 'umount', @addopt, '--', $dir) == 0);
+		if($fuse // 1) {
+			return 1 if(&my_system(1, \$fusermount, 'fusermount',
+				'-u', @fopt, '--', $dir) == 0)
+		}
+		unless($fuse // '') {
+			return 1 if(&my_system(1, \$umount, 'umount',
+				@uopt, '--', $dir) == 0)
+		}
 		unless($loclazy) {
 			&error('non-lazy umount failed for ', $dir);
 			return ''
@@ -3175,7 +3372,14 @@ sub umount_dir {
 		&error('non-lazy umount failed,',
 			"using lazy umount of $dir") unless($quiet > 1)
 	}
-	return 1 if(&my_system(1, \$umount, 'umount', '-l', @addopt, '--', $dir) == 0);
+	if($fuse // 1) {
+		return 1 if(&my_system(1, \$fusermount, 'fusermount',
+			'-u', '-l', @fopt, '--', $dir) == 0)
+	}
+	unless($fuse // '') {
+		return 1 if(&my_system(1, \$umount, 'umount',
+			'-l', @uopt, '--', $dir) == 0)
+	}
 	&error("lazy umount failed for $dir");
 	''
 }
@@ -3263,6 +3467,7 @@ sub kernelprobe {
 	package CFG;
 	our $lazy = 1;
 	our $lsof = 1;
+	our $lsof_ro = 0;
 	our $killpower = [
 		'/etc/killpower',
 		'/etc/nut/killpower',
@@ -3273,7 +3478,6 @@ sub kernelprobe {
 	our $processors = '';
 	our $mem = '';
 	our $modprobe_loop = 1;
-	our $modprobe_squash = 1;
 	our $resquash_on_start = '';
 	our $rm_rundir = 1;
 	our $rm_dir = 0;
@@ -3283,9 +3487,12 @@ sub kernelprobe {
 	our $locking = undef;
 	our $obsolete_overlayfs = '';
 	our @order = ();
+	our @squashorder = ();
 	our @mounts = ();
 	our @umount = ();
 	our @umount_ro = ();
+	our @fumount = ();
+	our @fumount_ro = ();
 	our $command = undef;
 	our $storing = undef;
 	our $before = undef;
@@ -3322,13 +3529,13 @@ sub read_config_file {
 	package CFG;
 	our $lazy;
 	our $lsof;
+	our $lsof_ro;
 	our $killpower;
 	our $mksquash_verbose;
 	our $squash_verbose;
 	our $processors;
 	our $mem;
 	our $modprobe_loop;
-	our $modprobe_squash;
 	our $resquash_on_start;
 	our $rm_rundir;
 	our $rm_dir;
@@ -3338,9 +3545,12 @@ sub read_config_file {
 	our $locking;
 	our $obsolete_overlayfs;
 	our @order;
+	our @squashorder;
 	our @mounts;
 	our @umount;
 	our @umount_ro;
+	our @fumount;
+	our @fumount_ro;
 	our $command;
 	our $storing;
 	our $before;
@@ -3719,7 +3929,7 @@ sub get_abspath {
 # Result is 1 (yes) or 0 (no) or the empty string if type is not known
 
 sub is_resquash_type {
-	my $type  = $current->{'TYPE'};
+	my $type = $current->{'TYPE'};
 	return '' unless(&is_nonempty($type));
 	(($type eq 'readonly') || ($type =~ m{bind})) ? 0 : 1
 }
@@ -3728,11 +3938,31 @@ sub is_resquash_type {
 # Result is 1 (yes) or 0 (no) or the empty string if it is not known
 
 sub is_workdir_type {
-	my $type  = $current->{'TYPE'};
+	my $type = $current->{'TYPE'};
 	return '' unless(&is_nonempty($type));
 	return 1 if($type eq 'overlay');
 	(($type eq 'overlayfs') &&
 		(($CFG::obsolete_overlayfs // '') ne 'force')) ? 1 : 0
+}
+
+# Test if DIR has valid type for fusermount; optionally take TYPE as arg.
+# Return undef if not known
+
+sub is_fuse_type {
+	my $type  = (@_ ? $_[0] : $current->{'TYPE'});
+	return undef unless(&is_nonempty($type));
+	(($type eq 'unionfs-fuse') || ($type eq 'funionfs'))
+}
+
+# Test if READONLY has valid type for fusermount;
+# optionally take MOUNT_RO  as arg.
+# Return undef if not known
+
+sub is_squashfuse_type {
+	my $squashtype  = (@_ ? $_[0] : $current->{'MOUNT_RO'});
+	return undef unless(&is_nonempty($squashtype) &&
+		($squashtype ne 'unknown'));
+	($squashtype eq 'squashfuse')
 }
 
 # Check whether dir is empty. Returns 1 or '', or 0 in case of error
@@ -4380,7 +4610,11 @@ Getopt::Long::GetOptions(
 	'config|c=s', \@configs,
 	'umount|u=s', \@CFG::umount,
 	'umount-ro|U=s', \@CFG::umount_ro,
+	'fumount=s', \@CFG::fumount,
+	'fumount-ro=s', \@CFG::fumount_ro,
 	'order|o=s', \$opt_order,
+	'squashorder|O=s', \$opt_squashorder,
+	'allow-other|allow_other|allowother!', \$opt_allow_other,
 	'arg|a=s', \@argv,
 	'rundir=s', \$rundir,
 	'separator|S=s', \$separator,
@@ -4401,6 +4635,7 @@ Getopt::Long::GetOptions(
 	'mem|m=s', \$mem,
 	'lazy|L=s', \$lazy,
 	'lsof|l=s', \$lsof,
+	'lsof-ro=s', \$lsof_ro,
 	'locking!', \$locking,
 	'force|f', \$force,
 	'ignore-state|I', \$ignore_state,
@@ -4412,24 +4647,38 @@ Getopt::Long::GetOptions(
 	'star!', \$star,
 	'fatal!', \$fatalreturn,
 	'error|e', \$errorbreak,
+	'user', \$opt_user,
 	'no-error|noerror|E', sub { $errorbreak = '' },
 	'first|1', \$firstmatch,
 	'verbose|v+', \$verbose,
 	'quiet|q+', \$quiet
 ) or &pod2usage(2);
 
-# Check options:
+# Check and postprocess options:
+
+if($opt_user) {
+	@configs = (File::Spec->catfile($ENV{'HOME'} // $root, '.squashmount.pl'))
+		unless(@configs);
+	$rundir //= File::Spec->catdir($ENV{'TEMPDIR'} // $root, 'tmp',
+		'squashmount' . $<)
+} else {
+	@configs = (File::Spec->catfile($root, 'etc', 'squashmount.pl'))
+		unless(@configs);
+	$rundir //= File::Spec->catdir($root, 'run', 'squashmount')
+}
 
 &fatal("$rundir is not an absolute path") unless(&is_abspath($rundir));
 for my $i (@configs) {
 	&fatal("config-file $i is not an absolute path")
-		unless(&is_abspath($rundir))
+		unless(&is_abspath($i))
 }
 
-# Postprocess options:
+if(defined($opt_allow_other)) {
+	@allow_other = () unless($opt_allow_other)
+} elsif($opt_user) {
+	@allow_other = ()
+}
 
-@configs = (File::Spec->catfile($root, 'etc', 'squashmount.pl'))
-	unless(@configs);
 if($quiet < $verbose) {
 	$verbose -= $quiet; $quiet = 0
 } else {
@@ -4439,7 +4688,8 @@ $titleopt = join('', @title);
 undef(@title);
 $titleopt = undef if(($titleopt =~ m{-}) || !$stdoutterm);
 
-# Determine $action, $fatalreturn, $run_ro, $star, $CFG::locking, @CFG::order
+# Determine $action, $fatalreturn, $run_ro, $star, $CFG::locking,
+# @CFG::order, @CFG::squashorder
 
 my $action = (shift(@ARGV) // '');
 {
@@ -4466,6 +4716,9 @@ my $action = (shift(@ARGV) // '');
 		} elsif($action =~ m{fil}i) {
 			$cmd = 'print-file';
 			$action = \&cmd_print_file
+		} elsif($action =~ m{s.*typ}i) {
+			$cmd = 'print-squashtype';
+			$action = \&cmd_print_squashtype
 		} elsif($action =~ m{typ}i) {
 			$cmd = 'print-type';
 			$action = \&cmd_print_type
@@ -4544,8 +4797,15 @@ my $action = (shift(@ARGV) // '');
 		unless(defined($star));
 	$run_ro = '' if($force || $ignore_state);
 	$CFG::storing = $CFG::locking = !$run_ro;
-	@CFG::order = qw(overlay!? overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)
-		if($order_needed);
+	if($order_needed) {
+		if($opt_user) {
+			@CFG::order = qw(unionfs-fuse!! funionfs!!);
+			@CFG::squashorder = qw(squashfuse!!)
+		} else {
+			@CFG::order = qw(overlay!? overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!);
+			@CFG::squashorder = qw(squashfs!? squashfuse!)
+		}
+	}
 
 	&fatal('internal error: undefined $cmd. Please report a bug')
 		unless(defined($cmd));
@@ -4572,9 +4832,10 @@ $lazy = $CFG::lazy unless(defined($lazy));
 &fatal('--lazy=' . $lazy . ' is non-integer') unless(&is_integer($lazy));
 $lsof = $CFG::lsof unless(defined($lsof));
 &fatal('--lsof=' . $lsof . ' is non-integer') unless(&is_integer($lsof));
+$lsof_ro = $CFG::lsof_ro unless(defined($lsof_ro));
+&fatal('--lsof-ro=' . $lsof_ro . ' is non-integer') unless(&is_integer($lsof_ro));
 $locking = $CFG::locking unless(defined($locking));
 $modprobe_loop = $CFG::modprobe_loop;
-$modprobe_squash = $CFG::modprobe_squash;
 $resquash_on_start = $CFG::resquash_on_start;
 $rm_rundir = $CFG::rm_rundir;
 $rm_dir = $CFG::rm_dir;
@@ -4599,12 +4860,10 @@ if(defined($CFG::killpower)) {
 		}
 	}
 }
-if(defined($opt_order)) {
-	$order = [ split(/[^a-zA-Z\!\#\?\-]+/, $opt_order) ]
-} else {
-	$order = \@CFG::order
-}
-@$order = grep($_ ne '', @$order);
+@order = grep($_ ne '', (defined($opt_order) ?
+	(split(/[^a-zA-Z\!\#\?\-]+/, $opt_order)) : @CFG::order));
+@squashorder = grep($_ ne '', (defined($opt_squashorder) ?
+	(split(/[^a-zA-Z\!\#\?\-]+/, $opt_squashorder)) : @CFG::squashorder));
 
 # Fill the %tags array in the appropriate order.
 # As a side result calculate $taglen.
