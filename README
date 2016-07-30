@@ -34,6 +34,11 @@ writable using some of (depending on the configuration and what is available):
 	unionfs, see http://www.fsl.cs.sunysb.edu/project-unionfs.html
 	funionfs, see http://bugs.gentoo.org/show_bug.cgi?id=151673
 
+Since squashmount v15.0.0 there is also a choice between
+
+	squashfs (the linux kernel module)
+	squashfuse, the fuse module, see https://github.com/vasi/squashfuse
+
 The idea is that, as a rule, on shutdown the data is recompressed
 (and the temporary modified data removed).
 This approach is originally due to synss' script from
@@ -353,6 +358,17 @@ you can still access the directory read-only. Hence, also rather vital
 directories can be compressed as long as it is not vital to write to them
 (and as long as the relevant programs for mounting etc. are not contained
 within these directories, of course).
+
+
+User Permissions
+================
+
+If you rely only on the tool squashfuse and either unionfs-fuse or funionfs
+(which are all based on the fuse userspace file system), then
+squashmount can also be used with user permissions.
+To support selecting only these tools and appropriate files and dirs from
+the calling user, the option --user is supported since squashmount v15.0.0.
+For details, call "squashmount man" with the option --user.
 
 
 Patching squashfs-tools

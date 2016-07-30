@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-15.1.0
+	Martin Väth <martin at mvath.de>:
+	- Optionally use squashfuse_ll: -ll --no-ll; default: $squashfuse_ll
+
 *squashmount-15.0.0
 	Martin Väth <martin at mvath.de>:
 	- Support mounting as a user with squashfuse.

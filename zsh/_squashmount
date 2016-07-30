@@ -50,6 +50,8 @@ _arguments -C -s -S -A '-*' : \
 {'(--lazy)-L+','(-L)--lazy='}'[0: not lazy, 1: lazy retry, -1: only lazy]:lazy mode:(0 1 -1)' \
 {'(--lsof)-L+','(-l)--lsof='}'["": no lsof, 0: retry lazy, 1: error, -1: only lazy]:lsof mode:("" 0 1 -1)' \
 '--lsof-ro=["": no lsof, 0: retry lazy, 1: error, -1: only lazy]:lsof mode:("" 0 1 -1)' \
+'(--no-ll --noll)--ll[prefer squashfuse_ll over squashfuse]' \
+'(--ll '{'--noll)--no-ll','--no-ll)--noll'}'[do not use squasfuse_ll]' \
 {'(--order)-o+','(-o)--order='}'[ORDER (set \@order)]:tool order:("overlay!?,overlayfs!?,aufs!,unionfs-fuse!,unionfs!,funionfs!" "unionfs-fuse!!,funionfs!!" "overlay,overlayfs,aufs!,unionfs-fuse!" bind aufs overlay overlayfs unionfs unionfs-fuse funionfs)' \
 {'(--squashorder)-O+','(-O)--squashorder='}'[SQUASHORDER (set \@squashorder)]:tool order:("squashfs!?,squashfuse!" "squasfuse!!" squashfs squashfuse)' \
 {'*--title=','*-T+'}'[Set title option OPT]:title option:_title_opt' \

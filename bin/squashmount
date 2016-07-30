@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.022;
-package Squashmount v15.0.0;
+package Squashmount v15.1.0;
 
 use strict;
 use warnings;
@@ -729,11 +729,23 @@ Fail if B<lsof> indicates that umounting would fail.
 If B<lsof> indicates that umounting would fail, act as if B<$lazy=-1>.
 Use B<-1> only if you know what you are doing!
 
+=back
+
 =item B<--lsof-ro=>I<value>
 
 As B<--lsof>, but for the B<READONLY> directory.
 
-=back
+=item B<--ll>
+
+Prefer C<squashfuse_ll> over C<squashfuse> if available.
+This is the default unless B<$squashfuse_ll> is set to a false value in the
+configuration file F</etc/squashmount.pl>.
+
+=item B<--no-ll> or B<--noll>
+
+Do not use C<squashfuse_ll>.
+This option overrides the setting of B<$squashfuse_ll> in the
+configuration file F</etc/squashmount.pl>
 
 =item B<--allow>
 
@@ -869,7 +881,7 @@ In addition, the arrays B<@order> and B<@squashorder> can be filled with
 the available tools, the order in which they should be tried,
 and flags whether modprobe should be called, how to test the existence of
 tools and what to do if tools appear unavailable.
-Also the default variables B<$lazy>, B<$lsof>, B<$lsof_ro>,
+Also the default variables B<$lazy>, B<$lsof>, B<$lsof_ro>, B<$squashfuse_ll>,
 B<$locking>, B<$modprobe_loop>, B<$obsolete_overlayfs>,
 B<$resquash_on_start> can be initialized:
 They are initialized to B<1> (perl interprets this as I<true>)
@@ -899,7 +911,7 @@ see the remarks at the end of this manpage.)
 
 =over 8
 
-=item $lazy = $lsof = 1; $lsof_ro = 0; # unnecessary (default)
+=item $lazy = $lsof = $squashfuse_ll = 1; $lsof_ro = 0; # default
 
 =item $killpower = '/etc/killpower';  # ignore /etc/nosquash /etc/nut/killpower
 
@@ -1101,6 +1113,12 @@ This variable defaults to the value B<1>.
 
 This determines the default I<value> of B<--lsof_ro>.
 This variable defaults to the value B<0>.
+
+=item B<$squashfuse_ll>
+
+This determines whether B<--ll> or B<--no-ll> is the default.
+This variable defaults to the value B<1> (I<true>), meaning that B<--ll>
+is the default unless overridden in F</etc/squashmount.pl>.
 
 =item B<$killpower>
 
@@ -2320,6 +2338,7 @@ my $star = undef;
 my $lazy = undef;
 my $lsof = undef;
 my $lsof_ro = undef;
+my $squashfuse_ll = undef;
 my $locking = undef;
 my $force = '';
 my $ignore_state = '';
@@ -3117,7 +3136,7 @@ sub mount_unionfs_fuse {
 	push(@options, "${changes}\=RW\:${ro}\=RO", $rw);
 	return 1 if(&my_system('', \$unionfs_fuse, 'unionfs', @options) == 0);
 	if(&which_which() eq '') {  # We have no which
-		my $fuse = 'unionfs-fuse ';  # perhaps this will work
+		my $fuse = 'unionfs-fuse';  # perhaps this will work
 		if($unionfs_fuse ne $fuse) {  # unless we already tried
 			if(&my_system('', \$fuse, $fuse, @options) == 0) {
 				$unionfs_fuse = $fuse;  # remember: this is ok
@@ -3217,13 +3236,27 @@ sub mount_squashfuse {
 	my ($probemod, $check_gz, $check_bin, $squashfile, $dir) = @_;
 	&push_ref(\my @options, $user_config->{'MOUNT_SQUASHFUSE'},
 		[@allow_other, '-o', 'nonempty']);
-	unless(&which_store(\$squashfuse, 'squashfuse')) {
+	unless(&which_store(\$squashfuse,
+		($squashfuse_ll ? ('squashfuse_ll') : ()),
+		'squashfuse')) {
 		return '' if($check_bin)
 	}
 	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
-	return 1 if(&my_system('', \$squashfuse, 'squashfuse', @options,
-	# Here should be '--', but squashfuse does not support it
-		$squashfile, $dir) == 0);
+	my @args = (@options,
+		# '--',  # squashfuse does not support '--'
+		$squashfile, $dir);
+	return 1 if(&my_system('', \$squashfuse,
+		($squashfuse_ll ? 'squashfuse_ll' : 'squashfuse'),
+		@args) == 0);
+	if($squashfuse_ll && (&which_which() eq '')) {  # We have no which
+		my $ll = 'squashfuse';  # perhaps this will work
+		if($squashfuse ne $ll) {  # unless we already tried
+			if(&my_system('', \$ll, $ll, @args) == 0) {
+				$squashfuse = $ll;  # remember: this is ok
+				return 1
+			}
+		}
+	}
 	&warning('squashfuse failed') unless($quiet > 1);
 	''
 }
@@ -3468,6 +3501,7 @@ sub kernelprobe {
 	our $lazy = 1;
 	our $lsof = 1;
 	our $lsof_ro = 0;
+	our $squashfuse_ll = 1;
 	our $killpower = [
 		'/etc/killpower',
 		'/etc/nut/killpower',
@@ -3530,6 +3564,7 @@ sub read_config_file {
 	our $lazy;
 	our $lsof;
 	our $lsof_ro;
+	our $squashfuse_ll;
 	our $killpower;
 	our $mksquash_verbose;
 	our $squash_verbose;
@@ -4614,7 +4649,7 @@ Getopt::Long::GetOptions(
 	'fumount-ro=s', \@CFG::fumount_ro,
 	'order|o=s', \$opt_order,
 	'squashorder|O=s', \$opt_squashorder,
-	'allow-other|allow_other|allowother!', \$opt_allow_other,
+	'allow!', \$opt_allow_other,
 	'arg|a=s', \@argv,
 	'rundir=s', \$rundir,
 	'separator|S=s', \$separator,
@@ -4636,6 +4671,7 @@ Getopt::Long::GetOptions(
 	'lazy|L=s', \$lazy,
 	'lsof|l=s', \$lsof,
 	'lsof-ro=s', \$lsof_ro,
+	'll', \$squashfuse_ll,
 	'locking!', \$locking,
 	'force|f', \$force,
 	'ignore-state|I', \$ignore_state,
@@ -4834,6 +4870,7 @@ $lsof = $CFG::lsof unless(defined($lsof));
 &fatal('--lsof=' . $lsof . ' is non-integer') unless(&is_integer($lsof));
 $lsof_ro = $CFG::lsof_ro unless(defined($lsof_ro));
 &fatal('--lsof-ro=' . $lsof_ro . ' is non-integer') unless(&is_integer($lsof_ro));
+$squashfuse_ll = $CFG::squashfuse_ll unless(defined($squashfuse_ll));
 $locking = $CFG::locking unless(defined($locking));
 $modprobe_loop = $CFG::modprobe_loop;
 $resquash_on_start = $CFG::resquash_on_start;
