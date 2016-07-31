@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-15.1.2
+	Martin Väth <martin at mvath.de>:
+	- Fix lsof check (regression from v15.1.1)
+
 *squashmount-15.1.1
 	Martin Väth <martin at mvath.de>:
 	- Fix error handling with alternative binaries without File::Which
