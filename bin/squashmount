@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.022;
-package Squashmount v15.1.0;
+package Squashmount v15.1.1;
 
 use strict;
 use warnings;
@@ -3129,19 +3129,19 @@ sub mount_unionfs_fuse {
 		'-o', 'noatime', '-o', 'hide_meta_files']);
 	$ro =~ s{([=:])}{\\$1}g;
 	$changes =~ s{([=:])}{\\$1}g;
-	unless(&which_store(\$unionfs_fuse, 'unionfs', 'unionfs-fuse')) {
+	my @tools = ('unionfs', 'unionfs-fuse');
+	unless(&which_store(\$unionfs_fuse, @tools)) {
 		return '' if($check_bin)
 	}
 	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
 	push(@options, "${changes}\=RW\:${ro}\=RO", $rw);
-	return 1 if(&my_system('', \$unionfs_fuse, 'unionfs', @options) == 0);
-	if(&which_which() eq '') {  # We have no which
-		my $fuse = 'unionfs-fuse';  # perhaps this will work
-		if($unionfs_fuse ne $fuse) {  # unless we already tried
-			if(&my_system('', \$fuse, $fuse, @options) == 0) {
-				$unionfs_fuse = $fuse;  # remember: this is ok
-				return 1
-			}
+	my $sys = &my_system('', \$unionfs_fuse, [ @tools ], @options);
+	return 1 if($sys == 0);
+	if(($sys < 0) && (&which_which() eq '')  # We have no which
+		&& ($unionfs_fuse eq $tools[0])) {
+		if(&my_system('', \my $tool, $tools[1], @options) == 0) {
+			$unionfs_fuse = $tool;  # remember: this is ok
+			return 1
 		}
 	}
 	&warning('unionfs-fuse failed') unless($quiet > 1);
@@ -3236,25 +3236,24 @@ sub mount_squashfuse {
 	my ($probemod, $check_gz, $check_bin, $squashfile, $dir) = @_;
 	&push_ref(\my @options, $user_config->{'MOUNT_SQUASHFUSE'},
 		[@allow_other, '-o', 'nonempty']);
-	unless(&which_store(\$squashfuse,
-		($squashfuse_ll ? ('squashfuse_ll') : ()),
-		'squashfuse')) {
+	push(@options,
+		# '--',  # squashfuse does not support '--'
+		$squashfile, $dir);
+	my @tools = ($squashfuse_ll ? ('squashfuse_ll') : ());
+	push(@tools, 'squashfuse');
+	unless(&which_store(\$squashfuse, @tools)) {
 		return '' if($check_bin)
 	}
 	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
-	my @args = (@options,
-		# '--',  # squashfuse does not support '--'
-		$squashfile, $dir);
-	return 1 if(&my_system('', \$squashfuse,
-		($squashfuse_ll ? 'squashfuse_ll' : 'squashfuse'),
-		@args) == 0);
-	if($squashfuse_ll && (&which_which() eq '')) {  # We have no which
-		my $ll = 'squashfuse';  # perhaps this will work
-		if($squashfuse ne $ll) {  # unless we already tried
-			if(&my_system('', \$ll, $ll, @args) == 0) {
-				$squashfuse = $ll;  # remember: this is ok
-				return 1
-			}
+	my $sys = &my_system('', \$squashfuse, [ @tools ], @options);
+	return 1 if($sys == 0);
+	if($squashfuse_ll && ($sys < 0)
+		&& (&which_which() eq '')  # We have no which
+		&& ($squashfuse eq $tools[0])) {
+		my $tool;
+		if(&my_system('', \my $tool, $tools[1], @options) == 0) {
+			$squashfuse = $tool;  # remember: this is ok
+			return 1
 		}
 	}
 	&warning('squashfuse failed') unless($quiet > 1);
@@ -4333,7 +4332,8 @@ sub print_status {
 	}
 }
 
-# Call to which_store() followed by system(). Print error if tool not found.
+# Call to which_store() (with optionally an array for second arg),
+# followed by system(). Print error if tool not found.
 # The first argument is special:
 # '' or 0: Default mode
 # 1: suppress stdout
@@ -4343,9 +4343,10 @@ sub my_system {
 	my $redirect = shift();
 	my $a = shift();
 	my $b = shift();
-	unless(&which_store($a, $b)) {
-		&error($b . ' not found in $PATH');
-		return 127
+	$b = [ $b ] unless(ref($b) eq 'ARRAY');
+	unless(&which_store($a, @$b)) {
+		&error(join(', ', @$b) . ' not found in $PATH');
+		return -1
 	}
 	if($verbose > 2) {
 		print(&shell_quote_best_effort($$a, @_), "\n");
@@ -4362,18 +4363,18 @@ sub my_system {
 	my $ret = system($$a, @_);
 	open(STDERR, '>&', $olderr) if(defined($olderr));
 	open(STDOUT, '>&', $oldout) if(defined($oldout));
-	$ret
+	($ret >= 0) ? ($ret >> 8) : $ret
 }
 
-# Store in the first argument the first successful "which" of the later.
-# Return 1 if none found.
+# Store in the first argument the first successful "which" of the later args.
+# Return 1 if some found.
 
 sub which_store {
 	my $a = shift();
 	return ($$a ne '') if(defined($$a));
 	for my $i (@_) {
 		$$a = &my_which($i);
-		return ($$a ne '') if(defined($$a))
+		return 1 if(($$a // '') ne '')
 	}
 	$$a = ''
 }
@@ -4386,7 +4387,10 @@ sub my_which {
 	my $which = &which_which();
 	return File::Which::which($command) if($which eq ':');
 	return $command if($which eq '');
+	my $olderr;
+	$olderr = undef unless(open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull));
 	my $ret = `$which $command`;
+	open(STDERR, '>&', $olderr) if(defined($olderr));
 	chomp($ret) if(defined($ret));
 	$ret
 }

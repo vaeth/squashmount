@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-15.1.1
+	Martin Väth <martin at mvath.de>:
+	- Fix error handling with alternative binaries without File::Which
+
 *squashmount-15.1.0
 	Martin Väth <martin at mvath.de>:
 	- Optionally use squashfuse_ll: -ll --no-ll; default: $squashfuse_ll
