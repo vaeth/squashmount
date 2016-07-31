@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-15.2.0
+	Martin Väth <martin at mvath.de>:
+	- Improve security in provided systemd unit
+
 *squashmount-15.1.2
 	Martin Väth <martin at mvath.de>:
 	- Fix lsof check (regression from v15.1.1)
