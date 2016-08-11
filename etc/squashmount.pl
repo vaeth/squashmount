@@ -41,6 +41,15 @@ fatal('The default /etc/squashmount.pl is only an example config!',
 
 @order = qw(overlay overlayfs aufs! unionfs-fuse! unionfs??# funionfs??#);
 
+# The tool to mount squash files (currently: kernel or user-space squashfuse)
+# is determined according to squashorder. The following is the default
+# if not changed by any options:
+# @squashorder = qw(squashfs!? squashfuse!);
+# Use this if you always want to use squashfuse (slower but can be done
+# fully with user permissions, only):
+# @squashorder = qw(squashfuse!);
+# If in doubt, do not set it explicitly.
+
 # Set $obsolete_overlayfs = 1 if you normally use a kernel older than 3.15.
 # Set $obsolete_overlayfs = undef if you only use >=kernel-3.15
 # Set $obsolete_overlayfs = 'force' if you never use overlayfs or

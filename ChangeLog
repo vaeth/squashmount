@@ -1,8 +1,15 @@
 # ChangeLog for squashmount
 
+*squashmount-15.2.1
+	Martin Väth <martin at mvath.de>:
+	- Fix typo in -o allow_other default (o -> -o)
+	- Fix typo in lazy fusermount -u (-l -> -z)
+	- Add comments about @squashorder in example config
+
 *squashmount-15.2.0
 	Martin Väth <martin at mvath.de>:
 	- Improve security in provided systemd unit
+	- Default timeout in systemd unit is now "only" 30 minutes
 
 *squashmount-15.1.2
 	Martin Väth <martin at mvath.de>:
