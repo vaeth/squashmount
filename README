@@ -344,8 +344,9 @@ Since version 3.0, unless configured otherwise, squashmount will attempt
 to modprobe the modules
 	squashfs, aufs, fuse, overlay, overlayfs, unionfs
 when they are required; optionally/alternatively, also the corresponding
-kernel option can be checked in /proc/config.gz; also the existence of
-required binaries can be checked before actually the mounting is attempted.
+kernel option can be checked in /sys/module or /proc/config.gz;
+also the existence of required binaries can be checked before actually
+the mounting is attempted.
 It depends on your setting whether this is done and/or whether in case
 of failure the corresponding tool is skipped tacitly without attempting
 to mount.

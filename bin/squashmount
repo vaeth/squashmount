@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 require 5.022;
-package Squashmount v15.2.1;
+package Squashmount v15.3.0;
 
 use strict;
 use warnings;
@@ -1297,10 +1297,12 @@ need special user space binaries.
 =item B<?> or B<??>
 
 If this flag is used and the B<modprobe> failed (or if combined with B<!!>)
-the content of B</proc/config.gz> is checked for whether the corresponding tool
-appears available in the running linux kernel.
+the content of B</sys/modules> (or if that fails B</proc/config.gz>)
+is checked for whether the corresponding tool appears available
+in the running linux kernel.
 If the tool appears unavailable it is tacitly skipped.
-For the case that B</proc/config.gz> cannot be read (including the case
+For the case that B</sys/modules> cannot be read and
+B</proc/config.gz> cannot be read (the latter including the case
 that the perl module B<IO::Uncompress::Gunzip> is unavailable) and the
 B<??> variant is used, the tool is considered as unavailable.
 
@@ -3462,18 +3464,36 @@ sub use_gunzip {
 sub read_kernel_config {
 	my ($gz) = @_;
 	my $buffer;
-	return '' unless(IO::Uncompress::Gunzip::gunzip('/proc/config.gz' => \$buffer));
-	$gz->{'overlay'} = 1 if($buffer =~ m{^CONFIG_OVERLAY_FS}m);
-	$gz->{'overlayfs'} = 1 if($buffer =~ m{^CONFIG_OVERLAYFS_FS}m);
-	$gz->{'aufs'} = 1 if($buffer =~ m{^CONFIG_AUFS_FS}m);
-	$gz->{'unionfs'} = 1 if($buffer =~ m{^CONFIG_UNION_?FS}m);
-	$gz->{'fuse'} = 1 if($buffer =~ m{^CONFIG_FUSE_FS}m);
+	return '' unless(IO::Uncompress::Gunzip::gunzip(
+		File::Spec->catdir($root, 'proc', 'config.gz') => \$buffer));
+	$gz->{'overlay'} = 1 if($buffer =~ m{^CONFIG_OVERLAY_FS\=[yYmM]}m);
+	$gz->{'overlayfs'} = 1 if($buffer =~ m{^CONFIG_OVERLAYFS_FS\=[yYmM]}m);
+	$gz->{'aufs'} = 1 if($buffer =~ m{^CONFIG_AUFS_FS\=[yYmM]}m);
+	$gz->{'unionfs'} = 1 if($buffer =~ m{^CONFIG_UNION_?FS\=[yYmM]}m);
+	$gz->{'fuse'} = 1 if($buffer =~ m{^CONFIG_FUSE_FS\=[yYmM]}m);
+	$gz->{'squashfs'} = 1 if($buffer =~ m{^CONFIG_SQUASHFS\=[yYmM]}m);
+	1
+}
+
+# Read /sys/module. Return 1 on success.
+
+sub read_module_config {
+	my ($modules) = @_;
+	my @dirs = ($root, 'sys', 'module');
+	{
+		my $dir = File::Spec->catdir(@dirs);
+		return '' unless((-d $dir) && (-r $dir) && (-x $dir))
+	}
+	for my $m ('overlay', 'overlayfs', 'aufs', 'unionfs', 'fuse', 'squashfs') {
+		$modules->{$m} = 1 if(-d File::Spec->catdir(@dirs, $m))
+	}
 	1
 }
 
 # Probe module and/or check the kernel configuration. Return 1 on success
 
 { my $gz = undef;  # A closure static variable
+  my $modules = undef;
 sub kernelprobe {
 	my ($probemod, $check_gz, $module) = @_;
 	if($probemod) {
@@ -3481,6 +3501,13 @@ sub kernelprobe {
 		return '' if(($probemod > 0) && !$check_gz);
 	}
 	return 1 unless($check_gz);
+	unless(defined($modules)) {
+		$modules = {};
+		$modules = '' unless(&read_module_config($modules))
+	}
+	if(ref($modules eq 'HASH')) {
+		return ($modules->{$module} // '')
+	}
 	unless(defined($gz)) {
 		if(&use_gunzip()) {
 			$gz = {};

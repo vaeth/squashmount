@@ -31,8 +31,9 @@ fatal('The default /etc/squashmount.pl is only an example config!',
 #
 # In this example, we deviate from the defaults by changing some of the flags:
 # We skip unionfs and funionfs tacitly unless *surely* available.
-# (Note that if you compiled e.g. unionfs as a module but /proc/config.gz is
-# not available this means that unionfs is not used even if it could be).
+# (Note that if you compiled e.g. unionfs as a module but /sys/module and
+# /proc/config.gz are not available this means that unionfs is not used
+# even if it could be).
 #
 # We also skip overlay and overlayfs if the module cannot be loaded
 # successfully. Note again that this means that overlayfs is skipped

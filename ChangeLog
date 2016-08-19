@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-15.3.0
+	Martin Väth <martin at mvath.de>:
+	- Prefer /sys/module over /proc/config.gz
+
 *squashmount-15.2.1
 	Martin Väth <martin at mvath.de>:
 	- Fix typo in -o allow_other default (o -> -o)
