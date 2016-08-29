@@ -298,11 +298,17 @@ my $non_binary = {
 		# the default value (the passed options) is chosen.
 		UMOUNT => ((@umount) ? undef : '-i'),
 		# It is reasonable to not recompress the directory always:
-		THRESHOLD => '80m',
-		# Any change in the local/ subdirectory (except in .git,
-		# profiles, metadata) should lead to a resquash, even if
-		# the threshold is not reached:
-		FILL => qr{^local/(?!(\.git|profiles|metadata)(/|$))}n
+		THRESHOLD => '40m',
+		# Any change in the local/ subdirectory (except in the .git
+		# subdirectory) should lead to a resquash, even if the
+		# threshold is not reached.
+		FILL => qr{^local/(?!\.git(/|$))}n,
+		# However, ignore identical rewrites of profiles/use.local.desc
+		# in the local/ or layman/*/ subdirectories (which happens e.g.
+		# if you use egencache --update-use-local-desc for repositories
+		# in these subdirectories. Similarly for the files/dirs
+		# .git/FETCH_HEAD, .git/index, and metadata/md5-cache
+		DIFF => qr{^(local|(layman(/[^/]*)?))((/profiles(/use\.local\.desc)?)|(/\.git(/FETCH_HEAD|/index)?)|(/metadata(/md5\-cache)?))?$}n
 	}),
 	standard_mount('games', '/usr/share/games', $defaults, {
 		# games is huge: use the fastest compression algorithm for it.

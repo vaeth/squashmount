@@ -1,5 +1,11 @@
 # ChangeLog for squashmount
 
+*squashmount-15.3.1
+	Martin Väth <martin at mvath.de>:
+	- Improve squashdelta postsyncd hook
+	- More verbose example for mounting of the gentoo repository
+	- Fix typos in manpage
+
 *squashmount-15.3.0
 	Martin Väth <martin at mvath.de>:
 	- Prefer /sys/module over /proc/config.gz

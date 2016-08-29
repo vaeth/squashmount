@@ -1,0 +1,78 @@
+#!/bin/sh
+# This file remounts the squashmount mount-point "gentoo" after each syncing
+# of the "gentoo" repository.
+# Do not use this file if you want to use a mount-point named "gentoo" with
+# squashmount without using sync-type = squashdelta
+set -u
+
+repository_name=$1
+sync_uri=$2
+repository_path=$3
+
+# Run only if sync_uri contains "/squash"
+case $sync_uri in
+*/squash*)
+	false;;
+*)
+	exit 0;;
+esac
+
+# Run only for repository gentoo:
+[ x"$repository_name" = x'gentoo' ] || exit 0
+
+# Run only if mount-point gentoo is configured
+[ x"`squashmount --quiet print-tag gentoo 2>/dev/null`" = x'gentoo' ] || exit 0
+
+yesno() {
+	case ${1:-n} in
+	[nNfF0-]*|[oO][fF]*)
+		return 1;;
+	esac
+	:
+}
+
+if [ -n "${PORTAGE_QUIET:++}" ] || yesno "${EINFO_QUIET-}"
+then
+einfo() {
+:
+}
+else
+init_colors() {
+	if yesno "${RC_NOCOLOR-}"
+	then	NORMAL=
+		GOOD=
+	elif tput color >/dev/null 2>&1
+	then	NORMAL=`tput sgr0`
+		init_colors=$NORMAL`tput bold`
+		GOOD=$init_colors`tput setaf 2`
+	else	NORMAL=`printf '\033[0m'`
+		GOOD=`printf '\033[32;01m'`
+	fi
+init_colors() {
+:
+}
+}
+einfo() {
+	init_colors
+	printf '%s%s\n' " ${GOOD}*$NORMAL " "$*"
+}
+fi
+
+einfo 'squashmount remount gentoo'
+exit
+
+# Suppress all output in the following commands:
+{
+	# Forcibly umount, even if portage should have messed up our mount...
+	squashmount --lazy=1 --lsof=0 --lsof-ro=0 --ignore --force \
+		${PORTAGE_QUIET:+-qq} umount gentoo
+
+	# If portage should still have mounted DIR, we umount it:
+	umount ${PORTAGE_QUIET:---verbose} -- "$repository_path" || \
+		umount ${PORTAGE_QUIET:---verbose} --lazy -- "$repository_path"
+
+} >/dev/null 2>&1
+
+# Finally the main purpose of this script: Mount gentoo with squashmount:
+
+exec squashmount mount gentoo
