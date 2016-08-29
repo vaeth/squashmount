@@ -201,7 +201,9 @@ my $non_binary = {
 	# We will also have to hook into portage's sync mechanism to remount
 	# after syncing:
 	# The file etc/portage/repo.postsync.d/50-squashmount-gentoo is such a
-	# hook (which requires that this mount-point be called "gentoo").
+	# hook (which requires that this mount-point as well as the repository
+	# be called "gentoo", and that the sync-uri contains the string
+	# "/squash").
 	added_hash($defaults, $non_binary, {
 		TAG => 'gentoo',
 		DIR => '/srv/repo-gentoo',

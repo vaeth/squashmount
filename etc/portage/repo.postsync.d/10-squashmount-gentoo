@@ -9,7 +9,7 @@ repository_name=$1
 sync_uri=$2
 repository_path=$3
 
-# Run only if sync_uri contains "/squash"
+# Run only if the configured sync-uri contains the string "/squash"
 case $sync_uri in
 */squash*)
 	false;;
