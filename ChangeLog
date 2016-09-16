@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-15.3.3
+	Martin Väth <martin at mvath.de>:
+	- Force utf8 encoding in manpage
+	- Check require at compile time
+
 *squashmount-15.3.2
 	Martin Väth <martin at mvath.de>:
 	- Document /etc/portage/repo.postsync.d/10-squashmount-gentoo better

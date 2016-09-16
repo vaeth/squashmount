@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
-
-require 5.022;
-package Squashmount v15.3.2;
+BEGIN { require 5.022 }
+package Squashmount v15.3.3;
 
 use strict;
 use warnings;
@@ -21,6 +20,8 @@ use File::Temp 0.19 ();
 # use Pod::Usage (); not mandatory, but no help/manpage without this
 # use String::ShellQuote ();  # not mandatory but recommended: poor fallback
 # use Term::ANSIColor ();  # not mandatory but recommended: fallback to no color
+
+=encoding UTF-8
 
 =head1 NAME
 
