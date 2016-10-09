@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v15.3.3;
+package Squashmount v15.4.0;
 
 use strict;
 use warnings;
@@ -4067,12 +4067,18 @@ sub threshold_dir {
 	&shift_empty(\@dir);
 	my ($readonlyv, @readonly) = &split_dir(&get_abspath('READONLY'));
 	my $found = '';  # Flag whether there is at least some data
-	my $blocksize;
-	{
+	my $blocksize = undef;
+	my $diskspace = sub {
 		use bigint;
-		my $bs = $user_config->{'BLOCKSIZE'};
-		$blocksize = ((defined($bs) && ($bs > 0)) ? $bs : 4096 );
-	}
+		my $size = shift();
+		unless(defined($blocksize)) {
+			my $bs = $user_config->{'BLOCKSIZE'};
+			$blocksize = ((defined($bs) && ($bs > 0)) ? $bs : 4096 );
+		}
+		return $blocksize unless($size);
+		my $modulo = ($size % $blocksize);
+		$modulo ? (($blocksize - $modulo) + $size) : $size
+	};
 	my $skipfunc = $user_config->{'SKIPFUNC'};
 	my $skip = $user_config->{'SKIP'};
 	my $skipdir = $user_config->{'SKIPDIR'};
@@ -4120,12 +4126,12 @@ sub threshold_dir {
 			return if &file_is_equal($_, $readonlysub, \@compare)
 		}
 		if(defined($skipfunc) && (ref($skipfunc) eq 'CODE')) {
-			local($_);
+			local $_;
 			return unless($skipfunc->($path, $_, $readonlysub))
 		}
 		my $currfill = &is_match($path, $fill);
 		if((!$currfill) && defined($fillfunc) && (ref($fillfunc) eq 'CODE')) {
-			local($_);
+			local $_;
 			$currfill = $fillfunc->($path, $_, $readonlysub)
 		}
 		$found = 1;
@@ -4134,23 +4140,45 @@ sub threshold_dir {
 			$to_find = -1
 		} else {
 			use bigint;
-			my $size = (((-l $_) || !(-f $_)) ? 1 : (-s $_));
-			$size = 1 if($size == 0);
-			my $modulo = ($size % $blocksize);
-			$size += ($blocksize - $modulo) if($modulo != 0);
-			$to_find -= $size
+			$to_find -= $diskspace->(((-l $_) || !(-f $_))
+				? 1 : (-s $_));
 		}
 		$File::Find::prune = 1 if($to_find < 0)
 	}}, $dir);
 	return 1 if($to_find < 0);
-	# Only if $to_find is not reached we now do have to compare
-	# also the content of files:
-	# If the files differ, they add to $to_find...
+	return ($found ? -1 : 0) unless(@compare);
+	# We postponed comparing of files, because this takes time.
+	# Only if $to_find is not yet reached but might be (due to @compare)
+	# or if $found is not yet clear, we really do the comparison.
+	# As a preprocessing, we honour BLOCKSIZE in the sizes of @compare and
+	# calculate the maximal size of the files potentially in @compare:
+	my $maximal_rest; {
+		use bigint;
+		$maximal_rest = 0;
+		# >=perl-5.8.6 optimizes this loop without an auxiliary array:
+		for my $i (reverse @compare) {
+			$maximal_rest += ($i->[2] = $diskspace->($i->[2]))
+		}
+	}
+	# Now we actually compare, keeping $maximal_rest up-to-date:
 	for my $i (@compare) {
-		next if(File::Compare::compare($i->[0], $i->[1]) == 0);
-		$to_find -= $i->[2];
-		return 1 if($to_find < 0);
-		$found = 1
+		{
+			use bigint;
+			if($found && ($maximal_rest <= $to_find)) {
+				no bigint;
+				return -1
+			}
+			$maximal_rest -= $i->[2]
+		}
+		if(File::Compare::compare($i->[0], $i->[1])) {
+			$found = 1;
+			use bigint;
+			$to_find -= $i->[2];
+			if($to_find < 0) {
+				no bigint;
+				return 1
+			}
+		}
 	}
 	$found ? -1 : 0
 }

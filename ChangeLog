@@ -1,5 +1,11 @@
 # ChangeLog for squashmount
 
+*squashmount-15.4.0
+	Martin Väth <martin at mvath.de>:
+	- Honour BLOCKSIZE for files in DIFF
+	- Omit comparison also once a negative prediction can be made, that is,
+	  if it is clear that $threshold can no longer be reached with DIFF
+
 *squashmount-15.3.3
 	Martin Väth <martin at mvath.de>:
 	- Force utf8 encoding in manpage
