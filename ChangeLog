@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-15.4.0_p1
+	Martin Väth <martin at mvath.de>:
+	- Work around systemd cap https://github.com/vaeth/squashmount/issues/7
+
 *squashmount-15.4.0
 	Martin Väth <martin at mvath.de>:
 	- Honour BLOCKSIZE for files in DIFF
