@@ -1,7 +1,7 @@
 #compdef squashmount
 local curcontext="$curcontext" state state_descr line
 typeset -A opt_args
-_arguments -C -s -S -A '-*' : \
+_arguments -C -s -S : \
 '(* -)'{'--help','-h'}'[print a brief help]' \
 '(* -)'{'--man','-\\?'}'[show extended help as a manpage]' \
 '(* -)'{'--version','-V'}'[print version and exit]' \
@@ -87,8 +87,7 @@ case $state in
 	'print-threshold:print active threshold value'
 	'print-kill:print 1 is --kill is active'
 	)
-	_describe -t commands 'command' cmds
-	ret=$?;;
+	_describe -t commands 'command' cmds && ret=0;;
 (mask)
 	local expl
 	if [[ -z ${opt_args[--pass-dir]++} ]]
@@ -98,12 +97,10 @@ case $state in
 			masks=(${(f)"$(_call_program print-masks 'squashmount --no-locking -q print-tag 2>/dev/null')"})
 			_description masks expl 'mask'
 			compadd "$expl[@]" - $masks
-			ret=?
-		}
+		} && ret=0
 	else	local paths
 		paths=(${(f)"$(_call_program print-dirs 'squashmount --no-locking -q print-dir 2>/dev/null')"})
-		_canonical_paths -A paths directories 'mount point'
-		ret=$?
+		_canonical_paths -A paths directories 'mount point' && ret=0
 	fi;;
 esac
 return ret
