@@ -1,5 +1,13 @@
 # ChangeLog for squashmount
 
+*squashmount-15.4.2
+	Martin Väth <martin at mvath.de>:
+	- Treat 0 and - as false only if no symbol follows
+
+*squashmount-15.4.1
+	Martin Väth <martin at mvath.de>:
+	- Fix zsh completion return value
+
 *squashmount-15.4.0_p2
 	Martin Väth <martin at mvath.de>:
 	- Provide etc/revdep-rebuild/66-squashmount for python implementation
