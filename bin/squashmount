@@ -1,10 +1,12 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v15.4.2;
+package Squashmount v15.4.3;
 
 use strict;
 use warnings;
 use integer;
+use feature 'state';
+
 use Getopt::Long 2.24 ();
 use Cwd ();
 use Exporter qw(import);
@@ -2538,14 +2540,6 @@ sub cmd_check {
 	$status;
 }
 
-{ my %msg = (
-	UNMODIFIED => 'unmodified',
-	RESQUASH => 'will resquash modifications',
-	THRESHOLD => 'modified, but will not resquash',
-	KILL => 'will kill modifications',
-	KILLEMPTY => 'unmodified (kill)',
-	KILLNEGEMPTY => 'unmodified (kill-or-resquash)'
-);
 sub cmd_status {
 	my @status = ( &human_type() );
 	if(&is_resquash_type()) {
@@ -2558,6 +2552,15 @@ sub cmd_status {
 				&get_abspath('CHANGES', $force, 1));
 			return ''
 		}
+		state %msg;
+		%msg = (
+			UNMODIFIED => 'unmodified',
+			RESQUASH => 'will resquash modifications',
+			THRESHOLD => 'modified, but will not resquash',
+			KILL => 'will kill modifications',
+			KILLEMPTY => 'unmodified (kill)',
+			KILLNEGEMPTY => 'unmodified (kill-or-resquash)'
+		) unless(%msg);
 		if($threshold < 0) {
 			push(@status, $msg{($thr == 0) ? 'UNMODIFIED' :
 				(($threshold == -1) ? 'THRESHOLD' : 'RESQUASH')})
@@ -2600,7 +2603,7 @@ sub cmd_status {
 	push(@status, 'CHOWN_DIR: ' .
 		(defined($uid_dir) ? "$uid_dir:$gid_dir" : 'unchanged'));
 	&print_status(\@status)
-}}
+}
 
 sub cmd_print_tag {
 	&do_print($tag)
@@ -3447,23 +3450,23 @@ sub check_squash {
 
 # Execute modprobe for the argument
 
-{ my %probed = ();  # A closure static variable
 sub my_modprobe {
 	my ($module) = @_;
+	state %probed;
 	$probed{$module} //= (&my_system(2, \$modprobe, 'modprobe',
 		(($verbose > 3) ? '-v' : ()), $module) == 0)
-}}
+}
 
 # use IO::Uncompress::Gunzip () and return whether successful
 
-{ my $gunzip = undef;  # A closure static variable
 sub use_gunzip {
+	state $gunzip;
 	return $gunzip if(defined($gunzip));
 	eval {
 		require IO::Uncompress::Gunzip
 	};
 	$gunzip = !$@
-}}
+}
 
 # Assuming that use_gunzip() has previously been called with success,
 # read the kernel configuration. Return 1 on success.
@@ -3499,8 +3502,6 @@ sub read_module_config {
 
 # Probe module and/or check the kernel configuration. Return 1 on success
 
-{ my $gz = undef;  # A closure static variable
-  my $modules = undef;
 sub kernelprobe {
 	my ($probemod, $check_gz, $module) = @_;
 	if($probemod) {
@@ -3508,6 +3509,7 @@ sub kernelprobe {
 		return '' if(($probemod > 0) && !$check_gz);
 	}
 	return 1 unless($check_gz);
+	state $modules;
 	unless(defined($modules)) {
 		$modules = {};
 		$modules = '' unless(&read_module_config($modules))
@@ -3515,6 +3517,7 @@ sub kernelprobe {
 	if(ref($modules eq 'HASH')) {
 		return ($modules->{$module} // '')
 	}
+	state $gz;
 	unless(defined($gz)) {
 		if(&use_gunzip()) {
 			$gz = {};
@@ -3524,7 +3527,7 @@ sub kernelprobe {
 		}
 	}
 	(ref($gz) eq 'HASH') ? ($gz->{$module} // '') : ($check_gz > 0)
-}}
+}
 
 # The main function to read a configuration file:
 
@@ -4152,7 +4155,8 @@ sub threshold_dir {
 	# or if $found is not yet clear, we really do the comparison.
 	# As a preprocessing, we honour BLOCKSIZE in the sizes of @compare and
 	# calculate the maximal size of the files potentially in @compare:
-	my $maximal_rest; {
+	my $maximal_rest;
+	{
 		use bigint;
 		$maximal_rest = 0;
 		# >=perl-5.8.6 optimizes this loop without an auxiliary array:
@@ -4299,8 +4303,6 @@ sub info {
 
 # Main action of fatal, error, warning, info:
 
-{ my %colorhash = ();  # A closure static variable
-  my $resethash = undef;
 sub output {
 	my ($array, $to_stderr, $colorname, $label, $notag) = @_;
 	$label //= '';
@@ -4309,6 +4311,7 @@ sub output {
 	if(($opt_color // ($to_stderr ?
 		($stderrterm //= ((-t STDERR) // '')) : $stdoutterm))
 		&& &use_ansicolor()) {
+		state (%colorhash, $resethash);
 		$col = ($colorhash{$colorname} //= Term::ANSIColor::color($colorname));
 		$reset = ($resethash //= Term::ANSIColor::color('reset'))
 	}
@@ -4336,7 +4339,7 @@ sub output {
 	} else {
 		print(@copy)
 	}
-}}
+}
 
 # Set title:
 
@@ -4460,8 +4463,8 @@ sub my_which {
 # use File::Which module and return ':'
 # As a fallback a path to "which" or the empty string is returned
 
-{ my $which = undef;  # A closure static variable
 sub which_which {
+	state $which;
 	return $which if(defined($which));
 	eval {
 		require File::Which
@@ -4474,18 +4477,18 @@ sub which_which {
 	return ($which = '') unless(defined($which));
 	chomp($which);
 	$which
-}}
+}
 
 # use Term::ANSIColor and return whether successful
 
-{ my $ansicolor = undef;  # A closure static variable
 sub use_ansicolor {
+	state $ansicolor;
 	return $ansicolor if(defined($ansicolor));
 	eval {
 		require Term::ANSIColor
 	};
 	$ansicolor = !$@
-}}
+}
 
 # Is argument empty or an integer?
 
@@ -4558,14 +4561,14 @@ sub push_ref {
 
 # use String::ShellQuote () and return whether successful
 
-{ my $shellquote = undef;  # A closure static variable
 sub use_shellquote {
+	state $shellquote;
 	return $shellquote if(defined($shellquote));
 	eval {
 		require String::ShellQuote
 	};
 	$shellquote = !$@
-}}
+}
 
 # like join(' ', @_), but shell-quote arguments
 

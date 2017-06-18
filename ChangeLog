@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-15.4.3
+	Martin Väth <martin at mvath.de>:
+	- Use state instead of closures
+
 *squashmount-15.4.2
 	Martin Väth <martin at mvath.de>:
 	- Treat 0 and - as false only if no symbol follows
