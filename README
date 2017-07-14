@@ -115,8 +115,9 @@ paths search of revdep-rebuild.
 For openrc-support copy openrc/init.d/squashmount to /etc/init.d/squashmount
 and activate it in the usual way.
 For systemd-support copy systemd/system/squashmount.service to your
-systemd system folder (typically /usr/lib/systemd/system)
-and activate it in the usual way.
+systemd unit folder ("`pkg-config --variable=systemdsystemunitdir systemd`",
+usually /lib/systemd/system or /usr/lib/systemd/system)
+and activate it in the usual way (or e.g. copy into /etc/systemd/system)
 
 If you use systemd *BE SURE TO COMPILE THE "mount" BINARY WITH SYSTEMD SUPPORT*
 (this should be the case in most distributions providing systemd; in Gentoo
