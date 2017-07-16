@@ -7,7 +7,6 @@ After=local-fs.target systemd-tmpfiles-setup.service
 # long timeout in /etc/systemd/system/squashmount.service.d/timeout.conf
 TimeoutStopSec=1800
 Type=oneshot
-CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_SYS_ADMIN CAP_SYS_MODULE
 MemoryDenyWriteExecute=true
 NoNewPrivileges=true
 PrivateNetwork=true

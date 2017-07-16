@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-15.4.3_p2
+	Martin Väth <martin at mvath.de>:
+	- Remove CapabilityBoundingSet: It breaks overlay and possibly others
+
 *squashmount-15.4.3_p1
 	Martin Väth <martin at mvath.de>:
 	- Fix systemd unit paths in README
