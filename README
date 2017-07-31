@@ -163,7 +163,7 @@ currently only systemd supports the "D!" syntax, "d" is the default.)
 See section "Emergency Case" what to do if /run/squashmount
 is removed accidentally anyway.
 If you use find_cruft, you might want to copy the content of
-etc/find_cruft.d to /etc/find_cruft.d and adapt it to your needs.
+lib/find_cruft to /usr/lib/find_cruft or /etc and adapt it to your needs.
 
 If you plan to use portage's sync-type = squashdelta, you might want to copy
 the content of etc/portage/repo.postsync.d to /etc/portage/repo.postsync.d

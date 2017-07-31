@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-16.0.0_p1
+	Martin Väth <martin at mvath.de>:
+	- New find_cruft path; suggest to copy to system default directory
+
 *squashmount-16.0.0
 	Martin Väth <martin at mvath.de>:
 	- docs/examples: Exclude git compressed files for recompression
