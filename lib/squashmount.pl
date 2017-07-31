@@ -1,9 +1,9 @@
 #!/usr/bin/perl (this is only for editors)
 
-# To use squashmount, remove this comment and the following "fatal()"
-# command from the file and write into the subsequent configuration
-# of the variables (in particular of @mounts) what is appropriate for
-# your system!
+# To use this file as e.g. /etc/squashmount.pl, copy it to that path and
+# remove this comment and the following "fatal()" command from the file
+# and write into the subsequent configuration of the variables
+# (in particular of @mounts) what is appropriate for your system!
 #
 # It is impossible to guess which mount-points you want and for which purpose;
 # this default file contains just some examples showing what *might* be useful
@@ -13,9 +13,10 @@
 #
 # Use "squashmount man" for further details and a full list of options
 # (only a few are used in this file).
-fatal('The default /etc/squashmount.pl is only an example config!',
+fatal('The file /etc/squashmount.pl is not yet set up!',
 'It must be configured first for the mount-points you want.',
-'See "squashmount man" and the comments in /etc/squashmount.pl');
+'See "squashmount man". Examples for the file /etc/squashmount.pl',
+'can be found in /usr/lib/squashmount.pl or /lib/squashmount.pl');
 
 # The configuration might depend on the hostname: Test the variable $hostname
 # to use the same file for different configs on different machines.
@@ -132,10 +133,17 @@ my $defaults = {
 	# In case of COMPRESSION => 'xz', we use the following option.
 	# Note that this option roughly doubles the squashing time for only
 	# slightly better compression of binaries.
-	COMPOPT_XZ => ['-Xbcj', 'x86']
+	COMPOPT_XZ => ['-Xbcj', 'x86'],
 };
-my $non_binary = {
-	COMPOPT_XZ => undef  # "-Xbcj x86" is slower for pure text archives
+# Add $pure_text, if the archive is essentially pure text:
+my $pure_text = {
+	COMPOPT_XZ => undef,  # "-Xbcj x86" is slower for pure text archives
+};
+# Add $git to avoid recompression of git-compressed data.
+# The archive will usually be slightly larger, but speed gain can be huge.
+# See https://github.com/plougher/squashfs-tools/issues/24
+my $git = { MKSQUASHFS => [
+	'-action', 'uncompressed@subpathname(*/.git/objects/pack)' ],
 };
 
 # We use here the @mounts = ( ... ); syntax (do not forget the semicolon!)
@@ -149,7 +157,7 @@ my $non_binary = {
 		TAG => 'fixed',
 		DIR => '/fixed/dir',
 		FILE => '/fixed/content.sfs',
-		READONLY => 1  # Do not use overlayfs/aufs/...
+		READONLY => 1,  # Do not use overlayfs/aufs/...
 	},
 	# To make $defaults effective, we use the added_hash() function:
 	added_hash($defaults, {
@@ -168,7 +176,7 @@ my $non_binary = {
 		# In such a case, we must no postpone resquashing
 		# even if $resquash_on_start should be true, because
 		# CHANGES is a temporary directory:
-		RESQUASH_ON_START => ''
+		RESQUASH_ON_START => '',
 	}),
 	# The above block "added_hash(...)," is actually equivalent to
 	# {
@@ -177,7 +185,7 @@ my $non_binary = {
 	#	DIR => '/home/guest',
 	#	FILE => '/home/guest-skeleton.sfs',
 	#	KILL => 1,
-	#	RESQUASH_ON_START => ''
+	#	RESQUASH_ON_START => '',
 	# },
 	# because added_hash() "adds" our values to that from $defaults.
 
@@ -204,16 +212,16 @@ my $non_binary = {
 	# hook (which requires that this mount-point as well as the repository
 	# be called "gentoo", and that the sync-uri contains the string
 	# "/squash").
-	added_hash($defaults, $non_binary, {
+	added_hash($defaults, $pure_text, $git, {
 		TAG => 'gentoo',
 		DIR => '/srv/repo-gentoo',
 		FILE => '/var/cache/portage/squashfs/gentoo-current.sfs',
 		KILL => 1,
 		RM_CHANGES => 1, RM_WORKDIR => 1, RM_READONLY => 1,
-		RESQUASH_ON_START => ''
+		RESQUASH_ON_START => '',
 	}),
 	# Here is yet another useful example:
-	added_hash($defaults, $non_binary,  {
+	added_hash($defaults, $pure_text, {
 		TAG => 'db',
 		DIR => '/var/db',
 		FILE => '/var/db.mount/db.sfs',
@@ -240,12 +248,14 @@ my $non_binary = {
 		# than their size. In Gentoo, one installed package thus
 		# "counts" about 2m in size
 		# (although it produces actually only 20 very short files):
-		BLOCKSIZE => 65536
+		BLOCKSIZE => 65536,
 	}),
 # Instead of specifying TAG, DIR, FILE, CHANGES explicitly,
 # we use now that they are specified analogously to the above example
-# with the standard_mount function:
+# with the standard_mount function.
 	standard_mount('kernel', '/usr/src', $defaults),
+# If you fetch kernel sources with git, you should use instead:
+#	standard_mount('kernel', '/usr/src', $defaults, $git),
 # The above single line produces the equivalent of
 #	added_hash({
 #		TAG => 'kernel',
@@ -253,7 +263,7 @@ my $non_binary = {
 #		FILE => '/usr/src.mount/src.sfs',
 #		CHANGES => '/usr/src.mount/changes',
 #		WORKDIR => '/usr/src.mount/workdir',
-#		READONLY => '/usr/src.mount/readonly'
+#		READONLY => '/usr/src.mount/readonly',
 #	}, $defaults),
 # which in turn is effectively equivalent to
 #	{
@@ -263,7 +273,7 @@ my $non_binary = {
 #		CHANGES => '/usr/src.mount/changes',
 #		WORKDIR => '/usr/src.mount/workdir',
 #		READONLY => '/usr/src.mount/readonly',
-#		COMPRESSION => 'xz'
+#		COMPRESSION => 'xz',
 #	},
 # (the WORKDIR is omitted if $no_workdir = 1 is set)
 #
@@ -271,7 +281,7 @@ my $non_binary = {
 # {
 #	BACKUP => '.bak',  # Always keep a backup.
 #	THRESHOLD => 1m,   # Do not recompress for less than 1 MB changes
-#	KILL => -1         # If there are less than 1 MB, kill them at "umount"
+#	KILL => -1,        # If there are less than 1 MB, kill them at "umount"
 # }
 # Note that the KILL => -1 means for kernel directory that e.g. a temporary
 # kernel reconfiguration is "forgotten" unless it is used to recompile most
@@ -279,16 +289,16 @@ my $non_binary = {
 # (Be aware that this feature can be very irritating if you forget about it...)
 
 # We configure tex as in the "squashmount man" example:
-	standard_mount('tex', '/usr/share/texmf-dist', $defaults, $non_binary, {
+	standard_mount('tex', '/usr/share/texmf-dist', $defaults, $pure_text, {
 		DIFF => [
 			qr{^ls-R$},
 			qr{^tex(/generic(/config(/language(\.(dat(\.lua)?|def)))?)?)?$}n
-		]
+		],
 	}),
 # The following example is useful if you use portage with a "traditional"
 # sync-type (like rsync, webrsync or also git). An example for
 # sync-type = squashdelta is given later.
-	standard_mount('portage', '/usr/portage', $defaults, $non_binary, {
+	standard_mount('portage', '/usr/portage', $defaults, $pure_text, {
 		# We know that no hardlinks or similar "tricky" things are used
 		# in the portage tree, hence we "can" omit the umount helpers
 		# of e.g. aufs. (This is only an example! Use this only if you
@@ -310,18 +320,18 @@ my $non_binary = {
 		# if you use egencache --update-use-local-desc for repositories
 		# in these subdirectories. Similarly for the files/dirs
 		# .git/FETCH_HEAD, .git/index, and metadata/md5-cache
-		DIFF => qr{^(local|(layman(/[^/]*)?))((/profiles(/use\.local\.desc)?)|(/\.git(/FETCH_HEAD|/index)?)|(/metadata(/md5\-cache)?))?$}n
+		DIFF => qr{^(local|(layman(/[^/]*)?))((/profiles(/use\.local\.desc)?)|(/\.git(/FETCH_HEAD|/index)?)|(/metadata(/md5\-cache)?))?$}n,
 	}),
 	standard_mount('games', '/usr/share/games', $defaults, {
 		# games is huge: use the fastest compression algorithm for it.
 		# (Note that this possibly overrides $defaults):
 		COMPRESSION => 'lz4',
-		COMPOPT_LZ4 => ''
+		COMPOPT_LZ4 => '',
 	}),
 	standard_mount('office', '/usr/lib/libreoffice', $defaults, {
 		# Make sure to use the algorithm with best compression ratio,
 		# possibly overriding $defaults:
-		COMPRESSION => 'xz'
+		COMPRESSION => 'xz',
 	})
 );
 
@@ -436,7 +446,7 @@ push(@mounts,  # append the following to @mounts:
 	standard_mount('custom', '/var/custom', {
 		# if $file is undefined, we use some "dummy" path instead
 		# (it should be an absolute path to avoid error messages)
-		FILE => ($file // '/default.sfs')
+		FILE => ($file // '/default.sfs'),
 	})
 # now we finish the above push command, indicating that this push command
 # should be executed only if $custom is true:

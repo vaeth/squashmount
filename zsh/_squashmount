@@ -7,25 +7,26 @@ _arguments -C -s -S : \
 '(* -)'{'--version','-V'}'[print version and exit]' \
 '*'{'-v','--verbose'}'[be more verbose (accumulative)]' \
 '*'{'-q','--quiet'}'[be more quiet (accumulative)]' \
-{'*-a+','*--arg='}'[ARG (add user ARG)]:user arg:_files' \
-{'*-c+','*--config='}'[CONFIGFILE (add CONFIGFILE to list)]:configfile:_files' \
-{'*-u+','*--umount='}'[OPT (add OPT to umount DIR)]:umount option:("-r")' \
-{'*-U+','*--umount-ro='}'[OPT (add OPT to umount ro dir)]:umount option:("-r")' \
-'*--fumount=[OPT (add OPT to fusermount -u DIR)]:umount option:()' \
-'*--fumount-ro=[OPT (add OPT to fusermount -u ro dir)]:umount option:()' \
-'--rundir=[DIR (runtime config dir /run/squash_dir)]:runtime config dir:_files -/' \
-'(--no-backup --nobackup -B '{'--backup)-b+','-b)--backup='}'[FILE_OR_APPENDIX (override BACKUP)]:file or appendix:_files' \
+{'*-a+','*--arg='}'[add specified arg for user]:user arg:_files' \
+{'*-c+','*--config='}'[add specified configfile to list]:configfile:_files' \
+{'*--system-config='}'[add specified configfile to fallbacks]:configfile:_files' \
+{'*-u+','*--umount='}'[add specified option to umount DIR]:umount option:("-r")' \
+{'*-U+','*--umount-ro='}'[add specified option to umount READONLY]:umount option:("-r")' \
+'*--fumount=[add specified option to fusermount -u DIR)]:umount option:()' \
+'*--fumount-ro=[add specified option to fusermount -u READONLY]:umount option:()' \
+'--rundir=[use specified dir instead of /run/squash_dir)]:runtime config dir:_files -/' \
+'(--no-backup --nobackup -B '{'--backup)-b+','-b)--backup='}'[override BACKUP with specified file or appendix]:file or appendix:_files' \
 '(--backup -b '{'--no-backup --nobackup)-B','--nobackup -B)--no-backup','--no-backup -B)--nobackup'}'[do not make a backup]' \
-{'(--tempdir)-D+','(-D)--tempdir='}'[DIR (override TEMPDIR)]:tempdir:_files -/' \
-{'(--compression --comp)-x','(--comp -x)--compression','(--compression -x)--comp'}'[MODE (override COMPRESSION)]:compression mode:(xz lzma gzip lzo)' \
-'(--force-squash --squash-force --squash --no-squash --nosquash -s -n '{'--threshold)-t+','-t)--threshold='}'[THRESHOLD (set threshold size)]:threshold size:(0 1m 10m 20m 30m 40m 500k 600k 700k 800k 900k "")' \
+{'(--tempdir)-D+','(-D)--tempdir='}'[override TEMPDIR with specified dir]:tempdir:_files -/' \
+{'(--compression --comp)-x','(--comp -x)--compression','(--compression -x)--comp'}'[override COMPRESSION with specified mode]:compression mode:(xz lzma gzip lzo)' \
+'(--force-squash --squash-force --squash --no-squash --nosquash -s -n '{'--threshold)-t+','-t)--threshold='}'[set THRESHOLD to specified size]:threshold size:(0 1m 10m 20m 30m 40m 500k 600k 700k 800k 900k "")' \
 '(--threshold --no-squash --nosquash --squash -t -s -n '{'--force-squash)--squash-force','--squash-force)--force-squash'}'[force resquash\: -t -2]' \
 '(--threshold --force-squash --squash-force --no-squash --nosquash -t -n '{'--squash)-s','-s)--squash'}'[do resquash\: -t 0]' \
 '(--threshold --force-squash --squash-force --squash -t -s '{'--no-squash --nosquash)-n','--nosquash -n)--no-squash','--no-squash -n)--nosquash'}'[no resquash\: -t -1]' \
-{'(--separator)-S+','(-S)--separator='}'[SEP (separator for print-...)]:separator' \
-'--squash-verbose=[SYMBOLS (verbosity of mksquash)]:symbols [inpqrINPQR], flags (1-2+?!):(q nq ip pi r)' \
-{'(--processors)-p+','(-p)--processors='}'[NUM (mksquashfs -processors)]:processors:(\  1 2 3 4 5 6 7 8 9)' \
-{'(--mem)-m+','(-m)--mem='}'[SIZE (mksquashfs -mem)]:memory:(\  210M 466M 1954M 3054M 7054M)' \
+{'(--separator)-S+','(-S)--separator='}'[use specified separator for print-...]:separator' \
+'--squash-verbose=[use specified symbols for mksquash verbosity]:symbols [inpqrINPQR], flags (1-2+?!):(q nq ip pi r)' \
+{'(--processors)-p+','(-p)--processors='}'[use specified mksquashfs -processors number]:processors:(\  1 2 3 4 5 6 7 8 9)' \
+{'(--mem)-m+','(-m)--mem='}'[use specified mksquashfs -mem size]:memory:(\  210M 466M 1954M 3054M 7054M)' \
 '--pass-dir[Args are paths]' \
 {'(--interactive)-i','(-i)--interactive'}'[ask before cleaning directories]' \
 '(--no-kill --nokill -K --kill-or-resquash -R '{'--kill)-k','-k)--kill'}'[clean without resquashing]' \
@@ -52,9 +53,9 @@ _arguments -C -s -S : \
 '--lsof-ro=["": no lsof, 0: retry lazy, 1: error, -1: only lazy]:lsof mode:("" 0 1 -1)' \
 '(--no-ll --noll)--ll[prefer squashfuse_ll over squashfuse]' \
 '(--ll '{'--noll)--no-ll','--no-ll)--noll'}'[do not use squasfuse_ll]' \
-{'(--order)-o+','(-o)--order='}'[ORDER (set \@order)]:tool order:("overlay!?,overlayfs!?,aufs!,unionfs-fuse!,unionfs!,funionfs!" "unionfs-fuse!!,funionfs!!" "overlay,overlayfs,aufs!,unionfs-fuse!" bind aufs overlay overlayfs unionfs unionfs-fuse funionfs)' \
-{'(--squashorder)-O+','(-O)--squashorder='}'[SQUASHORDER (set \@squashorder)]:tool order:("squashfs!?,squashfuse!" "squasfuse!!" squashfs squashfuse)' \
-{'*--title=','*-T+'}'[Set title option OPT]:title option:_title_opt' \
+{'(--order)-o+','(-o)--order='}'[set \@order to specified value]:tool order:("overlay!?,overlayfs!?,aufs!,unionfs-fuse!,unionfs!,funionfs!" "unionfs-fuse!!,funionfs!!" "overlay,overlayfs,aufs!,unionfs-fuse!" bind aufs overlay overlayfs unionfs unionfs-fuse funionfs)' \
+{'(--squashorder)-O+','(-O)--squashorder='}'[set \@squashorder to specified value]:tool order:("squashfs!?,squashfuse!" "squasfuse!!" squashfs squashfuse)' \
+{'*--title=','*-T+'}'[use specified title option]:title option:_title_opt' \
 '1:command:->cmds' \
 '*:mask:->mask'
 local ret=$?

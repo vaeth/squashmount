@@ -171,9 +171,13 @@ Note that the hook-file in this directory treats the mount point "gentoo"
 specially! See the example configuration in etc/squashmount.pl how to
 setup an appropriate mount point "gentoo" for this setting.
 
-In all cases you have to copy etc/squashmount.pl to /etc/squashmount.pl
+In all cases you have to copy lib/squashmount.pl to /etc/squashmount.pl
 and adapt it to your need! This is an essential point of squashmount,
 and it is impossible to use squashmount without setting up the configuration.
+You can optionally also copy lib/squashmount.pl to /lib/squashmount.pl or
+/usr/lib/squashmount.pl to provide a system-wide example config.
+Alternatively, you can also modify that file to use it as a fallback if
+/etc/squashmount.pl is not readable.
 
 
 Some Examples

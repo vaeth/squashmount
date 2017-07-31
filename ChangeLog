@@ -1,5 +1,14 @@
 # ChangeLog for squashmount
 
+*squashmount-16.0.0
+	Martin Väth <martin at mvath.de>:
+	- docs/examples: Exclude git compressed files for recompression
+	- New option --system-config and default to {/usr,}/lib/squashmount.pl
+	- Let standard_mount() and added_hash() add array-references to
+	  array-references or strings, and hash-references to hash-references
+	  (recursively).
+	- Formulate zsh-completion help in a more standard manner
+
 *squashmount-15.4.3_p2
 	Martin Väth <martin at mvath.de>:
 	- Remove CapabilityBoundingSet: It breaks overlay and possibly others
