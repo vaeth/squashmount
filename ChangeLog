@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-16.0.0_p2
+	Martin Väth <martin at mvath.de>:
+	- Fix zsh-completion regression introduced in squashmount-16.0.0
+
 *squashmount-16.0.0_p1
 	Martin Väth <martin at mvath.de>:
 	- New find_cruft path; suggest to copy to system default directory

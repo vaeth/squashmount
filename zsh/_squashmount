@@ -9,7 +9,7 @@ _arguments -C -s -S : \
 '*'{'-q','--quiet'}'[be more quiet (accumulative)]' \
 {'*-a+','*--arg='}'[add specified arg for user]:user arg:_files' \
 {'*-c+','*--config='}'[add specified configfile to list]:configfile:_files' \
-{'*--system-config='}'[add specified configfile to fallbacks]:configfile:_files' \
+'*--system-config=[add specified configfile to fallbacks]:configfile:_files' \
 {'*-u+','*--umount='}'[add specified option to umount DIR]:umount option:("-r")' \
 {'*-U+','*--umount-ro='}'[add specified option to umount READONLY]:umount option:("-r")' \
 '*--fumount=[add specified option to fusermount -u DIR)]:umount option:()' \
