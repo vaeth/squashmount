@@ -1,5 +1,13 @@
 # ChangeLog for squashmount
 
+*squashmount-17.0.0
+	Martin Väth <martin at mvath.de>:
+	- IMPORTANT: New default for COMPRESSION is zstd.
+	  This requires squashfs-tools-4.3.1_alpha20171114 or newer. Moreover:
+	  zstd must be enabled for squashfs when you use the new default!
+	  This is possible only with linux-4.14 or newer or with
+	  squashfuse-0.1.101_alpha20170917 or newer.
+
 *squashmount-16.1.0
 	Martin Väth <martin at mvath.de>:
 	- Document zstd on squashmount --man

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v16.1.0;
+package Squashmount v17.0.0;
 
 use strict;
 use warnings;
@@ -1449,7 +1449,7 @@ B<squashmount print-changes ...>
 The working directory required by overlay and overlayfs,
 set according to the same rules as for B<CHANGES>.
 If you want to use current versions of overlay or overlayfs
-(kernel 3.15 or newer) this B<must> be on the same filesystem as B<CHANGES>.
+(linux-3.15 or newer) this B<must> be on the same filesystem as B<CHANGES>.
 If you do not want to use B<WORKDIR>, set B<$obsolete_overlayfs = 'force'>
 and use only overlayfs (not overlay).
 
@@ -1653,9 +1653,10 @@ If the value is empty, no B<-comp> parameter is passed,
 that is, the default of the installed B<mksquashfs> is chosen
 (which is usually B<gzip> but might depend on your version of B<mksquashfs>).
 The default of B<COMPRESSION> (that is, if undefined or not explicitly set)
-is B<lz4>; note that before B<squashmount-10.0.0> this was B<xz>.
+is B<zstd>; note that before B<squashmount>-17.0.0/10.0.0 this was
+B<lz4>/B<xz>.
 Note also that B<zstd>/B<lz4> support requires linux-4.14/3.19 or newer
-(or squashfuse-0.1.101_alpha20170917/squash-0.1.100_alpha20140523 or newer).
+(or squashfuse-0.1.101_alpha20170917/0.1.100_alpha20140523 or newer).
 
 =item B<DEFAULT_FRAGMENTS>
 
@@ -3353,7 +3354,7 @@ sub mksquashfs_options {
 		defined($mksquash_symbols->{'i'}));
 	push(@$options, '-progress') if(defined($mksquash_symbols->{'p'}));
 	push(@$options, '-always-use-fragments') if(&is_nonempty($user_config->{'DEFAULT_FRAGMENTS'}));
-	my $comp = (defined($compression) ? lc($compression) : 'lz4');
+	my $comp = (defined($compression) ? lc($compression) : 'zstd');
 	my $compopt = $user_config->{'COMPOPT_' . uc($comp)};
 	unless(defined($compopt)) {
 		$compopt = ['-Xcompression-level', '22'] if($comp eq 'zstd');
