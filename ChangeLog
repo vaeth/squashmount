@@ -1,5 +1,11 @@
 # ChangeLog for squashmount
 
+*squashmount-16.1.0
+	Martin Väth <martin at mvath.de>:
+	- Document zstd on squashmount --man
+	- Use default COMPOPT_ZSTD => ['-Xcompression-level', '22']
+	- Update zsh completion to support zstd and lz4
+
 *squashmount-16.0.0_p2
 	Martin Väth <martin at mvath.de>:
 	- Fix zsh-completion regression introduced in squashmount-16.0.0

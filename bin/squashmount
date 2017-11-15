@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v16.0.0;
+package Squashmount v16.1.0;
 
 use strict;
 use warnings;
@@ -1538,7 +1538,7 @@ Depending on B<$squashfs_verbose>, B<COMPRESSION>, B<DEFAULT_FRAGMENTS>
 also the options B<-no-progress>, B<-comp>, or B<-always-use-fragments>
 are appended automatically.
 
-=item B<MKSQUASHFS>, B<COMPOPT_{XZ,LZMA,GZIP,LZO,LZ4,}>
+=item B<MKSQUASHFS>, B<COMPOPT_{XZ,LZMA,GZIP,LZO,LZ4,ZSTD,}>
 
 These should be a (possibly empty) strings or references arrays of strings:
 These strings are used as additional options when calling B<mksquashfs>
@@ -1552,6 +1552,11 @@ If the corresponding variable is not defined, it is assumed to be empty
 with the following exception:
 
 =over 16
+
+=item B<COMPOPT_ZSTD>: If undefined, defaults to
+C<['-Xcompression-level', '22']>.
+Set it to the empty string if you want the fast B<zstd> compression default
+used by mksquashfs.
 
 =item B<COMPOPT_LZ4>: If undefined, defaults to C<'-Xhc'>.
 Set it to the empty string if you want fastest B<lz4> compression instead.
@@ -1640,15 +1645,17 @@ This is analogous to B<UMOUNT_RO>, but when B<fusermount -u> is used.
 
 Specifies the compression mode for B<mksquashfs>:
 The available values depend on the installed version of B<mksquashfs>;
-typically B<xz>, B<lzma>, B<gzip>, B<lzo>, B<lz4> are available
+typically B<xz>, B<lzma>, B<gzip>, B<lzo>, B<lz4>, and B<zstd> are available
 (ordered in increasing compression ratio, i.e. B<xz> is usually the slowest but
-best in compression ration while B<lz4> is the quickest).
+best in compression ration while B<lz4> is the quickest; B<zstd> can be both,
+depending on the value of B<COMPOPT_STD>, seee above).
 If the value is empty, no B<-comp> parameter is passed,
 that is, the default of the installed B<mksquashfs> is chosen
 (which is usually B<gzip> but might depend on your version of B<mksquashfs>).
 The default of B<COMPRESSION> (that is, if undefined or not explicitly set)
-is B<lz4>; note that in earlier versions of B<squashmount> this was B<xz>.
-Note also that B<lz4> support in squashfs requires linux-3.19 or newer.
+is B<lz4>; note that before B<squashmount-10.0.0> this was B<xz>.
+Note also that B<zstd>/B<lz4> support requires linux-4.14/3.19 or newer
+(or squashfuse-0.1.101_alpha20170917/squash-0.1.100_alpha20140523 or newer).
 
 =item B<DEFAULT_FRAGMENTS>
 
@@ -3349,6 +3356,7 @@ sub mksquashfs_options {
 	my $comp = (defined($compression) ? lc($compression) : 'lz4');
 	my $compopt = $user_config->{'COMPOPT_' . uc($comp)};
 	unless(defined($compopt)) {
+		$compopt = ['-Xcompression-level', '22'] if($comp eq 'zstd');
 		$compopt = '-Xhc' if($comp eq 'lz4')
 	}
 	push(@$options, '-comp', $comp) if($comp ne '');

@@ -18,7 +18,7 @@ _arguments -C -s -S : \
 '(--no-backup --nobackup -B '{'--backup)-b+','-b)--backup='}'[override BACKUP with specified file or appendix]:file or appendix:_files' \
 '(--backup -b '{'--no-backup --nobackup)-B','--nobackup -B)--no-backup','--no-backup -B)--nobackup'}'[do not make a backup]' \
 {'(--tempdir)-D+','(-D)--tempdir='}'[override TEMPDIR with specified dir]:tempdir:_files -/' \
-{'(--compression --comp)-x','(--comp -x)--compression','(--compression -x)--comp'}'[override COMPRESSION with specified mode]:compression mode:(xz lzma gzip lzo)' \
+{'(--compression --comp)-x','(--comp -x)--compression','(--compression -x)--comp'}'[override COMPRESSION with specified mode]:compression mode:(zstd xz lzma gzip lzo lz4)' \
 '(--force-squash --squash-force --squash --no-squash --nosquash -s -n '{'--threshold)-t+','-t)--threshold='}'[set THRESHOLD to specified size]:threshold size:(0 1m 10m 20m 30m 40m 500k 600k 700k 800k 900k "")' \
 '(--threshold --no-squash --nosquash --squash -t -s -n '{'--force-squash)--squash-force','--squash-force)--force-squash'}'[force resquash\: -t -2]' \
 '(--threshold --force-squash --squash-force --no-squash --nosquash -t -n '{'--squash)-s','-s)--squash'}'[do resquash\: -t 0]' \
