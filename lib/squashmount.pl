@@ -113,8 +113,8 @@ $rm_changes = $rm_workdir = $rm_readonly = 0;
 # The following is only needed if you want/need to hack umount options.
 # The following lines add option -i unless something was passed by
 # --umount or --umount-ro, respectively (in which case nothing is added).
-# push(@umount, '-i') unless(@umount);
-# push(@umount_ro, '-i') unless(@umount_ro);
+# push(@umount, '-i') unless (@umount);
+# push(@umount_ro, '-i') unless (@umount_ro);
 
 # This is the default:
 # @fumount = ();
@@ -342,14 +342,14 @@ my $git = { MKSQUASHFS => [
 
 $after_mount = sub {
 	my ($mountpoint, $store, $config) = @_;
-	return 1 unless($mountpoint eq 'portage');
+	return 1 unless ($mountpoint eq 'portage');
 	system('mount', '--bind', $config->{DIR} // $store->{DIR}, '/srv/copy');
 	1  # return a true value!
 };
 
 $before_umount = sub {
 	my ($mountpoint, $store, $config) = @_;
-	return 1 unless($mountpoint eq 'portage');
+	return 1 unless ($mountpoint eq 'portage');
 	system('umount /srv/copy');
 	1  # return a true value!
 };
@@ -359,7 +359,7 @@ $before_umount = sub {
 
 $before_mount = sub {
 	my ($mountpoint, $store, $config) = @_;
-	return 1 unless($mountpoint eq 'portage');
+	return 1 unless ($mountpoint eq 'portage');
 	system('umount /srv/copy >/dev/null 2>&1');
 	1  # return a true value!
 };
@@ -377,9 +377,9 @@ $before_mount = sub {
 
 my $custom = @ARGV;
 my $file = undef;
-if($custom) {
+if ($custom) {
 	$file = pop(@ARGV);
-	fatal("argument '$file' of --arg is not a file") unless(-f $file);
+	fatal("argument '$file' of --arg is not a file") unless (-f $file);
 
 	# If B<--arg> was provided once, store it for later usage
 	$locking = $storing = 1  # don't set $storing without $locking!
@@ -409,12 +409,12 @@ $before = sub {
 	my ($mountpoint, $store, $config) = @_;
 
 	# Handle only that mount-point which is of interest for us:
-	return 1 unless($mountpoint eq 'custom');
+	return 1 unless ($mountpoint eq 'custom');
 
 	my $stored = $store->{FILE};
 
-	if(defined($stored)) {
-		if(defined($file) && ($stored ne $file)) {
+	if (defined($stored)) {
+		if (defined($file) && ($stored ne $file)) {
 			error("stored path $stored",
 			"differs from --arg $file",
 			'Use "squashmount stop|forget custom"');
@@ -430,7 +430,7 @@ $before = sub {
 
 	# Use the stored value as the configuration value for FILE
 	# (provided $stored is defined; if it undefined do not touch anything)
-	$config->{FILE} = $stored if(defined($stored));
+	$config->{FILE} = $stored if (defined($stored));
 
 	1  # return a true value!
 };
@@ -450,7 +450,7 @@ push(@mounts,  # append the following to @mounts:
 	})
 # now we finish the above push command, indicating that this push command
 # should be executed only if $custom is true:
-) if($custom);
+) if ($custom);
 
 
 1;  # The last executed command in this file should be a true expression

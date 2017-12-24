@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-17.1
+	Martin Väth <martin at mvath.de>:
+	- Do not print confusing warnings in File::Find
+	- Cosmetical code reformatting
+
 *squashmount-17.0.0
 	Martin Väth <martin at mvath.de>:
 	- IMPORTANT: New default for COMPRESSION is zstd.

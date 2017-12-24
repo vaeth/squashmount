@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v17.0.0;
+package Squashmount v17.1.0;
 
 use strict;
 use warnings;
@@ -1261,7 +1261,7 @@ the option B<--umount> will have no effect. You can use perl-code to combine
 the option. For instance, when you use instead C<push(@umount, '-i');>,
 the option B<-i> will be added to the options specified by B<--umount>.
 Similarly, you can make a case distinction like
-C<@umount = ('-i') unless(@umount);> in which case the option B<-i> will be
+C<@umount = ('-i') unless (@umount);> in which case the option B<-i> will be
 only used if no option was specified with B<--umount>.
 
 =item B<@umount_ro>
@@ -1852,7 +1852,7 @@ Here are some examples why this might be useful:
 In any case, it is recommended to not use B<too> much code since the code
 will be parsed/executed with every call of B<squashmount>.
 In particular, if you want some more complex code to setup B<@order> according
-to you system, it is recommended to enclose this code into C<if(@order)> so
+to you system, it is recommended to enclose this code into C<if (@order)> so
 that this code is only executed if the value of B<@order> is really needed.
 (Recall that the default of B<@order> is nonempty only if B<squashmount> is
 used with a command for which it might be necessary to know its value.)
@@ -2000,7 +2000,7 @@ making the behavior depend on the hostname. Here is such an example:
 =over 8
 
 
-=item if($hostname =~ m{^(foo|bar)$}n) {
+=item if ($hostname =~ m{^(foo|bar)$}n) {
 
 =over 16
 
@@ -2008,7 +2008,7 @@ making the behavior depend on the hostname. Here is such an example:
 
 =back
 
-=item } elsif($hostname eq 'bazola') {
+=item } elsif ($hostname eq 'bazola') {
 
 =over 16
 
@@ -2171,7 +2171,7 @@ to B<squashmount>.
 
 =back
 
-=item })) if($cd);  # under the condition that $cd is true
+=item })) if ($cd);  # under the condition that $cd is true
 
 =back
 
@@ -2250,7 +2250,7 @@ the path is already stored.
 
 =item my $file = '/default.sfs';
 
-=item if($cd) {
+=item if ($cd) {
 
 =over 16
 
@@ -2278,7 +2278,7 @@ the path is already stored.
 
 =item my ($mountpoint, $store, $config) = @_;
 
-=item return 1 unless($mountpoint eq 'cd');
+=item return 1 unless ($mountpoint eq 'cd');
 
 =item # Store $file only if not already done: Do not allow modification!
 
@@ -2308,7 +2308,7 @@ the path is already stored.
 
 =back
 
-=item ) if($cd);
+=item ) if ($cd);
 
 =item 1;
 
@@ -2332,7 +2332,7 @@ from the "portage" mount point to /srv/copy
 
 =item my ($mountpoint, $store, $config) = @_;
 
-=item return 1 unless($mountpoint eq 'portage');
+=item return 1 unless ($mountpoint eq 'portage');
 
 =item system('mount', '--bind', $config->{DIR} // $store->{DIR}, '/srv/copy');
 
@@ -2348,7 +2348,7 @@ from the "portage" mount point to /srv/copy
 
 =item my ($mountpoint, $store, $config) = @_;
 
-=item return 1 unless($mountpoint eq 'portage');
+=item return 1 unless ($mountpoint eq 'portage');
 
 =item system('umount /srv/copy');
 
@@ -2472,27 +2472,27 @@ sub cmd_mount {
 }
 
 sub cmd_umount {
-	return '' if(&error_unless_mounted());
+	return '' if (&error_unless_mounted());
 	&umount_main()
 }
 
 sub cmd_remount {
-	return '' if(&error_unless_mounted());
+	return '' if (&error_unless_mounted());
 	&remount_main()
 }
 
 sub cmd_create {
-	return '' if(&error_if_mounted());
+	return '' if (&error_if_mounted());
 	my $squashfile = &get_abspath('FILE', 1);
-	if(-f $squashfile) {
-		if($force) {
-			&warning("squash-file $squashfile already exists") unless($quiet);
+	if (-f $squashfile) {
+		if ($force) {
+			&warning("squash-file $squashfile already exists") unless ($quiet);
 		} else {
 			&error("squash-file $squashfile already exists");
 			return ''
 		}
 	}
-	return '' unless(&create_dir('DIR', 1));
+	return '' unless (&create_dir('DIR', 1));
 	&first_create($squashfile, $current->{'DIR'})
 }
 
@@ -2501,22 +2501,22 @@ sub cmd_start {
 }
 
 sub cmd_stop {
-	if(&error_unless_mounted()) {
-		&forget_settings() if($force);
+	if (&error_unless_mounted()) {
+		&forget_settings() if ($force);
 		return ''
 	}
-	return '' unless(&umount_main(1));
+	return '' unless (&umount_main(1));
 	&forget_settings();
 	1
 }
 
 sub cmd_restart {
 	my $ret;
-	if(&error_unless_mounted()) {
-		return '' unless($force);
+	if (&error_unless_mounted()) {
+		return '' unless ($force);
 		$ret = ''
 	} else {
-		return '' unless(&umount_main(1));
+		return '' unless (&umount_main(1));
 		$ret = 1
 	}
 	&forget_settings();
@@ -2524,7 +2524,7 @@ sub cmd_restart {
 }
 
 sub cmd_forget {
-	unless($force || !&is_nonempty($current->{'TYPE'})) {
+	unless ($force || !&is_nonempty($current->{'TYPE'})) {
 		&error('mounted, forget is not used');
 		return ''
 	}
@@ -2547,49 +2547,49 @@ sub cmd_reset {
 
 sub cmd_check {
 	my $dir = &get_abspath('DIR');
-	unless(&is_abspath($dir)) {
+	unless (&is_abspath($dir)) {
 		&error("DIR is not known yet; use first: $name -f print-dir");
 		return 1
 	}
 	my $mounted = &is_nonempty($current->{'TYPE'});
-	if($mounted) {
-		unless($force) {
+	if ($mounted) {
+		unless ($force) {
 			&error('DIR is mounted. Use -f to umount temporarily');
 			return 1
 		}
-		&info('umounting...') unless($quiet);
-		return '' unless(&umount_dir($dir, '', &is_fuse_type()));
+		&info('umounting...') unless ($quiet);
+		return '' unless (&umount_dir($dir, '', &is_fuse_type()));
 		delete($current->{'TYPE'})
 	}
 	my $status = &dir_is_empty($dir);
-	if($status eq '') {
-		if($quiet) {
+	if ($status eq '') {
+		if ($quiet) {
 			&do_print('nonempty')
 		} else {
 			&error('DIR is nonempty!')
 		}
-	} elsif($status) {
+	} elsif ($status) {
 		&do_print($quiet ? '' : 'DIR is empty');
 	} else {
-		if($quiet) {
+		if ($quiet) {
 			&do_print(undef)
 		} else {
 			&error("cannot open $dir")
 		}
 		$status = ''
 	}
-	return '' if($mounted && !&mount_main('', 1));
+	return '' if ($mounted && !&mount_main('', 1));
 	$status;
 }
 
 sub cmd_status {
 	my @status = ( &human_type() );
-	if(&is_resquash_type()) {
+	if (&is_resquash_type()) {
 		my $human = &human_threshold($threshold);
 		$status[0] .= (' ' x (5 - length($human))) . "(${human})"
-			unless($verbose);
+			unless ($verbose);
 		my $thr = &threshold_dir(($threshold > 0) ? $threshold : 0);
-		if($thr eq '') {
+		if ($thr eq '') {
 			&error('no CHANGES dir: ' .
 				&get_abspath('CHANGES', $force, 1));
 			return ''
@@ -2602,34 +2602,34 @@ sub cmd_status {
 			KILL => 'will kill modifications',
 			KILLEMPTY => 'unmodified (kill)',
 			KILLNEGEMPTY => 'unmodified (kill-or-resquash)'
-		) unless(%msg);
-		if($threshold < 0) {
+		) unless (%msg);
+		if ($threshold < 0) {
 			push(@status, $msg{($thr == 0) ? 'UNMODIFIED' :
 				(($threshold == -1) ? 'THRESHOLD' : 'RESQUASH')})
-		} elsif($thr == 0) {
+		} elsif ($thr == 0) {
 			push(@status, $msg{($kill == 0) ? 'UNMODIFIED' :
 				(($kill > 0) ? 'KILLEMPTY' : 'KILLNEGEMPTY')})
-		} elsif($thr > 0) {
+		} elsif ($thr > 0) {
 			push(@status, $msg{($kill > 0) ? 'KILL' : 'RESQUASH'})
 		} else {  # ($thr < 0)
 			push(@status, $msg{$kill ? 'KILL' : 'THRESHOLD'})
 		}
 		push(@status, 'THRESHOLD: ' .
-			(($verbose > 1) ? "$threshold" : $human)) if($verbose)
+			(($verbose > 1) ? "$threshold" : $human)) if ($verbose)
 	}
-	return &print_status(\@status) unless($verbose > 1);
+	return &print_status(\@status) unless ($verbose > 1);
 	my $dir = &get_abspath('DIR', $force, 1);
-	push(@status, 'DIR: ' . $dir) if(&is_abspath($dir));
+	push(@status, 'DIR: ' . $dir) if (&is_abspath($dir));
 	my $readonly = &get_abspath('READONLY', $force, '');
-	push(@status, 'READONLY: ' . $readonly) if(&is_nonempty($readonly));
+	push(@status, 'READONLY: ' . $readonly) if (&is_nonempty($readonly));
 	push(@status, 'CHANGES: ' . &get_abspath('CHANGES', $force, 1))
-		if(&is_valid_changes($force));
+		if (&is_valid_changes($force));
 	push(@status, 'WORKDIR: ' . &get_abspath('WORKDIR', $force, 1))
-		if(&is_valid_workdir($force));
+		if (&is_valid_workdir($force));
 	my $file = &get_abspath('FILE', $force);
-	push(@status, 'FILE: ' . $file) if(&is_abspath($file));
-	push(@status, "TEMPDIR: $tempdir") if(&is_abspath($tempdir));
-	push(@status, "BACKUP: $backup") if(&is_nonempty($backup));
+	push(@status, 'FILE: ' . $file) if (&is_abspath($file));
+	push(@status, "TEMPDIR: $tempdir") if (&is_abspath($tempdir));
+	push(@status, "BACKUP: $backup") if (&is_nonempty($backup));
 	&mksquashfs_options(\my @options);
 	push(@status, &shell_quote_best_effort('mksquashfs-options:', @options));
 	my $chmod = &get_chmod();
@@ -2682,14 +2682,14 @@ sub cmd_print_squashtype {
 }
 
 sub cmd_print_new {
-	return &do_print(undef) unless(&is_valid_changes($force));
+	return &do_print(undef) unless (&is_valid_changes($force));
 	my ($will_squash, undef) = &check_squash(0, '');
 	my $result = $will_squash ? '1' : '';
 	&do_print($quiet ? $result : ('NEW: ' . $result))
 }
 
 sub cmd_print_will_squash {
-	return &do_print(undef) unless(&is_valid_changes($force));
+	return &do_print(undef) unless (&is_valid_changes($force));
 	my ($will_squash, undef) = &check_squash($threshold, $kill);
 	my $result = $will_squash ? '1' : '';
 	&do_print($quiet ? $result : ('WILL_SQUASH: ' . $result))
@@ -2712,28 +2712,28 @@ sub cmd_print_kill {
 
 sub mount_main {
 	my ($start_cmd, $skip_ro_mounting) = @_;
-	return '' if(&error_if_mounted());
+	return '' if (&error_if_mounted());
 	my $squashfile = &get_abspath('FILE', 1);
 	my $first_create = $start_cmd;
-	if(-f $squashfile) {
+	if (-f $squashfile) {
 		$first_create = ''
-	} elsif(!$first_create) {
+	} elsif (!$first_create) {
 		&error("squash-file $squashfile not found");
 		return ''
 	}
-	return '' unless(&create_dir('DIR', 1));
+	return '' unless (&create_dir('DIR', 1));
 	my $dir = $current->{'DIR'};
-	return '' unless(-d $dir);
-	if($first_create) {
-		return '' unless(&first_create($squashfile, $dir))
+	return '' unless (-d $dir);
+	if ($first_create) {
+		return '' unless (&first_create($squashfile, $dir))
 	}
 	my $ro_stat = &create_dir('READONLY', '');
-	return '' unless($ro_stat);
-	&info('mounting...') unless($quiet);
-	return '' unless(&run_hook($CFG::before_mount, '$before_mount'));
-	if($ro_stat < 0) {
+	return '' unless ($ro_stat);
+	&info('mounting...') unless ($quiet);
+	return '' unless (&run_hook($CFG::before_mount, '$before_mount'));
+	if ($ro_stat < 0) {
 		my $squashtype = &mount_squash($squashfile, $dir);
-		return '' unless(&is_nonempty($squashtype));
+		return '' unless (&is_nonempty($squashtype));
 		$current->{'MOUNT_RO'} = $squashtype;
 		$current->{'TYPE'} = 'readonly';
 		delete($current->{'CHANGES'});
@@ -2742,18 +2742,18 @@ sub mount_main {
 	}
 	my $dir_ro = $current->{'READONLY'};
 	my $ret = 1;
-	unless($skip_ro_mounting // '') {
+	unless ($skip_ro_mounting // '') {
 		my $mount_ro = 1;
-		if(&is_nonempty($current->{'MOUNT_RO'})) {
+		if (&is_nonempty($current->{'MOUNT_RO'})) {
 			&warning("have mounted READONLY $dir_ro")
-				unless($quiet > 1);
-			$mount_ro = '' unless($ignore_state)
+				unless ($quiet > 1);
+			$mount_ro = '' unless ($ignore_state)
 		}
-		if($mount_ro) {
+		if ($mount_ro) {
 			my $squashtype = &mount_squash($squashfile, $dir_ro);
-			unless(&is_nonempty($squashtype)) {
-				return '' unless($ignore_state && $force);
-				&warning('presuming mount was succesful due to -fI') unless($quiet > 1);
+			unless (&is_nonempty($squashtype)) {
+				return '' unless ($ignore_state && $force);
+				&warning('presuming mount was succesful due to -fI') unless ($quiet > 1);
 				$squashtype = 'unknown';
 				$ret = ''
 			}
@@ -2761,13 +2761,13 @@ sub mount_main {
 		}
 	}
 	my $type = &mount_rw($dir_ro, $dir);
-	return '' unless(defined($type));
+	return '' unless (defined($type));
 	$current->{'TYPE'} = $type;
-	if($ret) {
+	if ($ret) {
 		&set_permissions($dir, 1);
-		return '' unless(&run_hook($CFG::after_mount, '$after_mount'))
+		return '' unless (&run_hook($CFG::after_mount, '$after_mount'))
 	}
-	return $ret unless($start_cmd && $ret && (!$first_create) &&
+	return $ret unless ($start_cmd && $ret && (!$first_create) &&
 		(($user_config->{'RESQUASH_ON_START'}) // $resquash_on_start));
 	$ret = &remount_main();
 	$current->{'THRESHOLD'} = -1;
@@ -2780,15 +2780,15 @@ sub mount_main {
 
 sub lsof {
 	my ($dir, $readonly) = @_;
-	return 1 unless(&is_abspath($dir));
-	return 1 unless(&which_store(\$lsof_bin, 'lsof'));
-	return 1 if(&my_system(2, \$lsof_bin, 'lsof', '--', $dir) == 1);
+	return 1 unless (&is_abspath($dir));
+	return 1 unless (&which_store(\$lsof_bin, 'lsof'));
+	return 1 if (&my_system(2, \$lsof_bin, 'lsof', '--', $dir) == 1);
 	my $loclsof = ($readonly ? $lsof_ro : $lsof );
-	if($loclsof && ($loclsof > 0)) {
+	if ($loclsof && ($loclsof > 0)) {
 		&error('umount skipped: dir in use: ' . $dir,
 			'(this test can be skipped with ' .
 			($readonly ? '--lsof-ro=0' :  '--lsof=0') . ')')
-	} elsif($verbose) {
+	} elsif ($verbose) {
 		&warning('bad report of lsof ' . $dir)
 	}
 	''
@@ -2797,100 +2797,100 @@ sub lsof {
 sub umount_main {
 	my $stop_cmd = (shift() // '');
 	my $type = $current->{'TYPE'};
-	if($lsof_ro && $lsof_ro > 0) {
-		if(&is_nonempty($current->{'MOUNT_RO'})) {
-			return '' unless(&lsof(&get_abspath('READONLY'), 1))
+	if ($lsof_ro && $lsof_ro > 0) {
+		if (&is_nonempty($current->{'MOUNT_RO'})) {
+			return '' unless (&lsof(&get_abspath('READONLY'), 1))
 		}
 	}
 	return(&run_hook($CFG::before_umount, '$before_umount') &&
 		&umount_readonly($stop_cmd, $quiet ? '' : 'umounting READONLY') &&
 		&run_hook($CFG::after_umount, '$after_umount'))
-		unless($ignore_state || &is_nonempty($type));
+		unless ($ignore_state || &is_nonempty($type));
 	my ($will_squash, $will_remove) = @_;
 	($will_squash, $will_remove) = &check_squash($threshold, $kill)
-		unless(defined($will_squash) && defined($will_remove));
+		unless (defined($will_squash) && defined($will_remove));
 	my $created = '';
 	my $tempfile;
 	my $dir = &get_abspath('DIR');
-	$dir = undef unless(&is_abspath($dir));
-	if($lsof && $lsof > 0) {
-		return '' unless(&lsof($dir, ''));
+	$dir = undef unless (&is_abspath($dir));
+	if ($lsof && $lsof > 0) {
+		return '' unless (&lsof($dir, ''));
 	}
-	if($will_squash && defined($dir)) {
-		&info('squashing (this may take a while)') unless($quiet);
-		if(&is_abspath($tempdir)) {
+	if ($will_squash && defined($dir)) {
+		&info('squashing (this may take a while)') unless ($quiet);
+		if (&is_abspath($tempdir)) {
 			$tempfile = File::Temp->new(DIR => $tempdir)
 		} else {
 			$tempfile = File::Temp->new();
 		}
-		return '' unless(&mksquashfs($tempfile->filename, $dir));
+		return '' unless (&mksquashfs($tempfile->filename, $dir));
 		$created = 1
 	}
-	&info('umounting...') unless($quiet);
+	&info('umounting...') unless ($quiet);
 	my $ret = 1;
 	my $message = '';
 	my $umount_ret = (defined($dir) &&
 		&run_hook($CFG::before_umount, '$before_umount'));
-	if($umount_ret) {
+	if ($umount_ret) {
 		$umount_ret = &umount_dir($dir, '', &is_fuse_type());
-		$umount_ret = '' unless(&run_hook($CFG::after_umount, '$after_umount'))
+		$umount_ret = '' unless (&run_hook($CFG::after_umount, '$after_umount'))
 	}
-	if($umount_ret) {
+	if ($umount_ret) {
 		&rmdir_recurse($dir, ($user_config->{'RM_DIR'} // $rm_dir))
-			if($stop_cmd)
+			if ($stop_cmd)
 	} else {
-		&error('cannot determine DIR') unless(defined($dir));
-		return '' unless($ignore_state && $force);
-		&warning('presuming umount was succesful due to -fI') unless($quiet > 1);
+		&error('cannot determine DIR') unless (defined($dir));
+		return '' unless ($ignore_state && $force);
+		&warning('presuming umount was succesful due to -fI') unless ($quiet > 1);
 		$ret = '';
-		$message = 'umounting READONLY' unless($quiet)
+		$message = 'umounting READONLY' unless ($quiet)
 	}
-	if(($type eq 'overlay') || ($type eq 'overlayfs')) {
+	if (($type eq 'overlay') || ($type eq 'overlayfs')) {
 		my $workdir = &get_abspath('WORKDIR');
-		if(&is_abspath($workdir) && (-d $workdir)) {
-			&info('cleaning workdir...') unless($quiet);
-			if(&clean_directory($workdir)) {
+		if (&is_abspath($workdir) && (-d $workdir)) {
+			&info('cleaning workdir...') unless ($quiet);
+			if (&clean_directory($workdir)) {
 				&rmdir_recurse($workdir, ($user_config->{'RM_WORKDIR'} // $rm_workdir))
-					if($stop_cmd)
+					if ($stop_cmd)
 			} else {
 				$ret = ''
 			}
 		}
 	}
 	delete($current->{'TYPE'});
-	&reset_main(!$quiet) if($reset);
-	$ret = '' unless(&umount_readonly($stop_cmd, $message));
-	if($created) {
+	&reset_main(!$quiet) if ($reset);
+	$ret = '' unless (&umount_readonly($stop_cmd, $message));
+	if ($created) {
 		my $squashfile = &get_abspath('FILE', 1);
-		if(&is_nonempty($backup)) {
+		if (&is_nonempty($backup)) {
 			my $file = (&is_abspath($backup) ? $backup :
 				$squashfile . $backup);
-			&info("$squashfile -> $file") unless($quiet);
+			&info("$squashfile -> $file") unless ($quiet);
 			unlink($file);
-			unless(File::Copy::move($squashfile, $file)) {
+			unless (File::Copy::move($squashfile, $file)) {
 				&error("failed moving $squashfile to $file");
 				return ''
 			}
 		}
 		&info('tempfile' . ($verbose ?
 			" \($tempfile\)" : '') . " \-\> $squashfile")
-			unless($quiet);
+			unless ($quiet);
 		unlink($squashfile);
 		$tempfile->unlink_on_destroy('');
-		unless(File::Copy::move($tempfile->filename, $squashfile)) {
+		unless (File::Copy::move($tempfile->filename, $squashfile)) {
 			&error("failed moving tempfile to $squashfile");
 			return ''
 		}
 		&set_permissions($squashfile)
 	}
-	return $ret unless($will_remove);
+	return $ret unless ($will_remove);
 	my $changes = &get_abspath('CHANGES');
-	if(&is_abspath($changes) && (-d $changes)) {
+	if (&is_abspath($changes) && (-d $changes)) {
 		&title("$tag cleaning");
-		&info('cleaning changes...') unless($quiet);
-		if(&clean_directory($changes)) {
+		&info('cleaning changes...') unless ($quiet);
+		if (&clean_directory($changes)) {
 			&rmdir_recurse($changes, ($user_config->{'RM_CHANGES'} // $rm_changes))
-				if($stop_cmd)
+				if ($stop_cmd)
 		} else {
 			$ret = ''
 		}
@@ -2901,16 +2901,16 @@ sub umount_main {
 # The main remount function
 
 sub remount_main {
-	return '' if(&error_unless_mounted());
+	return '' if (&error_unless_mounted());
 	my ($will_squash, $will_remove) = (1);
 	($will_squash, $will_remove) = &check_squash($threshold, $kill)
-		if(&is_nonempty($current->{'TYPE'}));
-	unless($force || $will_squash || ($will_remove > 0)) {
+		if (&is_nonempty($current->{'TYPE'}));
+	unless ($force || $will_squash || ($will_remove > 0)) {
 		&info('remounting appears unnecessary');
 		return 1
 	}
-	&title("$tag remount") if($printed_title);
-	return '' unless(&umount_main('', $will_squash, $will_remove));
+	&title("$tag remount") if ($printed_title);
+	return '' unless (&umount_main('', $will_squash, $will_remove));
 	&mount_main('')
 }
 
@@ -2918,15 +2918,15 @@ sub remount_main {
 # If umounting really happens, print second argument.
 
 sub umount_readonly {
-	return 1 unless($ignore_state || &is_nonempty($current->{'MOUNT_RO'}));
+	return 1 unless ($ignore_state || &is_nonempty($current->{'MOUNT_RO'}));
 	my $stop_cmd = (shift() // '');
 	my $message = (shift() // '');
-	&info($message) if($message ne '');
+	&info($message) if ($message ne '');
 	my $dir_ro = &get_abspath('READONLY');
-	return '' unless(&is_abspath($dir_ro) &&
+	return '' unless (&is_abspath($dir_ro) &&
 		&umount_dir($dir_ro, 1, &is_squashfuse_type()));
 	&rmdir_recurse($dir_ro, ($user_config->{'RM_READONLY'} // $rm_readonly))
-		if($stop_cmd // '');
+		if ($stop_cmd // '');
 	delete($current->{'MOUNT_RO'});
 	1
 }
@@ -2936,7 +2936,7 @@ sub umount_readonly {
 sub human_type {
 	my $type = $current->{'TYPE'};
 	my $squashtype = $current->{'MOUNT_RO'};
-	if(&is_nonempty($type)) {
+	if (&is_nonempty($type)) {
 		return (&is_nonempty($squashtype) ? $type . '/' . $squashtype :
 			$type)
 	}
@@ -2947,16 +2947,16 @@ sub human_type {
 
 sub reset_main {
 	my ($message) = @_;
-	&info('resetting configuration') if($message);
+	&info('resetting configuration') if ($message);
 	&fill_current(1)
 }
 
 # print an error and return 1 if not at least halfmounted and not -I
 
 sub error_unless_mounted {
-	unless(&is_nonempty($current->{'TYPE'})
+	unless (&is_nonempty($current->{'TYPE'})
 		|| &is_nonempty($current->{'MOUNT_RO'})) {
-		unless($ignore_state) {
+		unless ($ignore_state) {
 			&error('not mounted');
 			return 1
 		}
@@ -2968,8 +2968,8 @@ sub error_unless_mounted {
 # print an error and return 1 if mounted and not -I
 
 sub error_if_mounted {
-	if(&is_nonempty($current->{'TYPE'})) {
-		unless($ignore_state) {
+	if (&is_nonempty($current->{'TYPE'})) {
+		unless ($ignore_state) {
 			&error('already mounted');
 			return 1
 		}
@@ -2984,26 +2984,26 @@ sub first_create {
 	my ($squashfile, $dir) = @_;
 	&info('It seems this is mounted for the first time:',
 		"The squash-file $squashfile does not exist yet;",
-		"it will be initialized now from $dir") unless($quiet);
-	return '' unless(&mksquashfs($squashfile, $dir));
+		"it will be initialized now from $dir") unless ($quiet);
+	return '' unless (&mksquashfs($squashfile, $dir));
 	&set_permissions($squashfile);
 	# Sanity check: do not wipe if e.g. kernel has no squashfs support
 	my $success = 1; {
 		my $tmp = File::Temp::newdir();
 		my $name = $tmp->dirname;
 		my $squashtype = &mount_squash($squashfile, $name);
-		if(&is_nonempty($squashtype)) {
-			$success = '' unless(&umount_dir($name, 1, &is_squashfuse_type($squashtype)))
+		if (&is_nonempty($squashtype)) {
+			$success = '' unless (&umount_dir($name, 1, &is_squashfuse_type($squashtype)))
 		} else {
 			$success = ''
 		}
 	}
-	unless($success) {
+	unless ($success) {
 		&error('failed to mount generated squash-file ' . $squashfile,
 			'skipping deletion of original DIR ' . $dir);
 		return ''
 	}
-	&info('cleaning original DIR') unless($quiet);
+	&info('cleaning original DIR') unless ($quiet);
 	&clean_directory($dir)
 }
 
@@ -3014,16 +3014,16 @@ sub set_permissions {
 	my $dir = shift() // '';
 	my $ret = 1;
 	my $chmod = &get_chmod($dir ? 'CHMOD_DIR' : undef);
-	unless($chmod eq '') {
-		unless(chmod($chmod, $filedir)) {
+	unless ($chmod eq '') {
+		unless (chmod($chmod, $filedir)) {
 			my $octal = sprintf('%#o', $chmod);
 			&warning("chmod $octal $filedir failed");
 			$ret = ''
 		}
 	}
 	my ($uid, $gid) = &get_chown($dir ? 'CHOWN_DIR' : undef);
-	return $ret unless(defined($uid));
-	unless(chown($uid, $gid, $filedir)) {
+	return $ret unless (defined($uid));
+	unless (chown($uid, $gid, $filedir)) {
 		&warning("chown $uid:$gid $filedir failed");
 		$ret = ''
 	}
@@ -3034,7 +3034,7 @@ sub set_permissions {
 
 sub get_chmod {
 	my $chmod = $user_config->{$_[0] // 'CHMOD'};
-	return (defined($_[0]) ? '' : 0644) unless(defined($chmod));
+	return (defined($_[0]) ? '' : 0644) unless (defined($chmod));
 	$chmod
 }
 
@@ -3043,17 +3043,17 @@ sub get_chmod {
 sub get_chown {
 	my $chown = $user_config->{$_[0] // 'CHOWN'};
 	my ($uid, $gid) = (undef, undef);
-	return (undef, undef) unless(defined($chown));
-	if(ref($chown) eq 'ARRAY') {
-		return (undef, undef) unless(@$chown);
+	return (undef, undef) unless (defined($chown));
+	if (ref($chown) eq 'ARRAY') {
+		return (undef, undef) unless (@$chown);
 		($uid, $gid) = @$chown
 	} else {
-		return (undef, undef) if($chown eq '');
+		return (undef, undef) if ($chown eq '');
 		($uid, $gid) = split(qr{\D}, $chown)
 	}
-	$uid = -1 unless(defined($uid) && ($uid =~ m{^\d+$}));
-	$gid = -1 unless(defined($gid) && ($gid =~ m{^\d+$}));
-	return (undef, undef) if(($uid == -1) && ($gid == -1));
+	$uid = -1 unless (defined($uid) && ($uid =~ m{^\d+$}));
+	$gid = -1 unless (defined($gid) && ($gid =~ m{^\d+$}));
+	return (undef, undef) if (($uid == -1) && ($gid == -1));
 	($uid, $gid)
 }
 
@@ -3061,10 +3061,10 @@ sub get_chown {
 
 sub mount_rw {
 	my ($ro, $rw) = @_;
-	return undef unless(&create_dir('CHANGES', 1));
+	return undef unless (&create_dir('CHANGES', 1));
 	my $changes = $current->{'CHANGES'};
 	for my $i ($ro, $rw, $changes) {
-		unless(-d $i) {
+		unless (-d $i) {
 			&error("no directory $i");
 			return undef
 		}
@@ -3073,19 +3073,19 @@ sub mount_rw {
 		my $probemod = (($i =~ m{\!}) ? (($i =~ m{\!\!}) ? '' : -1) : 1);
 		my $check_bin = ($i =~ m{\#});
 		my $check_gz = (($i =~ m{\?}) ? (($i =~ m{\?\?}) ? -1 : 1) : '');
-		if($i =~ m{overlayfs}i) {
+		if ($i =~ m{overlayfs}i) {
 			my $type = &mount_overlayfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes);
-			return $type if($type ne '')
-		} elsif($i =~ m{overlay}i) {
-			return 'overlay' if(&mount_overlay($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
-		} elsif($i =~ m{aufs}i) {
-			return 'aufs' if(&mount_aufs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
-		} elsif($i =~ m{fuse}i) {
-			return 'unionfs-fuse' if(&mount_unionfs_fuse($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
-		} elsif($i =~ m{funion}i) {
-			return 'funionfs' if(&mount_funionfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
-		} elsif($i =~ m{union}i) {
-			return 'unionfs' if(&mount_unionfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
+			return $type if ($type ne '')
+		} elsif ($i =~ m{overlay}i) {
+			return 'overlay' if (&mount_overlay($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
+		} elsif ($i =~ m{aufs}i) {
+			return 'aufs' if (&mount_aufs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
+		} elsif ($i =~ m{fuse}i) {
+			return 'unionfs-fuse' if (&mount_unionfs_fuse($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
+		} elsif ($i =~ m{funion}i) {
+			return 'funionfs' if (&mount_funionfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
+		} elsif ($i =~ m{union}i) {
+			return 'unionfs' if (&mount_unionfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
 		} else {  # ($i =~ m{bind}i)
 			return (&mount_bind($ro, $rw) ? 'bind' : undef)
 		}
@@ -3098,17 +3098,17 @@ sub mount_rw {
 
 sub mount_overlay {
 	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
-	return '' unless(&kernelprobe($probemod, $check_gz, 'overlay'));
-	return '' if($check_bin && !&which_store(\$mount, 'mount'));
+	return '' unless (&kernelprobe($probemod, $check_gz, 'overlay'));
+	return '' if ($check_bin && !&which_store(\$mount, 'mount'));
 	my $workdir = &create_workdir();
-	return '' if($workdir eq '');
+	return '' if ($workdir eq '');
 	&push_ref(\my @options, $user_config->{'MOUNT_OVERLAY'},
 		['-o', 'noatime']);
-	push(@options, '-v') if($verbose > 3);
-	return 1 if(&my_system('', \$mount, 'mount', '-t', 'overlay', @options,
+	push(@options, '-v') if ($verbose > 3);
+	return 1 if (&my_system('', \$mount, 'mount', '-t', 'overlay', @options,
 		'-o', "upperdir\=${changes}", '-o', "lowerdir\=${ro}",
 		'-o', "workdir\=${workdir}", '--', 'overlay', $rw) == 0);
-	&warning('overlay failed') unless($quiet > 1);
+	&warning('overlay failed') unless ($quiet > 1);
 	''
 }
 
@@ -3117,29 +3117,29 @@ sub mount_overlay {
 
 sub mount_overlayfs {
 	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
-	return '' unless(&kernelprobe($probemod, $check_gz, 'overlayfs'));
-	return '' if($check_bin && !&which_store(\$mount, 'mount'));
+	return '' unless (&kernelprobe($probemod, $check_gz, 'overlayfs'));
+	return '' if ($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_OVERLAYFS'},
 		['-o', 'noatime']);
-	push(@options, '-v') if($verbose > 3);
+	push(@options, '-v') if ($verbose > 3);
 	my @systemargs1 = ('', \$mount, 'mount', '-t', 'overlayfs', @options,
 		'-o', "upperdir\=${changes}", '-o', "lowerdir\=${ro}");
 	my @systemargs2 = ('--', 'overlayfs', $rw);
-	if(&is_nonempty($CFG::obsolete_overlayfs)) {
+	if (&is_nonempty($CFG::obsolete_overlayfs)) {
 		return 'overlayfs-obsolete'
-			if(&my_system(@systemargs1, @systemargs2) == 0)
+			if (&my_system(@systemargs1, @systemargs2) == 0)
 	}
-	unless(($CFG::obsolete_overlayfs // '') eq 'force') {
+	unless (($CFG::obsolete_overlayfs // '') eq 'force') {
 		my $workdir = &create_workdir();
-		return 'overlayfs' if(($workdir ne '') &&
+		return 'overlayfs' if (($workdir ne '') &&
 			(&my_system(@systemargs1, '-o', "workdir\=${workdir}",
 				@systemargs2) == 0))
 	}
-	if(($CFG::obsolete_overlayfs // 1) eq '') {
+	if (($CFG::obsolete_overlayfs // 1) eq '') {
 		return 'overlayfs-obsolete'
-			if(&my_system(@systemargs1, @systemargs2) == 0)
+			if (&my_system(@systemargs1, @systemargs2) == 0)
 	}
-	&warning('overlayfs failed') unless($quiet > 1);
+	&warning('overlayfs failed') unless ($quiet > 1);
 	''
 }
 
@@ -3148,11 +3148,11 @@ sub mount_overlayfs {
 sub create_workdir {
 	my $success = &create_dir('WORKDIR', 1);
 	my $workdir = (($success && ($success > 0)) ? $current->{'WORKDIR'} : '');
-	unless(&is_abspath($workdir)) {
+	unless (&is_abspath($workdir)) {
 		&error('failed to create workdir');
 		return ''
 	}
-	return $workdir if(-d $workdir);
+	return $workdir if (-d $workdir);
 	&error("no directory $workdir");
 	''
 }
@@ -3161,16 +3161,16 @@ sub create_workdir {
 
 sub mount_aufs {
 	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
-	return '' unless(&kernelprobe($probemod, $check_gz, 'aufs'));
-	return '' if($check_bin && !&which_store(\$mount, 'mount'));
+	return '' unless (&kernelprobe($probemod, $check_gz, 'aufs'));
+	return '' if ($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_AUFS'},
 		['-o', 'noatime']);
-	push(@options, '-v') if($verbose > 3);
+	push(@options, '-v') if ($verbose > 3);
 	$ro =~ s{([=:])}{\\$1}g;
 	$changes =~ s{([=:])}{\\$1}g;
-	return 1 if(&my_system('', \$mount, 'mount', '-t', 'aufs', @options,
+	return 1 if (&my_system('', \$mount, 'mount', '-t', 'aufs', @options,
 		'-o', "br\:${changes}\=rw\:${ro}\=rr", '--', 'aufs', $rw) == 0);
-	&warning('aufs failed') unless($quiet > 1);
+	&warning('aufs failed') unless ($quiet > 1);
 	''
 }
 
@@ -3184,21 +3184,21 @@ sub mount_unionfs_fuse {
 	$ro =~ s{([=:])}{\\$1}g;
 	$changes =~ s{([=:])}{\\$1}g;
 	my @tools = ('unionfs', 'unionfs-fuse');
-	unless(&which_store(\$unionfs_fuse, @tools)) {
-		return '' if($check_bin)
+	unless (&which_store(\$unionfs_fuse, @tools)) {
+		return '' if ($check_bin)
 	}
-	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
+	return '' unless (&kernelprobe($probemod, $check_gz, 'fuse'));
 	push(@options, "${changes}\=RW\:${ro}\=RO", $rw);
 	my $sys = &my_system('', \$unionfs_fuse, [ @tools ], @options);
-	return 1 if($sys == 0);
-	if(($sys < 0) && (&which_which() eq '')  # We have no which
+	return 1 if ($sys == 0);
+	if (($sys < 0) && (&which_which() eq '')  # We have no which
 		&& ($unionfs_fuse eq $tools[0])) {
-		if(&my_system('', \my $tool, $tools[1], @options) == 0) {
+		if (&my_system('', \my $tool, $tools[1], @options) == 0) {
 			$unionfs_fuse = $tool;  # remember: this is ok
 			return 1
 		}
 	}
-	&warning('unionfs-fuse failed') unless($quiet > 1);
+	&warning('unionfs-fuse failed') unless ($quiet > 1);
 	''
 }
 
@@ -3206,16 +3206,16 @@ sub mount_unionfs_fuse {
 
 sub mount_unionfs {
 	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
-	return '' unless(&kernelprobe($probemod, $check_gz, 'unionfs'));
-	return '' if($check_bin && !&which_store(\$mount, 'mount'));
+	return '' unless (&kernelprobe($probemod, $check_gz, 'unionfs'));
+	return '' if ($check_bin && !&which_store(\$mount, 'mount'));
 	&push_ref(\my @options, $user_config->{'MOUNT_UNIONFS'},
 		['-o', 'noatime']);
-	push(@options, '-v') if($verbose > 3);
+	push(@options, '-v') if ($verbose > 3);
 	$ro =~ s{([=:])}{\\$1}g;
 	$changes =~ s{([=:])}{\\$1}g;
-	return 1 if(&my_system('', \$mount, 'mount', '-t', 'unionfs', @options,
+	return 1 if (&my_system('', \$mount, 'mount', '-t', 'unionfs', @options,
 		'-o', "dirs\=${changes}\=rw\:${ro}\=ro", '--', 'unionfs', $rw) == 0);
-	&warning('unionfs failed') unless($quiet > 1);
+	&warning('unionfs failed') unless ($quiet > 1);
 	''
 }
 
@@ -3223,14 +3223,14 @@ sub mount_unionfs {
 
 sub mount_funionfs {
 	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
-	return '' if($check_bin && !&which_store(\$funionfs, 'funionfs'));
-	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
+	return '' if ($check_bin && !&which_store(\$funionfs, 'funionfs'));
+	return '' unless (&kernelprobe($probemod, $check_gz, 'fuse'));
 	&push_ref(\my @options, $user_config->{'MOUNT_FUNIONFS'},
 		[@allow_other, '-o', 'nonempty']);
 	$ro =~ s{\=}{\\\=}g;
-	return 1 if(&my_system('', \$funionfs, 'funionfs', $changes, $rw, @options,
+	return 1 if (&my_system('', \$funionfs, 'funionfs', $changes, $rw, @options,
 		'-o', "dirs\=${ro}\=ro") == 0);
-	&warning('funionfs failed') unless($quiet > 1);
+	&warning('funionfs failed') unless ($quiet > 1);
 	''
 }
 
@@ -3239,8 +3239,8 @@ sub mount_funionfs {
 sub mount_bind {
 	my ($from, $to) = @_;
 	my @options = ('--bind');
-	push(@options, '-v') if($verbose > 3);
-	return 1 if(&my_system('', \$mount, 'mount', @options, '--', $from, $to) == 0);
+	push(@options, '-v') if ($verbose > 3);
+	return 1 if (&my_system('', \$mount, 'mount', @options, '--', $from, $to) == 0);
 	&error('mount --bind failed');
 	''
 }
@@ -3249,7 +3249,7 @@ sub mount_bind {
 
 sub mount_squash {
 	my ($squashfile, $dir) = @_;
-	unless(-d $dir) {
+	unless (-d $dir) {
 		&error("no directory $dir");
 		return ''
 	}
@@ -3257,10 +3257,10 @@ sub mount_squash {
 		my $probemod = (($i =~ m{\!}) ? (($i =~ m{\!\!}) ? '' : -1) : 1);
 		my $check_bin = ($i =~ m{\#});
 		my $check_gz = (($i =~ m{\?}) ? (($i =~ m{\?\?}) ? -1 : 1) : '');
-		if($i =~ m{fuse}i) {
-			return 'squashfuse' if(&mount_squashfuse($probemod, $check_gz, $check_bin, $squashfile, $dir))
+		if ($i =~ m{fuse}i) {
+			return 'squashfuse' if (&mount_squashfuse($probemod, $check_gz, $check_bin, $squashfile, $dir))
 		} else {
-			return 'squashfs' if(&mount_squashfs($probemod, $check_gz, $check_bin, $squashfile, $dir))
+			return 'squashfs' if (&mount_squashfs($probemod, $check_gz, $check_bin, $squashfile, $dir))
 		}
 	}
 	&error('failed to mount squash-file');
@@ -3271,16 +3271,16 @@ sub mount_squash {
 
 sub mount_squashfs {
 	my ($probemod, $check_gz, $check_bin, $squashfile, $dir) = @_;
-	return '' unless(&kernelprobe($probemod, $check_gz, 'squashfs'));
-	if($modprobe_loop) {
-		return '' unless(&kernelprobe($probemod, $check_gz, 'loop'))
+	return '' unless (&kernelprobe($probemod, $check_gz, 'squashfs'));
+	if ($modprobe_loop) {
+		return '' unless (&kernelprobe($probemod, $check_gz, 'loop'))
 	}
-	return '' if($check_bin && !&which_store(\$mount, 'mount'));
+	return '' if ($check_bin && !&which_store(\$mount, 'mount'));
 	my @options = ('-t', 'squashfs', '-o', 'loop,ro,noatime');
-	push(@options, '-v') if($verbose > 3);
-	return 1 if(&my_system('', \$mount, 'mount', @options,
+	push(@options, '-v') if ($verbose > 3);
+	return 1 if (&my_system('', \$mount, 'mount', @options,
 		'--', $squashfile, $dir) == 0);
-	&warning('squashfs failed') unless($quiet > 1);
+	&warning('squashfs failed') unless ($quiet > 1);
 	''
 }
 
@@ -3295,22 +3295,22 @@ sub mount_squashfuse {
 		$squashfile, $dir);
 	my @tools = ($squashfuse_ll ? ('squashfuse_ll') : ());
 	push(@tools, 'squashfuse');
-	unless(&which_store(\$squashfuse, @tools)) {
-		return '' if($check_bin)
+	unless (&which_store(\$squashfuse, @tools)) {
+		return '' if ($check_bin)
 	}
-	return '' unless(&kernelprobe($probemod, $check_gz, 'fuse'));
+	return '' unless (&kernelprobe($probemod, $check_gz, 'fuse'));
 	my $sys = &my_system('', \$squashfuse, [ @tools ], @options);
-	return 1 if($sys == 0);
-	if($squashfuse_ll && ($sys < 0)
+	return 1 if ($sys == 0);
+	if ($squashfuse_ll && ($sys < 0)
 		&& (&which_which() eq '')  # We have no which
 		&& ($squashfuse eq $tools[0])) {
 		my $tool;
-		if(&my_system('', \my $tool, $tools[1], @options) == 0) {
+		if (&my_system('', \my $tool, $tools[1], @options) == 0) {
 			$squashfuse = $tool;  # remember: this is ok
 			return 1
 		}
 	}
-	&warning('squashfuse failed') unless($quiet > 1);
+	&warning('squashfuse failed') unless ($quiet > 1);
 	''
 }
 
@@ -3318,7 +3318,7 @@ sub mount_squashfuse {
 
 sub mksquashfs {
 	my ($squashfile, $dir) = @_;
-	unless(-d $dir) {
+	unless (-d $dir) {
 		&error("no directory $dir");
 		return ''
 	}
@@ -3326,14 +3326,14 @@ sub mksquashfs {
 	my @parent = &split_dir($squashfile);
 	pop(@parent);
 	my $parent = &cat_dir(@parent);
-	if(($parent ne '') && !(-d $parent)) {
-		return '' unless(&make_directory($parent))
+	if (($parent ne '') && !(-d $parent)) {
+		return '' unless (&make_directory($parent))
 	}
 	my $redirect = &mksquashfs_options(\my @options);
 	my $oldout = undef;
 	my $ret = (&my_system($redirect, \$mksquashfs, 'mksquashfs', $dir, $squashfile, @options) == 0);
 	&error($verbose ? 'failed: ' . &shell_quote_best_effort($mksquashfs, $dir, $squashfile, @options)
-		: 'mksquashfs failed') unless($ret);
+		: 'mksquashfs failed') unless ($ret);
 	$ret
 }
 
@@ -3343,24 +3343,24 @@ sub mksquashfs {
 sub mksquashfs_options {
 	my ($options) = @_;
 	@$options = ('-noappend');
-	push(@$options, '-processors', $processors) if($processors ne '');
-	push(@$options, '-mem', $mem) if($mem ne '');
+	push(@$options, '-processors', $processors) if ($processors ne '');
+	push(@$options, '-mem', $mem) if ($mem ne '');
 	$mksquash_symbols = &calc_mksquash_symbols($mksquash_verbose)
-		unless(defined($mksquash_symbols));
-	push(@$options, '-quiet') if(($verbose <= 3) &&
+		unless (defined($mksquash_symbols));
+	push(@$options, '-quiet') if (($verbose <= 3) &&
 		defined($mksquash_symbols->{'q'}));
-	push(@$options, '-no-progress') if(defined($mksquash_symbols->{'n'}));
-	push(@$options, '-info') if(($verbose > 3) &&
+	push(@$options, '-no-progress') if (defined($mksquash_symbols->{'n'}));
+	push(@$options, '-info') if (($verbose > 3) &&
 		defined($mksquash_symbols->{'i'}));
-	push(@$options, '-progress') if(defined($mksquash_symbols->{'p'}));
-	push(@$options, '-always-use-fragments') if(&is_nonempty($user_config->{'DEFAULT_FRAGMENTS'}));
+	push(@$options, '-progress') if (defined($mksquash_symbols->{'p'}));
+	push(@$options, '-always-use-fragments') if (&is_nonempty($user_config->{'DEFAULT_FRAGMENTS'}));
 	my $comp = (defined($compression) ? lc($compression) : 'zstd');
 	my $compopt = $user_config->{'COMPOPT_' . uc($comp)};
-	unless(defined($compopt)) {
-		$compopt = ['-Xcompression-level', '22'] if($comp eq 'zstd');
-		$compopt = '-Xhc' if($comp eq 'lz4')
+	unless (defined($compopt)) {
+		$compopt = ['-Xcompression-level', '22'] if ($comp eq 'zstd');
+		$compopt = '-Xhc' if ($comp eq 'lz4')
 	}
-	push(@$options, '-comp', $comp) if($comp ne '');
+	push(@$options, '-comp', $comp) if ($comp ne '');
 	&push_ref($options, $compopt, undef);
 	&push_ref($options, $user_config->{'MKSQUASHFS'}, undef);
 	defined($mksquash_symbols->{'r'})
@@ -3373,21 +3373,21 @@ sub calc_mksquash_symbols {
 	my $squash_symbols = {};
 	while($squash_verbose =~ s{([inpqr])([12\-\+\?\!]*)}{}i) {
 		my ($symbol, $flags) = ($1, $2);
-		if($flags =~ m{[1\-]}) {
-			next if(((!$stdoutterm) && ($flags =~ m{1})) ||
+		if ($flags =~ m{[1\-]}) {
+			next if (((!$stdoutterm) && ($flags =~ m{1})) ||
 				($stdoutterm && ($flags =~ m{\-})))
 		}
-		if($flags =~ m{[2\+]}) {
+		if ($flags =~ m{[2\+]}) {
 			$stderrterm //= ((-t STDERR) // '');
-			next if(((!$stderrterm) && ($flags =~ m{2})) ||
+			next if (((!$stderrterm) && ($flags =~ m{2})) ||
 				($stderrterm && ($flags =~ m{\+})))
 		}
-		if($flags =~ m{[\?\!]}) {
-			&set_know_quiet() unless(defined($know_quiet));
-			next if(((!$know_quiet) && ($flags =~ m{\?})) ||
+		if ($flags =~ m{[\?\!]}) {
+			&set_know_quiet() unless (defined($know_quiet));
+			next if (((!$know_quiet) && ($flags =~ m{\?})) ||
 				($know_quiet && ($flags =~ m{\!})))
 		}
-		if($symbol =~ m{[[:upper:]]}) {
+		if ($symbol =~ m{[[:upper:]]}) {
 			delete($squash_symbols->{lc($symbol)})
 		} else {
 			$squash_symbols->{$symbol} = 1
@@ -3402,7 +3402,7 @@ sub set_know_quiet {
 	$know_quiet = '';
 	open(my $fh, 'mksquashfs 2>&1 |') || return;
 	while(<$fh>) {
-		$know_quiet = 1 if(m{\-quiet})
+		$know_quiet = 1 if (m{\-quiet})
 	}
 	close($fh)
 }
@@ -3414,19 +3414,19 @@ sub set_know_quiet {
 sub umount_dir {
 	my ($dir, $readonly, $fuse) = @_;
 	my @uopt = ();
-	if($fuse // '') {
+	if ($fuse // '') {
 		my $uopt = $user_config->{$readonly ? 'UMOUNT_RO' : 'UMOUNT'};
-		if(defined($uopt)) {
+		if (defined($uopt)) {
 			push(@uopt, ref($uopt eq 'ARRAY') ? @$uopt : $uopt)
 		} else {
 			push(@uopt, ($readonly ? @CFG::umount_ro : @CFG::umount))
 		}
-		push(@uopt, '-v') if($verbose > 3);
+		push(@uopt, '-v') if ($verbose > 3);
 	}
 	my @fopt = ();
-	if($fuse // 1) {
+	if ($fuse // 1) {
 		my $fopt = $user_config->{$readonly ? 'FUMOUNT_RO' : 'FUMOUNT'};
-		if(defined($fopt)) {
+		if (defined($fopt)) {
 			push(@fopt, ref($fopt eq 'ARRAY') ? @$fopt : $fopt)
 		} else {
 			push(@fopt, ($readonly ? @CFG::fumount_ro : @CFG::fumount))
@@ -3434,37 +3434,37 @@ sub umount_dir {
 	}
 	my $loclazy = $lazy;
 	my $loclsof = ($readonly ? $lsof_ro : $lsof );
-	if(($loclsof ne '') && !&lsof($dir, $readonly)) {
-		if($loclsof == 0) {
+	if (($loclsof ne '') && !&lsof($dir, $readonly)) {
+		if ($loclsof == 0) {
 			$loclazy = 1
-		} elsif($loclsof < 0) {
+		} elsif ($loclsof < 0) {
 			$loclazy = -1
 		} else {
 			return ''
 		}
 	}
-	if($loclazy >= 0) {
-		if($fuse // 1) {
-			return 1 if(&my_system(1, \$fusermount, 'fusermount',
+	if ($loclazy >= 0) {
+		if ($fuse // 1) {
+			return 1 if (&my_system(1, \$fusermount, 'fusermount',
 				'-u', @fopt, '--', $dir) == 0)
 		}
-		unless($fuse // '') {
-			return 1 if(&my_system(1, \$umount, 'umount',
+		unless ($fuse // '') {
+			return 1 if (&my_system(1, \$umount, 'umount',
 				@uopt, '--', $dir) == 0)
 		}
-		unless($loclazy) {
+		unless ($loclazy) {
 			&error('non-lazy umount failed for ', $dir);
 			return ''
 		}
 		&error('non-lazy umount failed,',
-			"using lazy umount of $dir") unless($quiet > 1)
+			"using lazy umount of $dir") unless ($quiet > 1)
 	}
-	if($fuse // 1) {
-		return 1 if(&my_system(1, \$fusermount, 'fusermount',
+	if ($fuse // 1) {
+		return 1 if (&my_system(1, \$fusermount, 'fusermount',
 			'-u', '-z', @fopt, '--', $dir) == 0)
 	}
-	unless($fuse // '') {
-		return 1 if(&my_system(1, \$umount, 'umount',
+	unless ($fuse // '') {
+		return 1 if (&my_system(1, \$umount, 'umount',
 			'-l', @uopt, '--', $dir) == 0)
 	}
 	&error("lazy umount failed for $dir");
@@ -3477,15 +3477,15 @@ sub umount_dir {
 
 sub check_squash {
 	my ($threshold, $kill) = @_;
-	return ('', 0) unless(&is_resquash_type());
-	return (1, 1) if($threshold == -2);
-	return ('', 0) if($threshold < 0);
-	return ('', 1) if($kill > 0);
+	return ('', 0) unless (&is_resquash_type());
+	return (1, 1) if ($threshold == -2);
+	return ('', 0) if ($threshold < 0);
+	return ('', 1) if ($kill > 0);
 	my $thr = &threshold_dir($threshold);
-	return ('', 0) if($thr eq '');
-	if($thr == 0) {
+	return ('', 0) if ($thr eq '');
+	if ($thr == 0) {
 		return ('', -1)  # clean "empty" directory
-	} elsif($thr > 0) {
+	} elsif ($thr > 0) {
 		return (1, 1)  # squash and clean nonempty directory
 	}
 	('', (($kill < 0) ? 1 : 0))  # no squash but possibly kill
@@ -3504,7 +3504,7 @@ sub my_modprobe {
 
 sub use_gunzip {
 	state $gunzip;
-	return $gunzip if(defined($gunzip));
+	return $gunzip if (defined($gunzip));
 	eval {
 		require IO::Uncompress::Gunzip
 	};
@@ -3517,14 +3517,14 @@ sub use_gunzip {
 sub read_kernel_config {
 	my ($gz) = @_;
 	my $buffer;
-	return '' unless(IO::Uncompress::Gunzip::gunzip(
+	return '' unless (IO::Uncompress::Gunzip::gunzip(
 		File::Spec->catdir($root, 'proc', 'config.gz') => \$buffer));
-	$gz->{'overlay'} = 1 if($buffer =~ m{^CONFIG_OVERLAY_FS\=[yYmM]}m);
-	$gz->{'overlayfs'} = 1 if($buffer =~ m{^CONFIG_OVERLAYFS_FS\=[yYmM]}m);
-	$gz->{'aufs'} = 1 if($buffer =~ m{^CONFIG_AUFS_FS\=[yYmM]}m);
-	$gz->{'unionfs'} = 1 if($buffer =~ m{^CONFIG_UNION_?FS\=[yYmM]}m);
-	$gz->{'fuse'} = 1 if($buffer =~ m{^CONFIG_FUSE_FS\=[yYmM]}m);
-	$gz->{'squashfs'} = 1 if($buffer =~ m{^CONFIG_SQUASHFS\=[yYmM]}m);
+	$gz->{'overlay'} = 1 if ($buffer =~ m{^CONFIG_OVERLAY_FS\=[yYmM]}m);
+	$gz->{'overlayfs'} = 1 if ($buffer =~ m{^CONFIG_OVERLAYFS_FS\=[yYmM]}m);
+	$gz->{'aufs'} = 1 if ($buffer =~ m{^CONFIG_AUFS_FS\=[yYmM]}m);
+	$gz->{'unionfs'} = 1 if ($buffer =~ m{^CONFIG_UNION_?FS\=[yYmM]}m);
+	$gz->{'fuse'} = 1 if ($buffer =~ m{^CONFIG_FUSE_FS\=[yYmM]}m);
+	$gz->{'squashfs'} = 1 if ($buffer =~ m{^CONFIG_SQUASHFS\=[yYmM]}m);
 	1
 }
 
@@ -3535,10 +3535,10 @@ sub read_module_config {
 	my @dirs = ($root, 'sys', 'module');
 	{
 		my $dir = File::Spec->catdir(@dirs);
-		return '' unless((-d $dir) && (-r $dir) && (-x $dir))
+		return '' unless ((-d $dir) && (-r $dir) && (-x $dir))
 	}
 	for my $m ('overlay', 'overlayfs', 'aufs', 'unionfs', 'fuse', 'squashfs') {
-		$modules->{$m} = 1 if(-d File::Spec->catdir(@dirs, $m))
+		$modules->{$m} = 1 if (-d File::Spec->catdir(@dirs, $m))
 	}
 	1
 }
@@ -3547,24 +3547,24 @@ sub read_module_config {
 
 sub kernelprobe {
 	my ($probemod, $check_gz, $module) = @_;
-	if($probemod) {
-		return 1 if(&my_modprobe($module));
-		return '' if(($probemod > 0) && !$check_gz);
+	if ($probemod) {
+		return 1 if (&my_modprobe($module));
+		return '' if (($probemod > 0) && !$check_gz);
 	}
-	return 1 unless($check_gz);
+	return 1 unless ($check_gz);
 	state $modules;
-	unless(defined($modules)) {
+	unless (defined($modules)) {
 		$modules = {};
-		$modules = '' unless(&read_module_config($modules))
+		$modules = '' unless (&read_module_config($modules))
 	}
-	if(ref($modules eq 'HASH')) {
+	if (ref($modules eq 'HASH')) {
 		return ($modules->{$module} // '')
 	}
 	state $gz;
-	unless(defined($gz)) {
-		if(&use_gunzip()) {
+	unless (defined($gz)) {
+		if (&use_gunzip()) {
 			$gz = {};
-			$gz = 1 unless(&read_kernel_config($gz))
+			$gz = 1 unless (&read_kernel_config($gz))
 		} else {
 			$gz = ''
 		}
@@ -3630,15 +3630,15 @@ our @EXPORT = qw(
 sub read_config_file {
 	my ($file) = @_;
 	$file = &bad_abs_path($file);
-	unless(defined($file)) {
-		&warning('skipping config file ' . $_[0] . ' (not a valid path)') unless($verbose);
+	unless (defined($file)) {
+		&warning('skipping config file ' . $_[0] . ' (not a valid path)') unless ($verbose);
 		return
 	}
-	if((-d $file) || !(-r $file)) {
-		&warning("skipping config file $file (not a readable file)") if($verbose);
+	if ((-d $file) || !(-r $file)) {
+		&warning("skipping config file $file (not a readable file)") if ($verbose);
 		return
 	}
-	&info("reading config file $file") if($verbose > 2);
+	&info("reading config file $file") if ($verbose > 2);
 	package CFG;
 	our $lazy;
 	our $lsof;
@@ -3675,11 +3675,11 @@ sub read_config_file {
 	our $after_umount;
 	Squashmount->import();
 	my $ret = do($file);
-	&fatal("failed to parse $file:", "$@") if($@);
-	&fatal("failed to read $file:", "$!") unless(defined($ret));
+	&fatal("failed to parse $file:", "$@") if ($@);
+	&fatal("failed to read $file:", "$!") unless (defined($ret));
 	&warning("failed to run $file",
 		'perhaps the last executed command was not a true expression')
-		unless($ret);
+		unless ($ret);
 	$ret
 }
 
@@ -3692,30 +3692,30 @@ sub have_stored_data($) {
 sub added_hash(@) {
 	my $a = {};
 	for my $i (@_) {
-		unless(defined($i) && (ref($i) eq 'HASH')) {
+		unless (defined($i) && (ref($i) eq 'HASH')) {
 			&warning('wrong argument in added_hash() or standard_mount():',
 				'hash reference expected');
 			next
 		}
 		for my $j (keys(%$i)) {
-			unless(exists($a->{$j})) {
+			unless (exists($a->{$j})) {
 				$a->{$j} = $i->{$j};
 				next
 			}
 			my $type = ref($i->{$j});
-			if($type eq 'HASH') {
-				if(ref($a->{$j}) eq 'HASH') {
+			if ($type eq 'HASH') {
+				if (ref($a->{$j}) eq 'HASH') {
 					$a->{$j} = &added_hash($a->{$j}, $i->{$j})
 				} else {
 					$a->{$j} = $i->{$j}
 				}
-			} elsif($type eq 'ARRAY') {
+			} elsif ($type eq 'ARRAY') {
 				my $source = $i->{$j};
 				my $aref = ref($a->{$j});
-				if($aref eq 'ARRAY') {
+				if ($aref eq 'ARRAY') {
 					my $arrayref = $a->{$j};
 					push(@$arrayref, @$source)
-				} elsif(($aref eq '') && defined($a->{$j})) {
+				} elsif (($aref eq '') && defined($a->{$j})) {
 					$a->{$j} = [ $a->{$j}, @$source ]
 				} else {
 					$a->{$j} = $source
@@ -3732,11 +3732,11 @@ sub standard_mount($$@) {
 	my $tag = shift();
 	my $dir = shift();
 	&fatal('first argument of standard_mount() should be a (nonempty) tag')
-		unless(defined($tag) && (ref(\$tag) eq 'SCALAR') && ($tag ne ''));
+		unless (defined($tag) && (ref(\$tag) eq 'SCALAR') && ($tag ne ''));
 	# Checking for -d $dir might be wrong: the config might use
 	# this as a flag and not add the result to @mounts later on
 	&fatal('error: second argument of standard_mount() should be a directory')
-		unless(defined($dir) && (ref(\$dir) eq 'SCALAR') && ($dir ne ''));
+		unless (defined($dir) && (ref(\$dir) eq 'SCALAR') && ($dir ne ''));
 	$dir = File::Spec->canonpath($dir);
 	&added_hash({
 		TAG => $tag,
@@ -3753,8 +3753,8 @@ sub standard_mount($$@) {
 
 sub read_settings {
 	my $file = &settings_file();
-	if(open(my $fh, '<', $file)) {
-		if($locking) {
+	if (open(my $fh, '<', $file)) {
+		if ($locking) {
 			$lockfh = $fh;  # unlock even if we die
 			flock($lockfh, Fcntl::LOCK_SH())
 		}
@@ -3763,7 +3763,7 @@ sub read_settings {
 			our %data = ();
 			do($file)
 		}
-		close($fh) unless(&end_locking());
+		close($fh) unless (&end_locking());
 		%$current = %RUNCFG::data
 	} else {
 		%$current = ()
@@ -3775,22 +3775,22 @@ sub read_settings {
 sub write_settings {
 	my $file = &settings_file();
 	my $fh;
-	if(defined($lockfh)) {
+	if (defined($lockfh)) {
 		$fh = $lockfh;
-		unless(seek($fh, 0, Fcntl::SEEK_SET())) {
+		unless (seek($fh, 0, Fcntl::SEEK_SET())) {
 			&error("cannot seek $file");
 			return ''
 		}
-		unless(truncate($fh, 0)) {
+		unless (truncate($fh, 0)) {
 			&error("cannot truncate $file");
 			return ''
 		}
 	} else {
-		unless(open($fh, '>', $file)) {
+		unless (open($fh, '>', $file)) {
 			&error("cannot open $file for writing");
 			return ''
 		}
-		if($locking) {
+		if ($locking) {
 			$lockfh = $fh;  # unlock even if we die
 			flock($lockfh, Fcntl::LOCK_EX())
 		}
@@ -3798,31 +3798,31 @@ sub write_settings {
 	my $ret = 1;
 	for my $i (keys(%$current)) {
 		my $value = $current->{$i};
-		next unless(defined($value));
+		next unless (defined($value));
 		my $write = "\$data\{\'$i\'\} = ";
-		if($i eq 'THRESHOLD') {
+		if ($i eq 'THRESHOLD') {
 			$write = "\{\n\tuse bigint\;\n\t$write$value\n\}\n"
-		} elsif($value eq '') {
+		} elsif ($value eq '') {
 			$write .= "'';\n"
-		} elsif($value =~ m{^\-?\d*$}) {
+		} elsif ($value =~ m{^\-?\d*$}) {
 			$write .= "$value\;\n"
 		} else {
 			$write .= '"' . quotemeta($value) . "\"\;\n"
 		}
-		unless(print($fh $write)) {
-			&error("cannot write to $file") unless($ret);
+		unless (print($fh $write)) {
+			&error("cannot write to $file") unless ($ret);
 			$ret = ''
 		}
 	}
-	close($fh) unless(&end_locking());
+	close($fh) unless (&end_locking());
 	$ret
 }
 
 # forget settings in /run/squashmount if $current_empty suggests to.
 
 sub remove_settings {
-	return '' unless(defined($current_empty));
-	return '' unless(&hash_equal($current_empty, $current));
+	return '' unless (defined($current_empty));
+	return '' unless (&hash_equal($current_empty, $current));
 	my $file = &settings_file();
 	(!(-f $file)) || unlink($file)
 }
@@ -3830,9 +3830,9 @@ sub remove_settings {
 # Start locking in /run/squashmount unless $run_ro
 
 sub start_locking {
-	return unless($locking && !$run_ro);
+	return unless ($locking && !$run_ro);
 	my $file = &settings_file();
-	unless(open($lockfh, '>>', $file)) {
+	unless (open($lockfh, '>>', $file)) {
 		$lockfh = undef;
 		return
 	}
@@ -3842,7 +3842,7 @@ sub start_locking {
 # End locking in /run/squashmount. Return 1 if we had a lock
 
 sub end_locking {
-	return '' unless(defined($lockfh));
+	return '' unless (defined($lockfh));
 	flock($lockfh, Fcntl::LOCK_UN());
 	close($lockfh);
 	$lockfh = undef;
@@ -3852,7 +3852,7 @@ sub end_locking {
 # Forget settings from $current and remember new state in $current_empty
 
 sub forget_settings {
-	&info('forgetting settings') unless($quiet);
+	&info('forgetting settings') unless ($quiet);
 	$rm_rundir_on_end = 1;
 	$current = {};
 	&fill_current();
@@ -3875,7 +3875,7 @@ sub set_globals {
 	$compression = ($opt_compression // $current->{'COMPRESSION'});
 	$threshold = (($opt_threshold ne '') ?
 		&parse_threshold($opt_threshold) : $current->{'THRESHOLD'});
-	if(($threshold < 0) && ($threshold != -2)) {
+	if (($threshold < 0) && ($threshold != -2)) {
 		$kill = 0
 	} else {
 		$kill = ($opt_kill // &parse_kill($current->{'KILL'}))
@@ -3886,19 +3886,19 @@ sub set_globals {
 
 sub fill_current {
 	my $force = (shift() // '');
-	if($force || !exists($current->{'BACKUP'})) {
+	if ($force || !exists($current->{'BACKUP'})) {
 		$current->{'BACKUP'} = $user_config->{'BACKUP'}
 	}
-	if($force || !exists($current->{'TEMPDIR'})) {
+	if ($force || !exists($current->{'TEMPDIR'})) {
 		$current->{'TEMPDIR'} = $user_config->{'TEMPDIR'}
 	}
-	if($force || !exists($current->{'COMPRESSION'})) {
+	if ($force || !exists($current->{'COMPRESSION'})) {
 		$current->{'COMPRESSION'} = $user_config->{'COMPRESSION'}
 	}
-	if($force || !exists($current->{'THRESHOLD'})) {
+	if ($force || !exists($current->{'THRESHOLD'})) {
 		$current->{'THRESHOLD'} = &parse_threshold($user_config->{'THRESHOLD'})
 	}
-	if($force || !exists($current->{'KILL'})) {
+	if ($force || !exists($current->{'KILL'})) {
 		$current->{'KILL'} = $user_config->{'KILL'}
 	}
 	1
@@ -3908,29 +3908,29 @@ sub fill_current {
 
 sub parse_threshold {
 	my ($threshold) = @_;
-	return 0 unless(defined($threshold));
+	return 0 unless (defined($threshold));
 	$threshold =~ s{[[:space:]]}{}gm;
 	$threshold =~ s{^\+}{};
-	return 0 unless($threshold =~ m{^(\-?\d+)([kmgt])?$}i);
+	return 0 unless ($threshold =~ m{^(\-?\d+)([kmgt])?$}i);
 	use bigint;
 	my ($num, $ext) = ($1, $2);
-	return (-2) if(($num == -2) && !&is_nonempty($ext));
-	return (-1) if($num < 0);
-	return $num unless(&is_nonempty($ext));
+	return (-2) if (($num == -2) && !&is_nonempty($ext));
+	return (-1) if ($num < 0);
+	return $num unless (&is_nonempty($ext));
 	for my $i (qr{k}i, qr{m}i, qr{g}i) {
 		$num *= 1024;
-		return $num if($ext =~ $i)
+		return $num if ($ext =~ $i)
 	}
-	$num * 1024  # if($ext =~ m{t}i)
+	$num * 1024  # if ($ext =~ m{t}i)
 }
 
 # Turn argument into a number.
 
 sub parse_kill {
 	my ($kill) = @_;
-	return 0 unless(&is_nonempty($kill));
-	return 1 unless(&is_integer($kill));
-	return 0 if($kill == 0);
+	return 0 unless (&is_nonempty($kill));
+	return 1 unless (&is_integer($kill));
+	return 0 if ($kill == 0);
 	(($kill > 0) ? 1 : -1)
 }
 
@@ -3941,7 +3941,7 @@ sub human_threshold {
 	my ($threshold) = @_;
 	my $append = '';
 	for my $i ('k', 'm', 'g', 't') {
-		return "$threshold$append" if($threshold < 512);
+		return "$threshold$append" if ($threshold < 512);
 		$threshold = &roundup($threshold, 1024);
 		$append = $i
 	}
@@ -3965,7 +3965,7 @@ sub find_pass_dir {
 		$hash->{'CHANGES'},
 		$hash->{'WORKDIR'},
 		$hash->{'READONLY'}) {
-		return 1 if(exists($pass_dir->{$i}))
+		return 1 if (exists($pass_dir->{$i}))
 	}
 	''
 }
@@ -3975,23 +3975,23 @@ sub find_pass_dir {
 
 sub create_dir {
 	my ($i, $require_dir) = @_;
-	if(exists($current->{$i})) {
+	if (exists($current->{$i})) {
 		my $dir = $current->{$i};
-		return -1 unless(&is_abspath($dir));
-		return 1 if(-d $dir);
+		return -1 unless (&is_abspath($dir));
+		return 1 if (-d $dir);
 		# $current->{$i} directory was removed (e.g. by the user).
 		# Recreate it, possibly generating a new tempdir...
 	}
 	my $dir = &create_dirname($user_config->{$i});
-	unless(&is_nonempty($dir)) {
+	unless (&is_nonempty($dir)) {
 		&error("failed to create $i");
 		return ''
 	}
-	if(&is_abspath($dir)) {
+	if (&is_abspath($dir)) {
 		$current->{$i} = $dir;
 		return 1
 	}
-	if($require_dir) {
+	if ($require_dir) {
 		&error("no absolute directory $i");
 		return ''
 	}
@@ -4003,18 +4003,18 @@ sub create_dir {
 
 sub create_dirname {
 	my $temp = (shift() // '');
-	if(ref($temp) eq 'CODE') {
+	if (ref($temp) eq 'CODE') {
 		$temp = $temp->($tag)
 	}
-	if(ref($temp) eq 'File::Temp::Dir') {
+	if (ref($temp) eq 'File::Temp::Dir') {
 		$temp->unlink_on_destroy('');
 		$temp = $temp->dirname;
-	} elsif($temp eq '') {
+	} elsif ($temp eq '') {
 		$temp = File::Temp::newdir(undef, CLEANUP => '');
 		$temp = $temp->dirname;
 	}
-	return $temp unless(&is_abspath($temp));
-	unless(-d $temp) {
+	return $temp unless (&is_abspath($temp));
+	unless (-d $temp) {
 		return undef unless &make_directory($temp);
 	}
 	&bad_abs_path($temp)
@@ -4026,9 +4026,9 @@ sub create_dirname {
 sub is_valid_changes {
 	my ($create_dir) = @_;
 	my $result = &is_resquash_type();
-	return 1 if($result);
-	return '' if($result ne '');
-	return '' unless(&is_abspath(&get_abspath('READONLY', $create_dir, '')));
+	return 1 if ($result);
+	return '' if ($result ne '');
+	return '' unless (&is_abspath(&get_abspath('READONLY', $create_dir, '')));
 	&is_abspath(&get_abspath('CHANGES', $create_dir, 1));
 }
 
@@ -4039,9 +4039,9 @@ sub is_valid_changes {
 sub is_valid_workdir {
 	my ($create_dir) = @_;
 	my $result = &is_workdir_type();
-	return 1 if($result);
-	return '' if($result ne '');
-	return '' unless(&is_valid_changes($create_dir));
+	return 1 if ($result);
+	return '' if ($result ne '');
+	return '' unless (&is_valid_changes($create_dir));
 	&is_abspath(&get_abspath('WORKDIR', $create_dir, 1));
 }
 
@@ -4054,13 +4054,13 @@ sub get_abspath {
 	my $i = shift();
 	my $create_dir = (shift() // '');
 	my ($required_dir) = @_;
-	&create_dir($i, $required_dir) if($create_dir && defined($required_dir));
+	&create_dir($i, $required_dir) if ($create_dir && defined($required_dir));
 	my $ret = $current->{$i};
-	return $ret if(defined($ret));
+	return $ret if (defined($ret));
 	$ret = $user_config->{$i};
-	return '' unless(defined($ret) || (ref($ret) ne ''));
-	$ret = &good_abs_path($ret) if(&is_abspath($ret));
-	$current->{$i} = $ret if($create_dir);
+	return '' unless (defined($ret) || (ref($ret) ne ''));
+	$ret = &good_abs_path($ret) if (&is_abspath($ret));
+	$current->{$i} = $ret if ($create_dir);
 	$ret
 }
 
@@ -4069,7 +4069,7 @@ sub get_abspath {
 
 sub is_resquash_type {
 	my $type = $current->{'TYPE'};
-	return '' unless(&is_nonempty($type));
+	return '' unless (&is_nonempty($type));
 	(($type eq 'readonly') || ($type =~ m{bind})) ? 0 : 1
 }
 
@@ -4078,8 +4078,8 @@ sub is_resquash_type {
 
 sub is_workdir_type {
 	my $type = $current->{'TYPE'};
-	return '' unless(&is_nonempty($type));
-	return 1 if($type eq 'overlay');
+	return '' unless (&is_nonempty($type));
+	return 1 if ($type eq 'overlay');
 	(($type eq 'overlayfs') &&
 		(($CFG::obsolete_overlayfs // '') ne 'force')) ? 1 : 0
 }
@@ -4089,7 +4089,7 @@ sub is_workdir_type {
 
 sub is_fuse_type {
 	my $type  = (@_ ? $_[0] : $current->{'TYPE'});
-	return undef unless(&is_nonempty($type));
+	return undef unless (&is_nonempty($type));
 	(($type eq 'unionfs-fuse') || ($type eq 'funionfs'))
 }
 
@@ -4099,7 +4099,7 @@ sub is_fuse_type {
 
 sub is_squashfuse_type {
 	my $squashtype  = (@_ ? $_[0] : $current->{'MOUNT_RO'});
-	return undef unless(&is_nonempty($squashtype) &&
+	return undef unless (&is_nonempty($squashtype) &&
 		($squashtype ne 'unknown'));
 	($squashtype eq 'squashfuse')
 }
@@ -4109,14 +4109,14 @@ sub is_squashfuse_type {
 sub dir_is_empty {
 	my ($dir) = @_;
 	my $dh = undef;
-	return 0 unless(opendir($dh, $dir));
-	for(;;) {
+	return 0 unless (opendir($dh, $dir));
+	while () {
 		my $curr = readdir($dh);
-		unless(defined($curr)) {
+		unless (defined($curr)) {
 			closedir($dh);
 			return 1
 		}
-		if(scalar(File::Spec->no_upwards(($curr)))) {
+		if (scalar(File::Spec->no_upwards(($curr)))) {
 			closedir($dh);
 			return ''
 		}
@@ -4133,7 +4133,7 @@ sub dir_is_empty {
 sub threshold_dir {
 	my ($to_find) = @_;
 	my $dir = &get_abspath('CHANGES');
-	return '' unless(-d $dir);
+	return '' unless (-d $dir);
 	my ($dirv, @dir) = &split_dir($dir);
 	&shift_empty(\@dir);
 	my ($readonlyv, @readonly) = &split_dir(&get_abspath('READONLY'));
@@ -4142,11 +4142,11 @@ sub threshold_dir {
 	my $diskspace = sub {
 		use bigint;
 		my $size = shift();
-		unless(defined($blocksize)) {
+		unless (defined($blocksize)) {
 			my $bs = $user_config->{'BLOCKSIZE'};
 			$blocksize = ((defined($bs) && ($bs > 0)) ? $bs : 4096 );
 		}
-		return $blocksize unless($size);
+		return $blocksize unless ($size);
 		my $modulo = ($size % $blocksize);
 		$modulo ? (($blocksize - $modulo) + $size) : $size
 	};
@@ -4163,13 +4163,14 @@ sub threshold_dir {
 	# aufs to overlay and thus suddenly aufs-hidden files are visible.
 	# However, more exact would be to use the if-clauses of the comments:
 	# my $type = $current->{'TYPE'};
-	push(@$skip, qr{^\._funionfs});   # if($type eq 'funionfs');
-	push(@$skipdir, qr{^\.unionfs});  # if($type =~ m{^unionfs});
+	push(@$skip, qr{^\._funionfs});   # if ($type eq 'funionfs');
+	push(@$skipdir, qr{^\.unionfs});  # if ($type =~ m{^unionfs});
 	push(@$skip, qr{^\.wh\.\.wh\.aufs$}) &&
 		push(@$skipdir, qr{^\.wh\.\.wh\.(pli?nk|\.tmp|orph)}n);
-		# if($type eq 'aufs');
+		# if ($type eq 'aufs');
 
 	my @compare = ();  # postponed file content comparison...
+	no warnings 'File::Find';
 	File::Find::find({
 		no_chdir => 1,
 		follow => '',
@@ -4177,36 +4178,36 @@ sub threshold_dir {
 		follow_skip => 2,
 		dangling_symlinks => '',
 		wanted => sub {
-		if($to_find < 0) {
+		if ($to_find < 0) {
 			# Shortcut possible
 			$File::Find::prune = 1;
 			return
 		}
 		my ($pathv, @path) = &split_dir($_);
 		&shift_empty(\@path);
-		splice(@path, 0, scalar(@dir)) if(($pathv eq $dirv) &&
+		splice(@path, 0, scalar(@dir)) if (($pathv eq $dirv) &&
 			&starts_with(\@path, \@dir));
 		my $path = &cat_dir($pathv, @path);
-		return if((!@path) || &is_match($path, $skip));
-		if(&is_match($path, $skipdir) && (-d $_) && !(-l $_)) {
+		return if ((!@path) || &is_match($path, $skip));
+		if (&is_match($path, $skipdir) && (-d $_) && !(-l $_)) {
 			$File::Find::prune = 1;
 			return
 		}
 		my $readonlysub = &cat_dir($readonlyv, @readonly, @path);
-		if(&is_match($path, $check)) {
+		if (&is_match($path, $check)) {
 			return if &file_is_equal($_, $readonlysub, \@compare)
 		}
-		if(defined($skipfunc) && (ref($skipfunc) eq 'CODE')) {
+		if (defined($skipfunc) && (ref($skipfunc) eq 'CODE')) {
 			local $_;
-			return unless($skipfunc->($path, $_, $readonlysub))
+			return unless ($skipfunc->($path, $_, $readonlysub))
 		}
 		my $currfill = &is_match($path, $fill);
-		if((!$currfill) && defined($fillfunc) && (ref($fillfunc) eq 'CODE')) {
+		if ((!$currfill) && defined($fillfunc) && (ref($fillfunc) eq 'CODE')) {
 			local $_;
 			$currfill = $fillfunc->($path, $_, $readonlysub)
 		}
 		$found = 1;
-		if($currfill) {
+		if ($currfill) {
 			use bigint;
 			$to_find = -1
 		} else {
@@ -4214,10 +4215,10 @@ sub threshold_dir {
 			$to_find -= $diskspace->(((-l $_) || !(-f $_))
 				? 1 : (-s $_));
 		}
-		$File::Find::prune = 1 if($to_find < 0)
+		$File::Find::prune = 1 if ($to_find < 0)
 	}}, $dir);
-	return 1 if($to_find < 0);
-	return ($found ? -1 : 0) unless(@compare);
+	return 1 if ($to_find < 0);
+	return ($found ? -1 : 0) unless (@compare);
 	# We postponed comparing of files, because this takes time.
 	# Only if $to_find is not yet reached but might be (due to @compare)
 	# or if $found is not yet clear, we really do the comparison.
@@ -4236,17 +4237,17 @@ sub threshold_dir {
 	for my $i (@compare) {
 		{
 			use bigint;
-			if($found && ($maximal_rest <= $to_find)) {
+			if ($found && ($maximal_rest <= $to_find)) {
 				no bigint;
 				return -1
 			}
 			$maximal_rest -= $i->[2]
 		}
-		if(File::Compare::compare($i->[0], $i->[1])) {
+		if (File::Compare::compare($i->[0], $i->[1])) {
 			$found = 1;
 			use bigint;
 			$to_find -= $i->[2];
-			if($to_find < 0) {
+			if ($to_find < 0) {
 				no bigint;
 				return 1
 			}
@@ -4261,19 +4262,19 @@ sub threshold_dir {
 
 sub file_is_equal {
 	my ($a, $b, $compare) = @_;
-	if(-l $a) {
+	if (-l $a) {
 		return (-l $b);
 	}
-	return '' if(-l $b);
-	if(-d $a) {
+	return '' if (-l $b);
+	if (-d $a) {
 		return (-d $b)
 	}
-	if(-f $a) {
-		if(-f $b) {
+	if (-f $a) {
+		if (-f $b) {
 			{
 				use bigint;
 				my $size = (-s $a);
-				return '' if($size ne (-s $b));
+				return '' if ($size ne (-s $b));
 				push(@$compare, [ $a, $b, $size ])
 			}
 			return 1
@@ -4288,7 +4289,7 @@ sub file_is_equal {
 sub is_match {
 	my($a, $reg) = @_;
 	for my $r (@$reg) {
-		return 1 if($a =~ $r)
+		return 1 if ($a =~ $r)
 	}
 	''
 }
@@ -4305,14 +4306,14 @@ sub make_directory {
 
 sub clean_directory {
 	my ($dir) = @_;
-	if($interactive) {
+	if ($interactive) {
 		print("Clean $dir? ");
-		unless(<STDIN> =~ m{^y}i) {
-			&info("keeping $dir") if($verbose);
+		unless (<STDIN> =~ m{^y}i) {
+			&info("keeping $dir") if ($verbose);
 			return 1
 		}
 	}
-	&info("cleaning $dir") if($verbose);
+	&info("cleaning $dir") if ($verbose);
 	File::Path::remove_tree($dir, {
 		keep_root => 1,
 		error => \my $err
@@ -4325,11 +4326,11 @@ sub clean_directory {
 
 sub filepath_ok {
 	my ($err, $make_path) = @_;
-	return 1 unless(@$err);
+	return 1 unless (@$err);
 	my $text = $make_path ? 'creating' : 'removing';
 	for my $diag (@$err) {
 		my ($file, $message) = %$diag;
-		if($file eq '') {
+		if ($file eq '') {
 			&error("(while $text): $message")
 		} else {
 			&error("(while $text $file): $message")
@@ -4376,7 +4377,7 @@ sub output {
 	$label //= '';
 	my $col = '';
 	my $reset = '';
-	if(($opt_color // ($to_stderr ?
+	if (($opt_color // ($to_stderr ?
 		($stderrterm //= ((-t STDERR) // '')) : $stdoutterm))
 		&& &use_ansicolor()) {
 		state (%colorhash, $resethash);
@@ -4385,11 +4386,11 @@ sub output {
 	}
 	my $first = '';
 	my $len = length($label);
-	if($star) {
+	if ($star) {
 		$len += 3;
 		$first = ' ' . $col . '*' . $reset . ' '
 	}
-	if(&is_nonempty($notag) || ($tag eq '')) {
+	if (&is_nonempty($notag) || ($tag eq '')) {
 		$len += length($name) + 2;
 		$first .= $col . $name . $reset . ': '
 	} else {
@@ -4402,7 +4403,7 @@ sub output {
 	my $s = (' ' x $len);
 	grep($_ = "$s$_\n", @copy);
 	$copy[0] = $first;
-	if($to_stderr) {
+	if ($to_stderr) {
 		print(STDERR @copy)
 	} else {
 		print(@copy)
@@ -4412,11 +4413,11 @@ sub output {
 # Set title:
 
 sub title {
-	return unless(defined($titleopt) && &which_store(\$title, 'title'));
+	return unless (defined($titleopt) && &which_store(\$title, 'title'));
 	my ($a) = @_;
 	my @opt = ();
-	push(@opt, "\-$titleopt") if($titleopt ne '');
-	if(system($title, @opt, '--', $a) == 0) {
+	push(@opt, "\-$titleopt") if ($titleopt ne '');
+	if (system($title, @opt, '--', $a) == 0) {
 		$printed_title = 1;
 		return
 	}
@@ -4430,7 +4431,7 @@ sub title {
 END {
 	&end_locking();
 	&title(($? == 0) ? "$name finished" : "$name failed")
-		if($printed_title // '')
+		if ($printed_title // '')
 }
 
 # Output of print-..., returning '' if undefined
@@ -4438,15 +4439,15 @@ END {
 sub do_print {
 	my ($a) = @_;
 	my $ret = 1;
-	unless(defined($a)) {
+	unless (defined($a)) {
 		$ret = $a = '';
-		$a = '(undefined)' unless($quiet)
+		$a = '(undefined)' unless ($quiet)
 	}
-	if($quiet) {
+	if ($quiet) {
 		print($a . $separator);
 		return $ret
 	}
-	if($ret) {
+	if ($ret) {
 		&info($a);
 		return 1
 	}
@@ -4458,7 +4459,7 @@ sub do_print {
 
 sub print_status {
 	my ($a) = @_;
-	if($verbose) {
+	if ($verbose) {
 		&info(@$a)
 	} else {
 		&info(join(', ', @$a))
@@ -4476,26 +4477,26 @@ sub my_system {
 	my $redirect = shift();
 	my $a = shift();
 	my $b = shift();
-	$b = [ $b ] unless(ref($b) eq 'ARRAY');
-	unless(&which_store($a, @$b)) {
+	$b = [ $b ] unless (ref($b) eq 'ARRAY');
+	unless (&which_store($a, @$b)) {
 		&error(join(', ', @$b) . ' not found in $PATH');
 		return -1
 	}
-	if($verbose > 2) {
+	if ($verbose > 2) {
 		print(&shell_quote_best_effort($$a, @_), "\n");
 		$redirect = ''
 	}
 	my $oldout = undef;
 	my $olderr = undef;
-	if($redirect) {
-		if($redirect > 1) {
-			$olderr = undef unless(open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull))
+	if ($redirect) {
+		if ($redirect > 1) {
+			$olderr = undef unless (open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull))
 		}
-		$oldout = undef unless(open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', $devnull))
+		$oldout = undef unless (open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', $devnull))
 	}
 	my $ret = system($$a, @_);
-	open(STDERR, '>&', $olderr) if(defined($olderr));
-	open(STDOUT, '>&', $oldout) if(defined($oldout));
+	open(STDERR, '>&', $olderr) if (defined($olderr));
+	open(STDOUT, '>&', $oldout) if (defined($oldout));
 	($ret >= 0) ? ($ret >> 8) : $ret
 }
 
@@ -4504,10 +4505,10 @@ sub my_system {
 
 sub which_store {
 	my $a = shift();
-	return ($$a ne '') if(defined($$a));
+	return ($$a ne '') if (defined($$a));
 	for my $i (@_) {
 		$$a = &my_which($i);
-		return 1 if(($$a // '') ne '')
+		return 1 if (($$a // '') ne '')
 	}
 	$$a = ''
 }
@@ -4518,13 +4519,13 @@ sub which_store {
 sub my_which {
 	my ($command) = @_;
 	my $which = &which_which();
-	return File::Which::which($command) if($which eq ':');
-	return $command if($which eq '');
+	return File::Which::which($command) if ($which eq ':');
+	return $command if ($which eq '');
 	my $olderr;
-	$olderr = undef unless(open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull));
+	$olderr = undef unless (open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull));
 	my $ret = `$which $command`;
-	open(STDERR, '>&', $olderr) if(defined($olderr));
-	chomp($ret) if(defined($ret));
+	open(STDERR, '>&', $olderr) if (defined($olderr));
+	chomp($ret) if (defined($ret));
 	$ret
 }
 
@@ -4533,16 +4534,16 @@ sub my_which {
 
 sub which_which {
 	state $which;
-	return $which if(defined($which));
+	return $which if (defined($which));
 	eval {
 		require File::Which
 	};
-	return ($which = ':') unless($@);
+	return ($which = ':') unless ($@);
 	my $olderr;
-	$olderr = undef unless(open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull));
+	$olderr = undef unless (open($olderr, '>&', \*STDERR) && open(STDERR, '>', $devnull));
 	$which = `which which`;
-	open(STDERR, '>&', $olderr) if(defined($olderr));
-	return ($which = '') unless(defined($which));
+	open(STDERR, '>&', $olderr) if (defined($olderr));
+	return ($which = '') unless (defined($which));
 	chomp($which);
 	$which
 }
@@ -4551,7 +4552,7 @@ sub which_which {
 
 sub use_ansicolor {
 	state $ansicolor;
-	return $ansicolor if(defined($ansicolor));
+	return $ansicolor if (defined($ansicolor));
 	eval {
 		require Term::ANSIColor
 	};
@@ -4582,13 +4583,13 @@ sub is_abspath {
 sub hash_equal {
 	my ($a, $b) = @_;
 	for my $i (keys(%$a)) {
-		next unless(defined($a->{$i}));
-		return '' unless(defined($b->{$i}));
-		return '' unless($a->{$i} eq $b->{$i})
+		next unless (defined($a->{$i}));
+		return '' unless (defined($b->{$i}));
+		return '' unless ($a->{$i} eq $b->{$i})
 	}
 	for my $i (keys(%$b)) {
-		next unless(defined($b->{$i}));
-		return '' unless(exists($a->{$i}))
+		next unless (defined($b->{$i}));
+		return '' unless (exists($a->{$i}))
 	}
 	1
 }
@@ -4597,9 +4598,9 @@ sub hash_equal {
 
 sub starts_with {
 	my ($a, $b) = @_;
-	return '' if(@$b > @$a);
+	return '' if (@$b > @$a);
 	while(my ($i, $j) = each(@$b)) {
-		if($a->[$i] ne $j) {
+		if ($a->[$i] ne $j) {
 			keys(@$b);  # reset "each" counter
 			return ''
 		}
@@ -4618,20 +4619,20 @@ sub shift_empty {
 
 sub push_ref {
 	my ($arr, $s, $t) = @_;
-	$s = $t unless(defined($s));
-	return unless(defined($s));
-	if(ref($s) eq 'ARRAY') {
+	$s = $t unless (defined($s));
+	return unless (defined($s));
+	if (ref($s) eq 'ARRAY') {
 		push(@$arr, @$s);
 		return
 	}
-	push(@$arr, $s) if($s ne '')
+	push(@$arr, $s) if ($s ne '')
 }
 
 # use String::ShellQuote () and return whether successful
 
 sub use_shellquote {
 	state $shellquote;
-	return $shellquote if(defined($shellquote));
+	return $shellquote if (defined($shellquote));
 	eval {
 		require String::ShellQuote
 	};
@@ -4661,11 +4662,11 @@ sub shell_quote_best_effort {
 
 sub run_hook {
 	my ($value, $var) = @_;
-	return 1 unless(defined($value));
+	return 1 unless (defined($value));
 	# Make a copy for arrays to allow callback functions modifiying array
 	for my $i ((ref($value) eq 'ARRAY') ? @$value : ($value)) {
-		if(ref($i) eq 'CODE') {
-			return '' unless($i->($tag, $current, $user_config))
+		if (ref($i) eq 'CODE') {
+			return '' unless ($i->($tag, $current, $user_config))
 		} else {
 			&warning("callback variable $var is not a function/array of functions")
 		}
@@ -4676,8 +4677,8 @@ sub run_hook {
 # set $had_error and $exitstatus according to $errorbreak and $fatalreturn
 
 sub bad_status {
-	$had_error = 1 if($errorbreak);
-	$exitstatus = 1 unless($fatalreturn || ($exitstatus != 0))
+	$had_error = 1 if ($errorbreak);
+	$exitstatus = 1 unless ($fatalreturn || ($exitstatus != 0))
 }
 
 # check whether argument is a nonempty string and the corresponding file exists
@@ -4694,13 +4695,13 @@ sub file_exists {
 sub good_abs_path {
 	my ($f) = @_;
 	my $r = &bad_abs_path($f);
-	return $r if(defined($r));
+	return $r if (defined($r));
 	my ($vol, @head) = &split_dir($f);
 	my @tail = ();
 	while(@head) {
 		unshift(@tail, pop(@head));
 		$r = &bad_abs_path(&cat_dir($vol, @head));
-		if(defined($r)) {
+		if (defined($r)) {
 			($vol, @head) = &split_dir($r);
 			last
 		}
@@ -4712,9 +4713,9 @@ sub good_abs_path {
 
 sub bad_abs_path {
 	my ($f) = @_;
-	return undef unless(&is_nonempty($f));
+	return undef unless (&is_nonempty($f));
 	$f = Cwd::abs_path($f);
-	return undef unless(&is_nonempty($f));
+	return undef unless (&is_nonempty($f));
 	$f = File::Spec->canonpath($f);
 	&is_abspath($f) ? $f : undef
 }
@@ -4724,8 +4725,8 @@ sub bad_abs_path {
 sub split_dir {
 	my ($vol, $dir, $file) = File::Spec->splitpath(File::Spec->canonpath($_[0]));
 	my @dir = File::Spec->splitdir($dir);
-	pop(@dir) if(@dir && $dir[$#dir] eq '');
-	push(@dir, $file) if($file ne '');
+	pop(@dir) if (@dir && $dir[$#dir] eq '');
+	push(@dir, $file) if ($file ne '');
 	($vol, @dir)
 }
 
@@ -4739,19 +4740,19 @@ sub cat_dir {
 
 sub rmdir_recurse {
 	my ($dir, $parents) = @_;
-	return 1 unless(($parents // '') && ($parents =~ m{^[+-]?\d+$}));
+	return 1 unless (($parents // '') && ($parents =~ m{^[+-]?\d+$}));
 	while(-d $dir) {
-		return 1 if(-l $dir);
-		&info("trying to remove directory $dir") if($verbose > 2);
-		unless(rmdir($dir)) {
-			&info("did not remove directory", "$!") if($verbose > 2);
+		return 1 if (-l $dir);
+		&info("trying to remove directory $dir") if ($verbose > 2);
+		unless (rmdir($dir)) {
+			&info("did not remove directory", "$!") if ($verbose > 2);
 			return 1
 		}
-		if($parents > 0) {
-			return 1 if(--$parents)
+		if ($parents > 0) {
+			return 1 if (--$parents)
 		}
 		my ($vol, @dirs) = &split_dir($dir);
-		return 1 unless(@dirs);
+		return 1 unless (@dirs);
 		pop(@dirs);
 		$dir = &cat_dir($vol, @dirs)
 	}
@@ -4830,40 +4831,40 @@ Getopt::Long::GetOptions(
 
 # Check and postprocess options:
 
-if($opt_user) {
+if ($opt_user) {
 	@configs = (File::Spec->catfile($ENV{'HOME'} // $root, '.squashmount.pl'))
-		unless(@configs);
+		unless (@configs);
 	$rundir //= File::Spec->catdir($ENV{'TEMPDIR'} // $root, 'tmp',
 		'squashmount' . $<)
 } else {
 	@configs = (File::Spec->catfile($root, 'etc', 'squashmount.pl'))
-		unless(@configs);
+		unless (@configs);
 	$rundir //= File::Spec->catdir($root, 'run', 'squashmount')
 }
 @system_configs = (File::Spec->catfile($root, 'usr', 'lib', 'squashmount.pl'),
 	File::Spec->catfile($root, 'lib', 'squashmount.pl'))
-	unless(@system_configs);
+	unless (@system_configs);
 
-&fatal("$rundir is not an absolute path") unless(&is_abspath($rundir));
+&fatal("$rundir is not an absolute path") unless (&is_abspath($rundir));
 for my $i (@configs, @system_configs) {
 	&fatal("config-file $i is not an absolute path")
-		unless(&is_abspath($i))
+		unless (&is_abspath($i))
 }
 
-if(defined($opt_allow_other)) {
-	@allow_other = () unless($opt_allow_other)
-} elsif($opt_user) {
+if (defined($opt_allow_other)) {
+	@allow_other = () unless ($opt_allow_other)
+} elsif ($opt_user) {
 	@allow_other = ()
 }
 
-if($quiet < $verbose) {
+if ($quiet < $verbose) {
 	$verbose -= $quiet; $quiet = 0
 } else {
 	$quiet -= $verbose; $verbose = 0
 }
 $titleopt = join('', @title);
 undef(@title);
-$titleopt = undef if(($titleopt =~ m{-}) || !$stdoutterm);
+$titleopt = undef if (($titleopt =~ m{-}) || !$stdoutterm);
 
 # Determine $action, $fatalreturn, $run_ro, $star, $CFG::locking,
 # @CFG::order, @CFG::squashorder
@@ -4873,109 +4874,109 @@ my $action = (shift(@ARGV) // '');
 	my $order_needed = '';
 	my $cmd = undef;
 	$run_ro = '';
-	if($action =~ m{^p}i) {
+	if ($action =~ m{^p}i) {
 		$run_ro = 1;
-		if($action =~ m{tag}i) {
+		if ($action =~ m{tag}i) {
 			$cmd = 'print-tag';
 			$action = \&cmd_print_tag
-		} elsif($action =~ m{dir}i) {
+		} elsif ($action =~ m{dir}i) {
 			$cmd = 'print-dir';
 			$action = \&cmd_print_dir
-		} elsif($action =~ m{chan}i) {
+		} elsif ($action =~ m{chan}i) {
 			$cmd = 'print-changes';
 			$action = \&cmd_print_changes
-		} elsif($action =~ m{wor}i) {
+		} elsif ($action =~ m{wor}i) {
 			$cmd = 'print-workdir';
 			$action = \&cmd_print_workdir
-		} elsif($action =~ m{read|ro}i) {
+		} elsif ($action =~ m{read|ro}i) {
 			$cmd = 'print-readonly';
 			$action = \&cmd_print_readonly
-		} elsif($action =~ m{fil}i) {
+		} elsif ($action =~ m{fil}i) {
 			$cmd = 'print-file';
 			$action = \&cmd_print_file
-		} elsif($action =~ m{s.*typ}i) {
+		} elsif ($action =~ m{s.*typ}i) {
 			$cmd = 'print-squashtype';
 			$action = \&cmd_print_squashtype
-		} elsif($action =~ m{typ}i) {
+		} elsif ($action =~ m{typ}i) {
 			$cmd = 'print-type';
 			$action = \&cmd_print_type
-		} elsif($action =~ m{new|mod}i) {
+		} elsif ($action =~ m{new|mod}i) {
 			$cmd = 'print-new';
 			$action = \&cmd_print_new
-		} elsif($action =~ m{will|sq|comp}i) {
+		} elsif ($action =~ m{will|sq|comp}i) {
 			$cmd = 'print-will_squash';
 			$action = \&cmd_print_will_squash
-		} elsif($action =~ m{thr}i) {
+		} elsif ($action =~ m{thr}i) {
 			$cmd = 'print-threashold';
 			$action = \&cmd_print_threshold
-		} elsif($action =~ m{kil}i) {
+		} elsif ($action =~ m{kil}i) {
 			$cmd = 'print-kill';
 			$action = \&cmd_print_kill
 		}
-	} elsif($action =~ m{^(stat|l)}ni) {
+	} elsif ($action =~ m{^(stat|l)}ni) {
 		$cmd = 'status';
 		$run_ro = 1;
 		$action = \&cmd_status
-	} elsif($action =~ m{^mo}i) {
+	} elsif ($action =~ m{^mo}i) {
 		$cmd = 'mount';
 		$order_needed = 1;
 		$action = \&cmd_mount
-	} elsif($action =~ m{^star}i) {
+	} elsif ($action =~ m{^star}i) {
 		$cmd = 'start';
 		$order_needed = 1;
-		$fatalreturn = 1 unless(defined($fatalreturn));
+		$fatalreturn = 1 unless (defined($fatalreturn));
 		$action = \&cmd_start
-	} elsif($action =~ m{^cr}i) {
+	} elsif ($action =~ m{^cr}i) {
 		$cmd = 'create';
 		$action = \&cmd_create
-	} elsif($action =~ m{^ch}i) {
+	} elsif ($action =~ m{^ch}i) {
 		$cmd = 'check';
 		$run_ro = 1;
-		$lazy = '' unless(defined($lazy));
-		$lsof = 1 unless(defined($lsof));
+		$lazy = '' unless (defined($lazy));
+		$lsof = 1 unless (defined($lsof));
 		$action = \&cmd_check
-	} elsif($action =~ m{set}i) {
-		if($action =~ m{[ur]}i) {
+	} elsif ($action =~ m{set}i) {
+		if ($action =~ m{[ur]}i) {
 			$cmd = 'reset';
 			$action = \&cmd_reset
 		} else {
 			$cmd = 'set';
 			$action = \&cmd_set
 		}
-	} elsif($action =~ m{^u}i) {
+	} elsif ($action =~ m{^u}i) {
 		$cmd = 'umount';
 		$action = \&cmd_umount
-	} elsif($action =~ m{^sto}i) {
+	} elsif ($action =~ m{^sto}i) {
 		$cmd = 'stop';
-		$fatalreturn = 1 unless(defined($fatalreturn));
+		$fatalreturn = 1 unless (defined($fatalreturn));
 		$action = \&cmd_stop
-	} elsif($action =~ m{^rem}i) {
+	} elsif ($action =~ m{^rem}i) {
 		$cmd = 'remount';
 		$order_needed = 1;
 		$action = \&cmd_remount
-	} elsif($action =~ m{^rest}i) {
+	} elsif ($action =~ m{^rest}i) {
 		$cmd = 'restart';
-		$fatalreturn = 1 unless(defined($fatalreturn));
+		$fatalreturn = 1 unless (defined($fatalreturn));
 		$order_needed = 1;
 		$action = \&cmd_restart
-	} elsif($action =~ m{^for}i) {
+	} elsif ($action =~ m{^for}i) {
 		$cmd = 'forget';
 		$action = \&cmd_forget
-	} elsif($action =~ m{^m}i) {
+	} elsif ($action =~ m{^m}i) {
 		# $cmd = 'man';
 		&pod2usage(-verbose => 2, -exit => 0)
-	} elsif($action =~ m{^[h\?]}i) {
+	} elsif ($action =~ m{^[h\?]}i) {
 		# $cmd = 'help';
 		&pod2usage(0)
 	}
-	&pod2usage(2) unless(ref($action) eq 'CODE');
-	$fatalreturn = '' unless(defined($fatalreturn));
+	&pod2usage(2) unless (ref($action) eq 'CODE');
+	$fatalreturn = '' unless (defined($fatalreturn));
 	$star = 1  # !$run_ro  # Use this to make --no-star the default for infos
-		unless(defined($star));
-	$run_ro = '' if($force || $ignore_state);
+		unless (defined($star));
+	$run_ro = '' if ($force || $ignore_state);
 	$CFG::storing = $CFG::locking = !$run_ro;
-	if($order_needed) {
-		if($opt_user) {
+	if ($order_needed) {
+		if ($opt_user) {
 			@CFG::order = qw(unionfs-fuse!! funionfs!!);
 			@CFG::squashorder = qw(squashfuse!!)
 		} else {
@@ -4985,7 +4986,7 @@ my $action = (shift(@ARGV) // '');
 	}
 
 	&fatal('internal error: undefined $cmd. Please report a bug')
-		unless(defined($cmd));
+		unless (defined($cmd));
 	$CFG::command = $cmd
 }
 
@@ -4999,11 +5000,11 @@ $|=1;
 	local @ARGV = @argv;
 	my $have_read_config = '';
 	for my $file (@configs) {
-		$have_read_config = 1 if(&read_config_file($file))
+		$have_read_config = 1 if (&read_config_file($file))
 	}
-	unless($have_read_config) {
+	unless ($have_read_config) {
 		for my $file (@system_configs) {
-			if(&read_config_file($file)) {
+			if (&read_config_file($file)) {
 				$have_read_config = 1;
 				last
 			}
@@ -5011,19 +5012,19 @@ $|=1;
 	}
 	$run_ro = !$CFG::storing;
 	fatal('None of the config files could be read:',
-		@configs, @system_configs) unless($have_read_config)
+		@configs, @system_configs) unless ($have_read_config)
 }
 
 # Modify options according to config:
 
-$lazy = $CFG::lazy unless(defined($lazy));
-&fatal('--lazy=' . $lazy . ' is non-integer') unless(&is_integer($lazy));
-$lsof = $CFG::lsof unless(defined($lsof));
-&fatal('--lsof=' . $lsof . ' is non-integer') unless(&is_integer($lsof));
-$lsof_ro = $CFG::lsof_ro unless(defined($lsof_ro));
-&fatal('--lsof-ro=' . $lsof_ro . ' is non-integer') unless(&is_integer($lsof_ro));
-$squashfuse_ll = $CFG::squashfuse_ll unless(defined($squashfuse_ll));
-$locking = $CFG::locking unless(defined($locking));
+$lazy = $CFG::lazy unless (defined($lazy));
+&fatal('--lazy=' . $lazy . ' is non-integer') unless (&is_integer($lazy));
+$lsof = $CFG::lsof unless (defined($lsof));
+&fatal('--lsof=' . $lsof . ' is non-integer') unless (&is_integer($lsof));
+$lsof_ro = $CFG::lsof_ro unless (defined($lsof_ro));
+&fatal('--lsof-ro=' . $lsof_ro . ' is non-integer') unless (&is_integer($lsof_ro));
+$squashfuse_ll = $CFG::squashfuse_ll unless (defined($squashfuse_ll));
+$locking = $CFG::locking unless (defined($locking));
 $modprobe_loop = $CFG::modprobe_loop;
 $resquash_on_start = $CFG::resquash_on_start;
 $rm_rundir = $CFG::rm_rundir;
@@ -5033,17 +5034,17 @@ $rm_workdir = $CFG::rm_workdir;
 $rm_readonly = $CFG::rm_readonly;
 &fatal('Obsolete $squash_verbose is set in the configuration.',
 'Do not define $squash_verbose; set $mksquash_verbose instead.')
-	if(defined($CFG::squash_verbose));
-$mksquash_verbose = $CFG::mksquash_verbose unless(defined($mksquash_verbose));
-$processors = $CFG::processors unless(defined($processors));
-$processors = '' unless(defined($processors) && !($processors =~ m{^\s+$}));
-$mem = $CFG::mem unless(defined($mem));
-$mem = '' unless(defined($mem) && !($mem =~ m{^\s+$}));
-if(defined($CFG::killpower)) {
+	if (defined($CFG::squash_verbose));
+$mksquash_verbose = $CFG::mksquash_verbose unless (defined($mksquash_verbose));
+$processors = $CFG::processors unless (defined($processors));
+$processors = '' unless (defined($processors) && !($processors =~ m{^\s+$}));
+$mem = $CFG::mem unless (defined($mem));
+$mem = '' unless (defined($mem) && !($mem =~ m{^\s+$}));
+if (defined($CFG::killpower)) {
 	for my $i ((ref($CFG::killpower) eq 'ARRAY') ?
 		@$CFG::killpower : ($CFG::killpower)) {
-		if(&file_exists($i)) {
-			&info('existing $killpower: ' . $i) unless($quiet);
+		if (&file_exists($i)) {
+			&info('existing $killpower: ' . $i) unless ($quiet);
 			$opt_threshold = '-1';
 			last
 		}
@@ -5061,33 +5062,33 @@ my %tags = ();
 $taglen = 0;
 while(my ($i, $mountpoint) = each(@CFG::mounts)) {
 	&fatal('config error: element ' . ($i + 1) . ' of @mounts is not a hash reference')
-		unless(ref($mountpoint) eq 'HASH');
+		unless (ref($mountpoint) eq 'HASH');
 	my $tag = $mountpoint->{'TAG'};
 	&fatal('config error: mount-point ' . ($i + 1) . ' has no TAG')
-		unless(&is_nonempty($tag));
+		unless (&is_nonempty($tag));
 	&fatal("config error: \[$tag\]: tag not alphanumeric")
-		if($tag =~ m{[^\w\.\-]});
+		if ($tag =~ m{[^\w\.\-]});
 	&fatal("config error: \[$tag\]: tag duplicate in mount-points" .
-		($tags{$tag} + 1) . ' and ' . ($i + 1)) if(exists($tags{$tag}));
+		($tags{$tag} + 1) . ' and ' . ($i + 1)) if (exists($tags{$tag}));
 	$tags{$tag} = $i;
-	$taglen = length($tag) if(length($tag) > $taglen);
+	$taglen = length($tag) if (length($tag) > $taglen);
 	&fatal("config error: \[$tag\]: no absolute FILE specified")
-		unless(&is_abspath($mountpoint->{'FILE'}));
+		unless (&is_abspath($mountpoint->{'FILE'}));
 	my $dir = $mountpoint->{'DIR'};
 	&fatal("config error: \[$tag\]: no absolute DIR specified")
-		unless(defined($dir) && ((ref($dir) eq 'CODE')
+		unless (defined($dir) && ((ref($dir) eq 'CODE')
 			|| &is_abspath($dir)));
 	# Compile all regular expressions and transform into arrays:
 	for my $j ('SKIP', 'SKIPDIR', 'DIFF', 'FILL') {
 		my $a = $mountpoint->{$j};
-		unless(defined($a)) {
+		unless (defined($a)) {
 			$mountpoint->{$j} = [];
 			next
 		}
-		if(ref($a) ne 'ARRAY') {
-			if(ref($a) eq 'Regexp') {
+		if (ref($a) ne 'ARRAY') {
+			if (ref($a) eq 'Regexp') {
 				$mountpoint->{$j} = [ $a ]
-			} elsif((ref(\$a) eq 'SCALAR') && ($a ne '')) {
+			} elsif ((ref(\$a) eq 'SCALAR') && ($a ne '')) {
 				$mountpoint->{$j} = [ qr{$a}nm ]
 			} else {
 				&fatal("config error: \[$tag\]: $j no Regexp or string")
@@ -5095,9 +5096,9 @@ while(my ($i, $mountpoint) = each(@CFG::mounts)) {
 			next
 		}
 		for my $r (@$a) {
-			next if(ref($r) eq 'Regexp');
+			next if (ref($r) eq 'Regexp');
 			&fatal("config error: \[$tag\]: entry in $j no Regexp or string")
-				unless((ref(\$r) eq 'SCALAR') && ($r ne ''));
+				unless ((ref(\$r) eq 'SCALAR') && ($r ne ''));
 			$r = qr{$r}nm
 		}
 	}
@@ -5108,22 +5109,22 @@ while(my ($i, $mountpoint) = each(@CFG::mounts)) {
 my @mounts = ();
 my %pass_dir = ();
 
-if($pass_dir) {
+if ($pass_dir) {
 	for my $i (@ARGV) {
-		$pass_dir{$i} = 1 if(&is_abspath($i));
+		$pass_dir{$i} = 1 if (&is_abspath($i));
 		my $j = &good_abs_path($i);
-		$pass_dir{$j} = 1 if(&is_abspath($j))
+		$pass_dir{$j} = 1 if (&is_abspath($j))
 	}
 } else {
-	if(@ARGV) {
+	if (@ARGV) {
 		for my $i (@ARGV) {
 			$i =~ s{([^\w\*\?\[\]])}{\\$1}g;
 			$i =~ s{\*}{.*}g;
 			$i =~ s{\?}{.}g;
 			my $reg = qr{\A$i\z}nm;
 			for my $j (@CFG::mounts) {
-				next unless($j->{'TAG'} =~ $reg);
-				next if(exists($j->{'DONE'}));
+				next unless ($j->{'TAG'} =~ $reg);
+				next if (exists($j->{'DONE'}));
 				push(@mounts, $j);
 				$j->{'DONE'} = 1
 			}
@@ -5131,15 +5132,15 @@ if($pass_dir) {
 	} else {
 		@mounts = @CFG::mounts
 	}
-	unless(@mounts) {
-		&warning('no mount-points selected') unless($quiet);
+	unless (@mounts) {
+		&warning('no mount-points selected') unless ($quiet);
 		exit(0)
 	}
 }
 
 # Make sure that /run/squashmount exists (unless we have $run_ro)
 
-&make_directory($rundir) unless($run_ro || (-d $rundir));
+&make_directory($rundir) unless ($run_ro || (-d $rundir));
 $rm_rundir_on_end = '';
 
 # Finally, the main loop over the @mounts or %pass_dir entries:
@@ -5151,24 +5152,24 @@ for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 	$current = {};
 	&read_settings();
 	&start_locking();
-	if($pass_dir) {
-		next unless(&find_pass_dir($current, \%pass_dir)
+	if ($pass_dir) {
+		next unless (&find_pass_dir($current, \%pass_dir)
 			|| &find_pass_dir($user_config, \%pass_dir))
 	}
 	my %current_bak = %$current;
 	&fill_current();
 	&set_globals();
-	&bad_status() unless(&run_hook($CFG::before, '$before') &&
+	&bad_status() unless (&run_hook($CFG::before, '$before') &&
 		$action->());
-	if(&run_hook($CFG::after, '$after') && !$run_ro) {
-		unless(&remove_settings() || &hash_equal(\%current_bak, $current)) {
-			&bad_status() unless(&write_settings())
+	if (&run_hook($CFG::after, '$after') && !$run_ro) {
+		unless (&remove_settings() || &hash_equal(\%current_bak, $current)) {
+			&bad_status() unless (&write_settings())
 		}
 	}
 	&end_locking();
-	last if($firstmatch || $had_error)
+	last if ($firstmatch || $had_error)
 }
-&rmdir_recurse($rundir, $rm_rundir) if($rm_rundir_on_end);
+&rmdir_recurse($rundir, $rm_rundir) if ($rm_rundir_on_end);
 exit($exitstatus);
 
 # Auxiliary functions which are convenient to have when debugging:
