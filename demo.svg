@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 768 152" width="768" height="152">
+<rect width="100%" height="100%" fill="black"/>
+<style type="text/css">
+text {
+  font-size: 16;
+  font-family: monospace;
+  fill: grey;
+}
+</style>
+<text x="16" y="16"><tspan fill="yellow">%</tspan> squashmount list</text>
+<text x="16" y="32"> <tspan fill="green">*</tspan> [<tspan fill="green">db</tspan>]:     overlay/squashfs    (0), will resquash modifications</text>
+<text x="16" y="48"> <tspan fill="green">*</tspan> [<tspan fill="green">fetch</tspan>]:  overlay/squashfs   (1k), unmodified (kill-or-resquash)</text>
+<text x="16" y="64"> <tspan fill="green">*</tspan> [<tspan fill="green">tex</tspan>]:    overlay/squashfs    (0), unmodified</text>
+<text x="16" y="80"> <tspan fill="green">*</tspan> [<tspan fill="green">kernel</tspan>]: overlay/squashfs   (1m), will kill modifications</text>
+<text x="16" y="96"> <tspan fill="green">*</tspan> [<tspan fill="green">office</tspan>]: overlay/squashfs   (1k), unmodified</text>
+<text x="16" y="112"> <tspan fill="green">*</tspan> [<tspan fill="green">games</tspan>]:  overlay/squashfs    (0), will resquash modifications</text>
+<text x="16" y="128"> <tspan fill="green">*</tspan> [<tspan fill="green">repos</tspan>]:  overlay/squashfs  (40m), will resquash modifications</text>
+<text x="16" y="144"><tspan fill="yellow">%</tspan></text><rect width="10" height="16" fill="green" x="32" y="132"/>
+</svg>

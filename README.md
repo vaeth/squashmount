@@ -17,8 +17,8 @@ One of its aims is to be init system independent.
 For openrc and systemd ready-to-use init/service-files are provided;
 I gladly add init-files for other init systems if I receive (tested) patches.
 
-__squashmount__ works with systemd in "standard" setups, but due to
-conceptional bugs of systemd in some setups (see section "Installation"),
+__squashmount__ works with systemd in “standard” setups, but due to
+conceptional bugs of systemd in some setups (see section “Installation”),
 systemd is no longer officially supported.
 
 ## What is this project?
@@ -48,7 +48,7 @@ This approach is originally due to synss' script from
 	http://forums.gentoo.org/viewtopic-t-465367-highlight-.html
 In that forum thread you can also ask for help about this project.
 
-For some mount points different rules than "resquash and delete on umount"
+For some mount points different rules than “resquash and delete on umount”
 might be desired (see the examples section below), and moreover,
 it might be necessary to override these rules temporarily.
 For such things a powerful user interface is provided.
@@ -57,8 +57,8 @@ This project can be useful for any linux distribution.
 Historically, the main motivations was to keep the Gentoo main repository
 compressed. This is still one of the most striking examples:
 
-If the Gentoo main repository (/usr/portage or /var/db/repos/gentoo)
-is compressed with __squashmount__ (without DISTDIR which you should store
+If the Gentoo main repository (`/usr/portage` or `/var/db/repos/gentoo`)
+is compressed with __squashmount__ (without `DISTDIR` which you should store
 somewhere else when using this script), the required disk space is only
 about 50-100 MB (depending on your compression method), instead of
 200-400 MB (or much higher, the actual space requirement
@@ -68,6 +68,10 @@ Usually, also the access is much faster.
 It is possible to combine __squashmount__ with portage's
 `sync-type = squashdelta` to mount the Gentoo repository writable.
 
+## Screenshot with a typical usage
+
+![Demo screenshot](demo.svg?sanitize=true)
+
 ## Requirements
 
 The script requires of course that squashfs support is activated in the
@@ -75,7 +79,8 @@ kernel (and supports the COMPRESSION method), that the mksquashfs tool
 is available, and also that some of the above mentioned unionfs-type tools
 is available and supported by the kernel.
 
-### WARNING.
+## Warning
+
 Since v17.0.0/v10.0.0 , __squashmount__ defaults to the COMPRESSION method
 `zstd`/`lz4`. This method is available only in linux-4.14/3.19 or higher
 or in squashfuse-0.1.101_alpha20170917/0.1.100_alpha20140523 or higher.
@@ -132,7 +137,7 @@ with __systemd__ support_
 (this should be the case in most distributions providing systemd; in Gentoo
 this means to enable `USE=systemd` for the util-linux package. If you compile
 util-linux manually, make sure to pass `--with-systemd` to `./configure`).
-In this case, __systemd__ will probably work for you in "standard" setups.
+In this case, __systemd__ will probably work for you in “standard” setups.
 With __systemd-219__ (or newer?) and some unusual setups like `--make-shared`
 on some partitions, it can happen nevertheless that __mount__ appears to work,
 but actually nothing is mounted if __systemd__ is in use. This is related with
@@ -144,7 +149,7 @@ to add hacks to fix the breakage introduced by some ill-conceived __systemd__
 concepts.
 
 For __systemd__, you should set an appropriate timeout: There is no general
-rule how long compression can take "maximally", so the timeout is set to
+rule how long compression can take “maximally”, so the timeout is set to
 infinity, by default. It is strongly recommended to set this to a realistic
 value for you system and setting by giving a (generous) upper estimate for
 your needs by copying the file `etc/system/squashmount.service.d/timeout.conf`
@@ -179,9 +184,9 @@ If you use `find_cruft`, you might want to copy the content of
 
 If you plan to use portage's `sync-type = squashdelta`, you might want to copy
 the content of `etc/portage/repo.postsync.d` to `/etc/portage/repo.postsync.d`
-Note that the hook-file in this directory treats the mount point "gentoo"
+Note that the hook-file in this directory treats the mount point “gentoo”
 specially! See the example configuration in `etc/squashmount.pl` how to
-setup an appropriate mount point "gentoo" for this setting.
+setup an appropriate mount point “gentoo” for this setting.
 
 In all cases you have to copy `lib/squashmount.pl` to `/etc/squashmount.pl`
 and adapt it to your need! This is an essential point of squashmount,
@@ -227,7 +232,7 @@ different reasons:
 
 - (a) The guest-user should be able to modify data in /home/guest, but its
 changes should usually be forgotten. (Sometimes you will not want to
-forget these changes, e.g. when you want to update the "default"
+forget these changes, e.g. when you want to update the “default”
 home directory which the user sees; see below how to do this).
 
 - (b) The tex directory is huge, and it saves considerable space to keep it
@@ -268,13 +273,13 @@ but it takes more diskspace of course, and there is no readonly version of
 the corresponding files.
 
 4. No resquash of the tex directory when only certain files (like the
-automatically generated "ls-R" file) were updated:
+automatically generated `ls-R` file) were updated:
 In fact, if the only changes made to the directoy are in these files
 (it is optionally also checked that their content is not changed),
 the directory will be cleared when umounting/remounting/rebooting.
 
 You can also call squashmount at runtime to resquash or clean certain
-directories manually or to change states for the above "default" actions
+directories manually or to change states for the above “default” actions
 on future umounts. For instance, if you changed the skeleton of the
 guest user in (a) you can call
 -	`squashmount --no-kill remount guest`
@@ -345,7 +350,7 @@ to make the directory writable, __squashmount__ will mount it at least as
 read-only (using `mount --bind` if necessary).
 Moreover, if everything goes wrong you can still use the __unsquashfs__ tool
 to unpack the directory manually.
-Probably the only danger in packing "strange" directories are special files,
+Probably the only danger in packing “strange” directories are special files,
 hard links (this information will usually get lost), or special devices
 which are perhaps not supported by the used tools.
 

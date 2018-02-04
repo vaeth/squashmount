@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-17.1_p1
+	Martin Väth <martin at mvath.de>:
+	- Improve README.md5, add demo.svg
+
 *squashmount-17.1
 	Martin Väth <martin at mvath.de>:
 	- Do not print confusing warnings in File::Find
