@@ -15,6 +15,6 @@ text {
 <text x="16" y="80"> <tspan fill="green">*</tspan> [<tspan fill="green">kernel</tspan>]: overlay/squashfs   (1m), will kill modifications</text>
 <text x="16" y="96"> <tspan fill="green">*</tspan> [<tspan fill="green">office</tspan>]: overlay/squashfs   (1k), unmodified</text>
 <text x="16" y="112"> <tspan fill="green">*</tspan> [<tspan fill="green">games</tspan>]:  overlay/squashfs    (0), will resquash modifications</text>
-<text x="16" y="128"> <tspan fill="green">*</tspan> [<tspan fill="green">repos</tspan>]:  overlay/squashfs  (40m), will resquash modifications</text>
+<text x="16" y="128"> <tspan fill="green">*</tspan> [<tspan fill="green">repos</tspan>]:  overlay/squashfs  (40m), modified, but will not resquash</text>
 <text x="16" y="144"><tspan fill="yellow">%</tspan></text><rect width="10" height="16" fill="green" x="32" y="132"/>
 </svg>
