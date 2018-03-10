@@ -14,7 +14,8 @@ _arguments -C -s -S : \
 {'*-U+','*--umount-ro='}'[add specified option to umount READONLY]:umount option:("-r")' \
 '*--fumount=[add specified option to fusermount -u DIR)]:umount option:()' \
 '*--fumount-ro=[add specified option to fusermount -u READONLY]:umount option:()' \
-'--rundir=[use specified dir instead of /run/squash_dir)]:runtime config dir:_files -/' \
+'--chroot=[specified dir was original root for stored data]:original root directory:_files -/' \
+'--rundir=[use specified dir instead of /run/squashmount)]:runtime config dir:_files -/' \
 '(--no-backup --nobackup -B '{'--backup)-b+','-b)--backup='}'[override BACKUP with specified file or appendix]:file or appendix:_files' \
 '(--backup -b '{'--no-backup --nobackup)-B','--nobackup -B)--no-backup','--no-backup -B)--nobackup'}'[do not make a backup]' \
 {'(--tempdir)-D+','(-D)--tempdir='}'[override TEMPDIR with specified dir]:tempdir:_files -/' \

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v17.1.0;
+package Squashmount v18.0.0;
 
 use strict;
 use warnings;
@@ -500,9 +500,30 @@ You can avoid this effect by specfiying B<--squashorder>
 
 =back
 
+=item B<--chroot=>I<dir>
+
+Since v18.0.0, the data stored in F</run/squashmount> contains information
+about the root directory. If that root directory has changed (e.g. because
+squashmount is called inside of a chroot), B<squashmount> will refuse
+to handle the corresponding mount point.
+With this option, the path to the original root can be specified.
+There are two cases:
+
+If I<dir> matches to the stored root data, B<squashmount> will attempt
+to interpret the data stored in F</run/squashmount> correspondingly by
+prepending the true root path to the stored directories.
+Note that corresponding changes will then have the modified data and
+new root information.
+
+As a second case, I<dir> may be empty.
+In this case, the stored root directory data is ignored and kept unchanged,
+although perhaps a corresponding warning is printed.
+This is only useful if the relevant directory structure is actually
+identical inside of the chroot.
+
 =item B<--rundir=>I<dir>
 
-Use I<dir> instead of B</run/squashmount>.
+Use I<dir> instead of F</run/squashmount>.
 
 =item B<--interactive> or B<-i>
 
@@ -2375,6 +2396,7 @@ Martin VE<auml>th E<lt>martin@mvath.deE<gt>
 
 my $root = File::Spec->rootdir();
 my $devnull = File::Spec->devnull();
+my $rootdata = undef;
 
 # Default for the Options:
 
@@ -2407,6 +2429,7 @@ my $opt_user = undef;
 my $opt_allow_other = undef;
 my @order = ();
 my @squashorder = ();
+my $chroot = undef;
 my $pass_dir = '';
 my $errorbreak = '';
 my $fatalreturn = undef;
@@ -3749,6 +3772,19 @@ sub standard_mount($$@) {
 	}, @_)
 }
 
+sub calculate_inode() {
+	my ($name, $ref) = @_;
+	if (defined($$ref)) {
+		return (ref($$ref) eq 'ARRAY')
+	}
+	my ($dev, $ino) = stat($name);
+	unless (defined($dev) && defined($ino)) {
+		return ($$ref = '')
+	}
+	$$ref = [ $dev, $ino ];
+	1
+}
+
 # Read settings from /run/squashmount:
 
 sub read_settings {
@@ -3795,6 +3831,12 @@ sub write_settings {
 			flock($lockfh, Fcntl::LOCK_EX())
 		}
 	}
+	if (!defined($chroot) || ($chroot ne '')) {
+		if (&calculate_inode($root, \$rootdata)) {
+			$current->{'ROOTDEVICE'} = $rootdata->[0];
+			$current->{'ROOTINODE'} = $rootdata->[1];
+		}
+	}
 	my $ret = 1;
 	for my $i (keys(%$current)) {
 		my $value = $current->{$i};
@@ -3817,6 +3859,54 @@ sub write_settings {
 	close($fh) unless (&end_locking());
 	$ret
 }
+
+sub validate_root() {
+	return 1 unless(exists($current->{'ROOTDEVICE'}) &&
+		exists($current->{'ROOTINODE'}) &&
+		&calculate_inode($root, \$rootdata));
+	my $storedroot = [ ($current->{'ROOTDEVICE'} // -1),
+		($current->{'ROOTINODE'} // -1) ];
+	return 1 if (&starts_with($rootdata, $storedroot, 1));
+	if (!defined($chroot)) {
+		&error('stored root directory data does not match',
+			'use --chroot=DIR to specify true root or --chroot= to proceed anyway');
+		return ''
+	}
+	if ($chroot eq '') {
+		&warning('stored root data does not appear to match actual root');
+		return 1
+	}
+	state $chrootdata;
+	state $chrootvol;
+	state @chrootdir;
+	unless (defined($chrootdata)) {
+		my $abschroot = &good_abs_path($chroot);
+		if (&calculate_inode($abschroot, \$chrootdata)) {
+			($chrootvol, @chrootdir) = &split_dir($abschroot);
+		}
+	}
+	if (ref($chrootdata) ne 'ARRAY') {
+		&error('cannot accesss --chroot directory');
+		return ''
+	}
+	unless (&starts_with($chrootdata, $storedroot, 1)) {
+		&error('stored root directory data does not match --chroot argument',
+			'use --chroot= to override this test');
+		return ''
+	}
+	for my $entry ('DIR', 'CHANGES', 'READONLY', 'WORKDIR',
+		'FILE', 'BACKUP', 'TEMPDIR') {
+		next unless (exists($current->{$entry}));
+		my $value = $current->{$entry};
+		next unless (&is_abspath($value));
+		(undef, my @dir) = &split_dir($value);
+		&shift_empty(\@dir);
+		$current->{$entry} = &good_abs_path(&cat_dir($chrootvol,
+			@chrootdir, @dir))
+	}
+	1
+}
+
 
 # forget settings in /run/squashmount if $current_empty suggests to.
 
@@ -4568,7 +4658,8 @@ sub is_integer {
 # Is argument defined and nonempty?
 
 sub is_nonempty {
-	(shift() // '') ne ''
+	my $a = (shift() // '');
+	((ref($a) eq '') && ($a ne ''))
 }
 
 # Is argument defined and an absolute path?
@@ -4597,10 +4688,10 @@ sub hash_equal {
 # whether first array starts with the second array
 
 sub starts_with {
-	my ($a, $b) = @_;
+	my ($a, $b, $numeric) = @_;
 	return '' if (@$b > @$a);
 	while(my ($i, $j) = each(@$b)) {
-		if ($a->[$i] ne $j) {
+		if ($numeric ? ($a->[$i] != $j) : ($a->[$i] ne $j)) {
 			keys(@$b);  # reset "each" counter
 			return ''
 		}
@@ -4790,6 +4881,7 @@ Getopt::Long::GetOptions(
 	'squashorder|O=s', \$opt_squashorder,
 	'allow!', \$opt_allow_other,
 	'arg|a=s', \@argv,
+	'chroot=s', \$chroot,
 	'rundir=s', \$rundir,
 	'separator|S=s', \$separator,
 	'interactice|i', \$interactive,
@@ -5151,11 +5243,15 @@ for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 	$current_empty = undef;
 	$current = {};
 	&read_settings();
-	&start_locking();
+	if (!&validate_root()) {
+		&bad_status();
+		next
+	}
 	if ($pass_dir) {
 		next unless (&find_pass_dir($current, \%pass_dir)
 			|| &find_pass_dir($user_config, \%pass_dir))
 	}
+	&start_locking();
 	my %current_bak = %$current;
 	&fill_current();
 	&set_globals();

@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-18
+	Martin Väth <martin at mvath.de>:
+	- Detect root directory change and support override by --chroot=
+
 *squashmount-17.1_p2
 	Martin Väth <martin at mvath.de>:
 	- Improve demo.svg: add example for modified but not resquashing
