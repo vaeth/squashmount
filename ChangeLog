@@ -1,8 +1,18 @@
 # ChangeLog for squashmount
 
+*squashmount-18.1
+	Martin Väth <martin at mvath.de>:
+	- Provide --root to deal with root directory information
+	- Provide --bind which can manage bind-bounds flexible
+	- The misguided --chroot from squashmount-18 has been removed.
+	  Use instead --root, supplemented with appropriate --bind options.
+	- Write data in /run/squashmount sorted for easier comparison
+	- Allow non-absolute paths in options
+	- Fix/improve zsh completion for --color and --rundir
+
 *squashmount-18
 	Martin Väth <martin at mvath.de>:
-	- Detect root directory change and support override by --chroot=
+	- Detect root directory change and support override by --chroot
 
 *squashmount-17.1_p2
 	Martin Väth <martin at mvath.de>:

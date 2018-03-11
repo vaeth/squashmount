@@ -14,7 +14,8 @@ _arguments -C -s -S : \
 {'*-U+','*--umount-ro='}'[add specified option to umount READONLY]:umount option:("-r")' \
 '*--fumount=[add specified option to fusermount -u DIR)]:umount option:()' \
 '*--fumount-ro=[add specified option to fusermount -u READONLY]:umount option:()' \
-'--chroot=[specified dir was original root for stored data]:original root directory:_files -/' \
+'*'{'--bind=','-2+'}'[replace directory in stored data]:directory path to replace:_files -P/ -W "(/)":directory path to replace with:_files -P/ -W "(/)"' \
+{'(-/)--root=','(--root)-/'}'[use specified dir as original root]:original root directory:_files -P/ -W "(/)" -/' \
 '--rundir=[use specified dir instead of /run/squashmount)]:runtime config dir:_files -/' \
 '(--no-backup --nobackup -B '{'--backup)-b+','-b)--backup='}'[override BACKUP with specified file or appendix]:file or appendix:_files' \
 '(--backup -b '{'--no-backup --nobackup)-B','--nobackup -B)--no-backup','--no-backup -B)--nobackup'}'[do not make a backup]' \
@@ -36,7 +37,7 @@ _arguments -C -s -S : \
 {'(--force)-f','(-f)--force'}'[force action even if unreasonable]' \
 {'(--ignore-state)-I','(-I)--ignore-state'}'[ignore state of mounts/umounts]' \
 {'(--reset)-r','(-r)--reset'}'[reset after umounting]' \
-'(--no-color -nocolor -C '{'-F)--color','(--color)-F'}'[force color on non-terminal]' \
+'(--no-color --nocolor -C '{'-F)--color','(--color)-F'}'[force color on non-terminal]' \
 '(--color -F '{'--no-color --nocolor)-C','--nocolor -C)--no-color','--no-color -E)--nocolor'}'[non-colored output]' \
 '(--no-star --nostar)--star[print stars for info commands]' \
 '(--star '{'--nostar)--no-star','--no-star)--nostar'}'[do not print stars]' \

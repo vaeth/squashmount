@@ -1,13 +1,13 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v18.0.0;
+package Squashmount v18.1.0;
 
 use strict;
 use warnings;
 use integer;
 use feature 'state';
 
-use Getopt::Long 2.24 ();
+# use Getopt::Long 2.24 ();
 use Cwd ();
 use Exporter qw(import);
 use Fcntl ();
@@ -500,26 +500,82 @@ You can avoid this effect by specfiying B<--squashorder>
 
 =back
 
-=item B<--chroot=>I<dir>
+=item B<--root=>I<dir> or B<-/> I<dir>
 
 Since v18.0.0, the data stored in F</run/squashmount> contains information
-about the root directory. If that root directory has changed (e.g. because
-squashmount is called inside of a chroot), B<squashmount> will refuse
-to handle the corresponding mount point.
-With this option, the path to the original root can be specified.
-There are two cases:
+(device and inode) about the root directory. If that root directory has changed
+(e.g. because squashmount is called inside of a chroot), B<squashmount> will
+refuse to handle the corresponding mount point.
+With this option, one can take action anyway.
+There are two cases.
 
-If I<dir> matches to the stored root data, B<squashmount> will attempt
-to interpret the data stored in F</run/squashmount> correspondingly by
-prepending the true root path to the stored directories.
-Note that corresponding changes will then have the modified data and
-new root information.
+=over 16
 
-As a second case, I<dir> may be empty.
-In this case, the stored root directory data is ignored and kept unchanged,
-although perhaps a corresponding warning is printed.
-This is only useful if the relevant directory structure is actually
-identical inside of the chroot.
+=item I<dir> is empty.
+
+In that case, B<squashmount> will tacitly ignore the difference of the
+root directory information.
+When writing to F</run/squashmount> it will use the previously stored
+root directory information (if available) or not store this information,
+respectively.
+The latter means that the subsequent call of B<squashmount> will not check
+that information.
+
+=item I<dir> is a path
+
+In that case, I<dir> must match the information about the root directory.
+B<squashmount> will proceed as if I<dir> is the actual root directory
+(and when writing to F</run/squashmount> will also store the information
+of that directory).
+
+=back
+
+Very likely, one will supplement B<--root> with B<--bind>.
+
+=item B<--bind=>I<from> I<to> or B<-2>I<from> I<to>
+
+When binding directories (or within a chroot), it might happen that the paths
+stored in F</run/squashmount> become wrong.
+With this option, these paths get reinterpreted when reading from
+F</run/squashmount> by replacing I<from> by I<to>; the paths get reinterpreted
+when writing to F</run/squashmount> by replacing B<to> by B<from>.
+
+Both, I<from> and I<to> are interpreted as absolute directory paths.
+
+If this option is specified several times on the command line,
+then for reading the order of reinterpretations is from left to right,
+while for writing the order of reinterpretations is from right to left.
+
+For instance, suppose that there are squashmount directories stored in
+
+F</usr/A>
+
+F</home/B>
+
+and that within a chroot the same B</run/squashmount> and configuration
+data is accessed, but the above directories are made visible as
+
+F</bound/usr/A>
+
+F</bound/new_home/B>
+
+(for instance with B<mount --bind> with appropriate master/slave settings
+or symlinks.)
+
+In this case, B<-2 /usr /bound/usr> B<-2 /home /bound/new_home> will make the
+B</run/squashmount> data valid from within the chroot (and will keep the
+data valid from outside the chroot when writing).
+
+Of course, in this example, one will also have to add a corresponding
+B<--root> option (with a I<dir> argument if the original F</> is accessible
+from inside the chroot under the directory I<dir>).
+
+In this example, one could also have written
+<-2 / /bound> <-2 /bound/home /bound/new_home>
+because first replacing F</> by </bound> and then B</bound/home> by
+B</bound/new_home> yields the same result.
+Similarly, for the opposite replacement in the reverse order.
+Hence, order of the B<--bind> arguments can be crucial.
 
 =item B<--rundir=>I<dir>
 
@@ -2156,6 +2212,8 @@ to B<squashmount>.
 
 =item # B<@ARGV> can be treated with usual perl tools.)
 
+=item require Getopt::Long;
+
 =item Getopt::Long::GetOptions('cd|c', \$cd);
 
 =back
@@ -2427,9 +2485,10 @@ my $opt_order = undef;
 my $opt_squashorder = undef;
 my $opt_user = undef;
 my $opt_allow_other = undef;
+my $opt_root = undef;
 my @order = ();
 my @squashorder = ();
-my $chroot = undef;
+my @bind = ();
 my $pass_dir = '';
 my $errorbreak = '';
 my $fatalreturn = undef;
@@ -3785,30 +3844,51 @@ sub calculate_inode() {
 	1
 }
 
+sub handle_bind() {
+	return unless (@bind);
+	my ($data, $reading) = @_;
+	for my $entry ('DIR', 'CHANGES', 'READONLY', 'WORKDIR',
+		'FILE', 'BACKUP', 'TEMPDIR') {
+		next unless (exists($data->{$entry}));
+		my $value = $data->{$entry};
+		my @dir = &split_dir($value);
+		next unless (&is_abspath($value));
+		for my $bind ($reading ? @bind : (reverse(@bind))) {
+			my $find = ($reading ? $bind->[0] : $bind->[1]);
+			next unless(&starts_with(\@dir, $find));
+			my $replace = ($reading ? $bind->[1] : $bind->[0]);
+			splice(@dir, 0, scalar(@$find), @$replace);
+		}
+		$data->{$entry} = &cat_dir(@dir)
+	}
+	1
+}
+
 # Read settings from /run/squashmount:
 
 sub read_settings {
+	$current = {};
 	my $file = &settings_file();
-	if (open(my $fh, '<', $file)) {
-		if ($locking) {
-			$lockfh = $fh;  # unlock even if we die
-			flock($lockfh, Fcntl::LOCK_SH())
-		}
-		{
-			package RUNCFG;
-			our %data = ();
-			do($file)
-		}
-		close($fh) unless (&end_locking());
-		%$current = %RUNCFG::data
-	} else {
-		%$current = ()
+	return unless (open(my $fh, '<', $file));
+	if ($locking) {
+		$lockfh = $fh;  # unlock even if we die
+		flock($lockfh, Fcntl::LOCK_SH())
 	}
+	{
+		package RUNCFG;
+		our %data = ();
+		do ($file)
+	}
+	close($fh) unless (&end_locking());
+	$current = &added_hash(\%RUNCFG::data);
+	&handle_bind($current, 1)
 }
 
 # Write settings to /run/squashmount and unlock:
 
 sub write_settings {
+	my $data = &added_hash($current);
+	&handle_bind($data);
 	my $file = &settings_file();
 	my $fh;
 	if (defined($lockfh)) {
@@ -3831,15 +3911,13 @@ sub write_settings {
 			flock($lockfh, Fcntl::LOCK_EX())
 		}
 	}
-	if (!defined($chroot) || ($chroot ne '')) {
-		if (&calculate_inode($root, \$rootdata)) {
-			$current->{'ROOTDEVICE'} = $rootdata->[0];
-			$current->{'ROOTINODE'} = $rootdata->[1];
-		}
+	if (&calculate_inode($root, \$rootdata)) {
+		$data->{'ROOTDEVICE'} = $rootdata->[0];
+		$data->{'ROOTINODE'} = $rootdata->[1];
 	}
 	my $ret = 1;
-	for my $i (keys(%$current)) {
-		my $value = $current->{$i};
+	for my $i (sort(keys(%$data))) {
+		my $value = $data->{$i};
 		next unless (defined($value));
 		my $write = "\$data\{\'$i\'\} = ";
 		if ($i eq 'THRESHOLD') {
@@ -3862,51 +3940,16 @@ sub write_settings {
 
 sub validate_root() {
 	return 1 unless(exists($current->{'ROOTDEVICE'}) &&
-		exists($current->{'ROOTINODE'}) &&
-		&calculate_inode($root, \$rootdata));
-	my $storedroot = [ ($current->{'ROOTDEVICE'} // -1),
-		($current->{'ROOTINODE'} // -1) ];
-	return 1 if (&starts_with($rootdata, $storedroot, 1));
-	if (!defined($chroot)) {
-		&error('stored root directory data does not match',
-			'use --chroot=DIR to specify true root or --chroot= to proceed anyway');
-		return ''
-	}
-	if ($chroot eq '') {
-		&warning('stored root data does not appear to match actual root');
-		return 1
-	}
-	state $chrootdata;
-	state $chrootvol;
-	state @chrootdir;
-	unless (defined($chrootdata)) {
-		my $abschroot = &good_abs_path($chroot);
-		if (&calculate_inode($abschroot, \$chrootdata)) {
-			($chrootvol, @chrootdir) = &split_dir($abschroot);
-		}
-	}
-	if (ref($chrootdata) ne 'ARRAY') {
-		&error('cannot accesss --chroot directory');
-		return ''
-	}
-	unless (&starts_with($chrootdata, $storedroot, 1)) {
-		&error('stored root directory data does not match --chroot argument',
-			'use --chroot= to override this test');
-		return ''
-	}
-	for my $entry ('DIR', 'CHANGES', 'READONLY', 'WORKDIR',
-		'FILE', 'BACKUP', 'TEMPDIR') {
-		next unless (exists($current->{$entry}));
-		my $value = $current->{$entry};
-		next unless (&is_abspath($value));
-		(undef, my @dir) = &split_dir($value);
-		&shift_empty(\@dir);
-		$current->{$entry} = &good_abs_path(&cat_dir($chrootvol,
-			@chrootdir, @dir))
-	}
-	1
+		exists($current->{'ROOTINODE'}));
+	return 1 unless(&calculate_inode($root, \$rootdata));
+	return 1 if (&starts_with($rootdata, [
+			($current->{'ROOTDEVICE'} // -1),
+			($current->{'ROOTINODE'} // -1)
+		], 1));
+	&error('stored root directory data does not match',
+		'use --root=ROOT or --root= to proceed anyway');
+	''
 }
-
 
 # forget settings in /run/squashmount if $current_empty suggests to.
 
@@ -4779,6 +4822,21 @@ sub file_exists {
 	defined($f) && (ref(\$f) eq 'SCALAR') && ($f ne '') && (-e $f)
 }
 
+# If path is relative, make it absolute. Return true if result is_abspath
+
+sub absolutify_path {
+	my ($r) = @_;
+	return '' unless (&is_nonempty($$r));
+	my $f = File::Spec->canonpath($$r);
+	return '' unless (&is_nonempty($f));
+	unless (&is_abspath($f)) {
+		$f = &good_abs_path($$r);
+		return '' unless (&is_abspath($f))
+	}
+	$$r = $f;
+	1
+}
+
 # abs_path('DIR/subdir/file') returns undef() if subdir does not exist in DIR.
 # &good_abs_path() is abs_path() with this "bug" being fixed:
 # It always returns a valid path. (Assumption: argument &is_abspath())
@@ -4824,8 +4882,8 @@ sub split_dir {
 # compose dir/file from volume and directory components
 
 sub cat_dir {
-	my $vol = shift;
-	my $file = pop;
+	my $vol = shift();
+	my $file = pop();
 	File::Spec->catpath($vol, File::Spec->catdir(@_), $file)
 }
 
@@ -4860,14 +4918,171 @@ sub pod2usage {
 	&Pod::Usage::pod2usage
 }
 
+# Unfortunately, Getopt::Long::GetOptions cannot combine multiple args with
+# short option bundling. So we must role our own...
+
+sub get_options() {
+	my %options = ();
+	my $define_option = sub {
+		my ($name, $action) = @_;
+		if ($name eq '') {
+			die 'empty option specified'
+		}
+		if (exists($options{$name})) {
+			die "duplicate option specified: $name"
+		}
+		$options{$name} = $action
+	};
+	while (@_) {
+		my $opt = shift();
+		my $operand = shift();
+		my $action = [ {}, $operand ];
+		if ((ref($operand) ne 'SCALAR') && (ref($operand) ne 'CODE') &&
+			ref($operand) ne 'ARRAY') {
+			die 'no valid operand specified'
+		}
+		my $flags = $action->[0];
+		my $negate = '';
+		for (;;) {
+			if ($opt =~ s{\{([^\{].*)\}$}{}) {
+				$flags->{'repeat'} = $1;
+				next
+			}
+			if ($opt =~ s{\=s$}{}) {
+				$flags->{'arg'} = 1;
+				next
+			}
+			if ($opt =~ s{\+$}{}) {
+				$flags->{'count'} = 1;
+				next
+			}
+			if ($opt =~ s{\!$}{}) {
+				$negate = 1;
+				next
+			}
+			last
+		}
+		my @opts = (split(/\|/, $opt));
+		unless(@opts) {
+			die 'no option specified'
+		}
+		for my $name (@opts) {
+			$define_option->($name, $action);
+		}
+		next unless ($negate);
+		$action = [ &added_hash($flags, { 'negate' => 1 }), $operand ];
+		for my $name (@opts) {
+			$define_option->('no' . $name, $action);
+			$define_option->('no-' . $name, $action)
+		}
+	}
+	for (my $i = 0; $i < @ARGV; ) {
+		my $arg = $ARGV[$i];
+		if ($arg eq '--') {
+			splice(@ARGV, $i, 1);
+			return 1
+		}
+		my $opt;
+		my $optarg = undef;
+		my $flags;
+		my $operand;
+		my $get_action = sub {
+			if (!exists($options{$opt})) {
+				print(STDERR "Unknown option: $opt\n");
+				return ''
+			}
+			my $action = $options{$opt};
+			$flags = $action->[0];
+			$operand = $action->[1];
+		};
+		my $do_arg_action = sub {
+			my $repeat = $flags->{'repeat'} // 0;
+			my $add = $repeat || 1;
+			--$add if (defined($optarg));
+			if ($add) {
+				if ($i + $add >= @ARGV) {
+					print(STDERR (($repeat <= 1) ?
+					"Option $opt requires an argument\n" :
+					"Option $opt requires $repeat arguments\n"));
+					return ''
+				}
+				if ($repeat) {
+					$optarg = [
+					((defined($optarg) ? $optarg : ()),
+					splice(@ARGV, $i + 1, $add))
+					];
+				} else {
+					$optarg = splice(@ARGV, $i + 1, 1)
+				}
+			}
+			if (ref($operand) eq 'ARRAY') {
+				push(@$operand, $optarg)
+			} elsif (ref($operand) eq 'CODE') {
+				$operand->($opt, $optarg)
+			} else {
+				$$operand = $optarg
+			}
+			1
+		};
+		my $do_action = sub {
+			if ($flags->{'arg'}) {
+				return $do_arg_action->();
+			}
+			if (ref($operand) eq 'CODE') {
+				$operand->($opt);
+			} elsif ($flags->{'count'} &&
+				defined($$operand) && ($$operand ne '')) {
+				if ($flags->{'negate'}) {
+					--$$operand
+				} else {
+					++$$operand
+				}
+			} elsif ($flags->{'negate'}) {
+				$$operand = ''
+			} else {
+				$$operand = 1
+			}
+			1
+		};
+		if ($arg =~ m{^\-\-([^=]+)(?:\=(.*))?$}) {
+			$opt = $1;
+			$optarg = $2 if (defined($2));
+			return '' unless ($get_action->());
+			if (defined($optarg) && !$flags->{'arg'}) {
+				print(STDERR "Option $opt does not take an argument\n");
+				return ''
+			}
+			return '' unless ($do_action->())
+		} else {
+			my $is_option = '';
+			while ($arg =~ m{^-(.)(.*)$}) {
+				$is_option = 1;
+				$opt = $1;
+				my $rest = $2;
+				$optarg = $2 if ($2 ne '');
+				return '' unless ($get_action->()
+					&& $do_action->());
+				last if ($flags->{'arg'});
+				$arg = '-' . $rest;
+			}
+			unless ($is_option) {
+				++$i;
+				next
+			}
+		}
+		splice(@ARGV, $i, 1)
+	}
+	1
+}
+
+
 #
 # Now the main program:
 #
 
 # Parse Options:
 
-Getopt::Long::Configure(qw(gnu_getopt));
-Getopt::Long::GetOptions(
+&get_options(
 	'help|h', sub { &pod2usage(0) },
 	'man|?', sub { &pod2usage(-verbose => 2, -exit => 0) },
 	'version|V', \&version,
@@ -4880,8 +5095,9 @@ Getopt::Long::GetOptions(
 	'order|o=s', \$opt_order,
 	'squashorder|O=s', \$opt_squashorder,
 	'allow!', \$opt_allow_other,
+	'root|/=s', \$opt_root,
 	'arg|a=s', \@argv,
-	'chroot=s', \$chroot,
+	'bind|2=s{2}', \@bind,
 	'rundir=s', \$rundir,
 	'separator|S=s', \$separator,
 	'interactice|i', \$interactive,
@@ -4936,13 +5152,29 @@ if ($opt_user) {
 @system_configs = (File::Spec->catfile($root, 'usr', 'lib', 'squashmount.pl'),
 	File::Spec->catfile($root, 'lib', 'squashmount.pl'))
 	unless (@system_configs);
-
-&fatal("$rundir is not an absolute path") unless (&is_abspath($rundir));
+&fatal("--rundir argument $rundir is not an absolute path")
+	unless (&absolutify_path(\$rundir));
 for my $i (@configs, @system_configs) {
 	&fatal("config-file $i is not an absolute path")
-		unless (&is_abspath($i))
+		unless (&absolutify_path(\$i))
 }
-
+if (defined($opt_root)) {
+	if ($opt_root ne '') {
+		&fatal("--root argument $opt_root is not an accessible directory")
+			unless((-d $opt_root) &&
+				&calculate_inode($opt_root, \$rootdata))
+	} else {
+		$rootdata = ''
+	}
+}
+for my $i (@bind) {
+	for (my $j = 0; $j < 2; ++$j) {
+		my $p = $i->[$j];
+		&fatal("--bind argument $p is not an absolute path")
+			unless(&absolutify_path(\$p));
+		$i->[$j] = [ (&split_dir($p)) ]
+	}
+}
 if (defined($opt_allow_other)) {
 	@allow_other = () unless ($opt_allow_other)
 } elsif ($opt_user) {
@@ -5241,9 +5473,8 @@ for my $i ($pass_dir ? (@CFG::mounts) : (@mounts)) {
 	$user_config = $i;
 	$tag = $i->{'TAG'};
 	$current_empty = undef;
-	$current = {};
 	&read_settings();
-	if (!&validate_root()) {
+	unless (&validate_root()) {
 		&bad_status();
 		next
 	}
