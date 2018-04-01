@@ -1,5 +1,15 @@
 # ChangeLog for squashmount
 
+*squashmount-18.2
+	Martin Väth <martin at mvath.de>:
+	- Change $lsof_ro default to 1 since sometimes (e.g. for
+	  /usr/lib*/firefox) umounting can fail even if lsof shows that only
+	  readonly directory is accessed. On the other hand, for
+	  /usr/share/texmf-dist the opposite is the case. Therefore:
+	- Provide LAZY, LSOF, LSOF_RO to override $lazy, $lsof, $lsof_ro
+	  for individual mount points. The command line options --lazy, --lsof,
+	  and --lsof-ro override all these configurations.
+
 *squashmount-18.1
 	Martin Väth <martin at mvath.de>:
 	- Provide --root to deal with root directory information

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v18.1.0;
+package Squashmount v18.2.0;
 
 use strict;
 use warnings;
@@ -780,6 +780,9 @@ umounting unconditionally all configured directories.
 
 =item B<--lazy=>I<value> or B<-L> I<value>
 
+If this option is speified it overrides the setting of B<LAZY> for individual
+mount points as well as the setting of the fallback B<$lazy>.
+
 B<value> must be one of the following:
 
 =over 16
@@ -800,6 +803,9 @@ Use B<-1> only if you know what you are doing.
 =back
 
 =item B<--lsof=>I<value> or B<-l> I<value>
+
+If this option is speified it overrides the setting of B<LSOF> for individual
+mount points as well as the setting of the fallback B<$lsof>.
 
 B<value> must be one of the following:
 
@@ -826,7 +832,11 @@ Use B<-1> only if you know what you are doing!
 
 =item B<--lsof-ro=>I<value>
 
-As B<--lsof>, but for the B<READONLY> directory.
+If this option is speified it overrides the setting of B<LSOF_RO>
+for individual mount points as well as the setting of the fallback
+B<$lsof_ro>.
+
+It acts as B<--lsof>, but for the B<READONLY> directory.
 
 =item B<--ll>
 
@@ -1004,7 +1014,7 @@ see the remarks at the end of this manpage.)
 
 =over 8
 
-=item $lazy = $lsof = $squashfuse_ll = 1; $lsof_ro = 0; # default
+=item $lazy = $lsof = $lsof_ro = $squashfuse_ll = 1; # default
 
 =item $killpower = '/etc/killpower';  # ignore /etc/nosquash /etc/nut/killpower
 
@@ -1206,18 +1216,24 @@ Except for B<@mounts>, the meaning of the variables is easily explained:
 
 =item B<$lazy>
 
-This determines the default I<value> of B<--lazy>.
+This determines the default I<value> of B<--lazy> for those mount points
+for which B<LAZY> is not defined.
+See the description of B<--lazy> for details.
 This variable defaults to the value B<1> (I<true>).
 
 =item B<$lsof>
 
-This determines the default I<value> of B<--lsof>.
+This determines the default I<value> of B<--lsof> for those mount points
+for which B<LSOF> is not defined.
+See the description of B<--lsof> for details.
 This variable defaults to the value B<1>.
 
 =item B<$lsof_ro>
 
-This determines the default I<value> of B<--lsof_ro>.
-This variable defaults to the value B<0>.
+This determines the default I<value> of B<--lsof-ro> for those mount points
+for which B<LSOF> is not defined.
+See the description of B<--lsof-ro> for details.
+This variable defaults to the value B<1>.
 
 =item B<$squashfuse_ll>
 
@@ -1724,8 +1740,8 @@ Specifies the compression mode for B<mksquashfs>:
 The available values depend on the installed version of B<mksquashfs>;
 typically B<xz>, B<lzma>, B<gzip>, B<lzo>, B<lz4>, and B<zstd> are available
 (ordered in increasing compression ratio, i.e. B<xz> is usually the slowest but
-best in compression ration while B<lz4> is the quickest; B<zstd> can be both,
-depending on the value of B<COMPOPT_STD>, seee above).
+best in compression ratio while B<lz4> is the quickest; B<zstd> can be both,
+depending on the value of B<COMPOPT_STD>, see above).
 If the value is empty, no B<-comp> parameter is passed,
 that is, the default of the installed B<mksquashfs> is chosen
 (which is usually B<gzip> but might depend on your version of B<mksquashfs>).
@@ -1742,6 +1758,25 @@ B<-always-use-fragments> is appended to the options of B<mksquashfs>
 which usually improves the compression ratio.
 You might need to set this variable (at the cost of slightly worse results)
 if you need compatibility with older versions of B<squashfs>.
+
+=item B<LAZY>
+
+This variable can be used to override the default B<$lazy> for the mount point.
+If the option B<--lazy> is specified, it overrides this value.
+See the description of B<--lazy> for the possible values and their meaning.
+
+=item B<LSOF>
+
+This variable can be used to override the default B<$lsof> for the mount point.
+If the option B<--lsof> is specified, it overrides this value.
+See the description of B<--lsof> for the possible values and their meaning.
+
+=item B<LSOF_RO>
+
+This variable can be used to override the default B<$lsof_ro> for the
+mount point.
+If the option B<--lsof-ro> is specified, it overrides this value.
+See the description of B<--lsof-ro> for possible values and their meaning.
 
 =item B<BACKUP>
 
@@ -2468,8 +2503,11 @@ my $mem = undef;
 my $opt_color = undef;
 my $star = undef;
 my $lazy = undef;
+my $opt_lazy = undef;
 my $lsof = undef;
+my $opt_lsof = undef;
 my $lsof_ro = undef;
+my $opt_lsof_ro = undef;
 my $squashfuse_ll = undef;
 my $locking = undef;
 my $force = '';
@@ -2543,6 +2581,9 @@ my $kill;                  # currently active kill (integer)
 my $backup;                # currently active backup (string)
 my $tempdir;               # currently active tempdir (string)
 my $compression;           # currently active compression (string)
+my $current_lazy;          # currently active lazy
+my $current_lsof;          # currently active lsof
+my $current_lsof_ro;       # currently active lsof_ro
 my $name = 'squashmount';  # name of the program (this is actually a constant)
 
 #
@@ -2856,16 +2897,14 @@ sub mount_main {
 	$ret
 }
 
-# The main umount function.
-# $will_squash and $will_remove will be calculated if they are not passed
-# as the second or third argument, respectively.
+# Call to lsof if necessary:
 
 sub lsof {
 	my ($dir, $readonly) = @_;
 	return 1 unless (&is_abspath($dir));
 	return 1 unless (&which_store(\$lsof_bin, 'lsof'));
 	return 1 if (&my_system(2, \$lsof_bin, 'lsof', '--', $dir) == 1);
-	my $loclsof = ($readonly ? $lsof_ro : $lsof );
+	my $loclsof = ($readonly ? $current_lsof_ro : $current_lsof );
 	if ($loclsof && ($loclsof > 0)) {
 		&error('umount skipped: dir in use: ' . $dir,
 			'(this test can be skipped with ' .
@@ -2876,10 +2915,14 @@ sub lsof {
 	''
 }
 
+# The main umount function.
+# $will_squash and $will_remove will be calculated if they are not passed
+# as the second or third argument, respectively.
+
 sub umount_main {
 	my $stop_cmd = (shift() // '');
 	my $type = $current->{'TYPE'};
-	if ($lsof_ro && $lsof_ro > 0) {
+	if ($current_lsof_ro && $current_lsof_ro > 0) {
 		if (&is_nonempty($current->{'MOUNT_RO'})) {
 			return '' unless (&lsof(&get_abspath('READONLY'), 1))
 		}
@@ -2895,7 +2938,7 @@ sub umount_main {
 	my $tempfile;
 	my $dir = &get_abspath('DIR');
 	$dir = undef unless (&is_abspath($dir));
-	if ($lsof && $lsof > 0) {
+	if ($current_lsof && $current_lsof > 0) {
 		return '' unless (&lsof($dir, ''));
 	}
 	if ($will_squash && defined($dir)) {
@@ -3514,8 +3557,8 @@ sub umount_dir {
 			push(@fopt, ($readonly ? @CFG::fumount_ro : @CFG::fumount))
 		}
 	}
-	my $loclazy = $lazy;
-	my $loclsof = ($readonly ? $lsof_ro : $lsof );
+	my $loclazy = $current_lazy;
+	my $loclsof = ($readonly ? $current_lsof_ro : $current_lsof );
 	if (($loclsof ne '') && !&lsof($dir, $readonly)) {
 		if ($loclsof == 0) {
 			$loclazy = 1
@@ -3661,7 +3704,7 @@ sub kernelprobe {
 	package CFG;
 	our $lazy = 1;
 	our $lsof = 1;
-	our $lsof_ro = 0;
+	our $lsof_ro = 1;
 	our $squashfuse_ll = 1;
 	our $killpower = [
 		'/etc/killpower',
@@ -4013,6 +4056,9 @@ sub set_globals {
 	} else {
 		$kill = ($opt_kill // &parse_kill($current->{'KILL'}))
 	}
+	$current_lazy = ($opt_lazy // $current->{'LAZY'}) // $lazy;
+	$current_lsof = ($opt_lsof // $current->{'LSOF'}) // $lsof;
+	$current_lsof_ro = ($opt_lsof_ro // $current->{'LSOF_RO'}) // $lsof_ro
 }
 
 # Fill $current state with defaults from $user_config.
@@ -5115,9 +5161,9 @@ sub get_options() {
 	'mksquash-verbose=s', \$mksquash_verbose,
 	'processors|p=s', \$processors,
 	'mem|m=s', \$mem,
-	'lazy|L=s', \$lazy,
-	'lsof|l=s', \$lsof,
-	'lsof-ro=s', \$lsof_ro,
+	'lazy|L=s', \$opt_lazy,
+	'lsof|l=s', \$opt_lsof,
+	'lsof-ro=s', \$opt_lsof_ro,
 	'll', \$squashfuse_ll,
 	'locking!', \$locking,
 	'force|f', \$force,
@@ -5139,6 +5185,12 @@ sub get_options() {
 
 # Check and postprocess options:
 
+&fatal('--lazy=' . $opt_lazy . ' is non-integer')
+	if (defined($opt_lazy) && !&is_integer($opt_lazy));
+&fatal('--lsof=' . $opt_lsof . ' is non-integer')
+	if (defined($opt_lsof) && !&is_integer($opt_lsof));
+&fatal('--lsof-ro=' . $opt_lsof_ro . ' is non-integer')
+	if (defined($opt_lsof_ro) && !&is_integer($opt_lsof_ro));
 if ($opt_user) {
 	@configs = (File::Spec->catfile($ENV{'HOME'} // $root, '.squashmount.pl'))
 		unless (@configs);
@@ -5256,8 +5308,9 @@ my $action = (shift(@ARGV) // '');
 	} elsif ($action =~ m{^ch}i) {
 		$cmd = 'check';
 		$run_ro = 1;
-		$lazy = '' unless (defined($lazy));
-		$lsof = 1 unless (defined($lsof));
+		$opt_lazy = '' unless (defined($opt_lazy));
+		$opt_lsof = 1 unless (defined($opt_lsof));
+		$opt_lsof_ro = 1 unless (defined($opt_lsof_ro));
 		$action = \&cmd_check
 	} elsif ($action =~ m{set}i) {
 		if ($action =~ m{[ur]}i) {
@@ -5341,12 +5394,9 @@ $|=1;
 
 # Modify options according to config:
 
-$lazy = $CFG::lazy unless (defined($lazy));
-&fatal('--lazy=' . $lazy . ' is non-integer') unless (&is_integer($lazy));
-$lsof = $CFG::lsof unless (defined($lsof));
-&fatal('--lsof=' . $lsof . ' is non-integer') unless (&is_integer($lsof));
-$lsof_ro = $CFG::lsof_ro unless (defined($lsof_ro));
-&fatal('--lsof-ro=' . $lsof_ro . ' is non-integer') unless (&is_integer($lsof_ro));
+$lazy = $CFG::lazy;
+$lsof = $CFG::lsof;
+$lsof_ro = $CFG::lsof_ro;
 $squashfuse_ll = $CFG::squashfuse_ll unless (defined($squashfuse_ll));
 $locking = $CFG::locking unless (defined($locking));
 $modprobe_loop = $CFG::modprobe_loop;
