@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-18.2.1:
+	Martin Väth <martin at mvath.de>:
+	- Fix variable name which contains LAZY, LSOF, LSOF_RO
+	  (in 18.2 they were simply ignored due to this bug).
+
 *squashmount-18.2
 	Martin Väth <martin at mvath.de>:
 	- Change $lsof_ro default to 1 since sometimes (e.g. for
