@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v18.2.1;
+package Squashmount v19.0.0;
 
 use strict;
 use warnings;
@@ -1662,7 +1662,7 @@ This should be a (possibly empty) string or a reference to an array of strings:
 These strings are used as additional options when mounting with overlay.
 (Note that overlayfs is available only for >=kernel-3.18;
 see B<MOUNT_OVERLAYFS> for older versions).
-The default is B<['-o', 'noatime']>.
+The default is B<['-o', 'noatime', '-o', 'index=off']>.
 
 =item B<MOUNT_OVERLAYFS>
 
@@ -3228,7 +3228,7 @@ sub mount_overlay {
 	my $workdir = &create_workdir();
 	return '' if ($workdir eq '');
 	&push_ref(\my @options, $user_config->{'MOUNT_OVERLAY'},
-		['-o', 'noatime']);
+		['-o', 'noatime', '-o', 'index=off']);
 	push(@options, '-v') if ($verbose > 3);
 	return 1 if (&my_system('', \$mount, 'mount', '-t', 'overlay', @options,
 		'-o', "upperdir\=${changes}", '-o', "lowerdir\=${ro}",

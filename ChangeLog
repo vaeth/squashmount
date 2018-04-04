@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-19:
+	Martin Väth <martin at mvath.de>:
+	- Add -o index=off to MOUNT_OVERLAY default
+
 *squashmount-18.2.1:
 	Martin Väth <martin at mvath.de>:
 	- Fix variable name which contains LAZY, LSOF, LSOF_RO
