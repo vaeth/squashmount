@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v19.0.0;
+package Squashmount v19.0.1;
 
 use strict;
 use warnings;
@@ -1134,7 +1134,7 @@ see the remarks at the end of this manpage.)
 
 =item # /etc/portage/repo.postsync.d/10-squashmount-gentoo
 
-=item DIR => '/usr/portage,
+=item DIR => '/usr/portage',
 
 =item FILE => '/usr/portage.mount/portage.sfs',
 

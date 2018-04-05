@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-19.0.1:
+	Martin Väth <martin at mvath.de>:
+	- Fix quoting in manpage
+
 *squashmount-19:
 	Martin Väth <martin at mvath.de>:
 	- Add -o index=off to MOUNT_OVERLAY default
