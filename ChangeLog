@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-19.0.2:
+	Martin Väth <martin at mvath.de>:
+	- Avoid wrong linebreak in manpage
+
 *squashmount-19.0.1:
 	Martin Väth <martin at mvath.de>:
 	- Fix quoting in manpage
