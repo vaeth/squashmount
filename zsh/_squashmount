@@ -83,6 +83,7 @@ case $state in
 	'print-readonly:print READONLY directory or 1'
 	'print-changes:print CHANGES directory'
 	'print-file:print squash-file path'
+	'print-mtime:print squash-file mtime'
 	'print-type:print mount type'
 	'print-squashtype:print squash mount type'
 	'print-new:print 1 if there is new data'

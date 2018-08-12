@@ -1,5 +1,10 @@
 # ChangeLog for squashmount
 
+*squashmount-19.1:
+	Martin Väth <martin at mvath.de>:
+	- Introduce print-mtime
+	- Output mtime of squashed file with squashmount -vv status
+
 *squashmount-19.0.2:
 	Martin Väth <martin at mvath.de>:
 	- Avoid wrong linebreak in manpage
