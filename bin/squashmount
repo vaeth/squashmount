@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v19.1.0;
+package Squashmount v20.0.0;
 
 use strict;
 use warnings;
@@ -729,6 +729,16 @@ so that this happens for all subsequent umounts/remounts.
 
 If used with B<status> or B<print*> act as if mount-point was correspondingly
 configured (without actually changing the configuration, of course).
+
+=item B<--tar2sqfs> or B<--tar>
+
+Use tar -> tar2sqfs for compression instead of squashfs.
+
+=item B<--no-tar2sqfs>, B<--notar2sqfs>, B<--no-tar>, or B<--notar>
+
+This is the opposite of B<--tar>.
+Whether B<--tar> or B<--no-tar> is the default depends on the
+variable B<$tar2sqfs> in F</etc/squashmount.pl>.
 
 =item B<--compression=>I<mode>, B<--comp=>I<mode>, or B<-x> I<mode>
 
@@ -1626,18 +1636,9 @@ If the number is bigger than 1, also the corresponding number of parent
 directories (minus one) is removed (if nonempty). If the number is negative,
 all parent directories are removed (if nonempty).
 
-=item B<MKSQUASHFS>
-
-This should be a (possibly empty) string or a reference to an array of strings:
-These strings are used as additional options when calling B<mksquashfs>.
-The option B<-noappend> is used automatically.
-Depending on B<$squashfs_verbose>, B<COMPRESSION>, B<DEFAULT_FRAGMENTS>
-also the options B<-no-progress>, B<-comp>, or B<-always-use-fragments>
-are appended automatically.
-
 =item B<MKSQUASHFS>, B<COMPOPT_{XZ,LZMA,GZIP,LZO,LZ4,ZSTD,}>
 
-These should be a (possibly empty) strings or references arrays of strings:
+These should be (possibly empty) strings or references to arrays of strings:
 These strings are used as additional options when calling B<mksquashfs>
 (the latter only if the corresponding B<COMPRESSION> option is used;
 B<COMPOPT_> is used if B<COMPRESSION> is empty).
@@ -1656,6 +1657,38 @@ Set it to the empty string if you want the fast B<zstd> compression default
 used by mksquashfs.
 
 =item B<COMPOPT_LZ4>: If undefined, defaults to C<'-Xhc'>.
+Set it to the empty string if you want fastest B<lz4> compression instead.
+
+=back
+
+=item B<TAR>
+
+This should be a (possibly empty) string or a reference to an array of strings:
+These strings are used as additional options when calling B<tar>
+If the corresponding variable is not defined, it is assumed to be
+B<--numeric-owner>.
+
+=item B<TAR2SQFS>, B<COMPEXTRA_{XZ,LZMA,GZIP,LZO,LZ4,ZSTD,}>
+
+These should be (possibly empty) strings or references to arrays of strings:
+These strings are used as additional options when calling B<tar2sqfs>
+(the latter only if the corresponding B<COMPRESSION> option is used;
+B<COMPEXTRA_> is used if B<COMPRESSION> is empty).
+The option B<-f> is used automatically.
+Depending on B<COMPRESSION>, also the option B<-c> is appended automatically.
+If the corresponding variable is not defined, it is assumed to be empty
+with the following exception:
+
+=over 16
+
+=item b<TAR2SQFS>: If undefined, defaults to C<-q>.
+Set it to the empty string if you want to see all files listed on compression
+
+=item B<COMPEXTRA_ZSTD>: If undefined, defaults to C<'level=22'>.
+Set it to the empty string if you want the fast B<zstd> compression default
+used by tar2sqfs.
+
+=item B<COMPEXTRA_LZ4>: If undefined, defaults to C<'hc'>.
 Set it to the empty string if you want fastest B<lz4> compression instead.
 
 =back
@@ -1745,7 +1778,7 @@ The available values depend on the installed version of B<mksquashfs>;
 typically B<xz>, B<lzma>, B<gzip>, B<lzo>, B<lz4>, and B<zstd> are available
 (ordered in increasing compression ratio, i.e. B<xz> is usually the slowest but
 best in compression ratio while B<lz4> is the quickest; B<zstd> can be both,
-depending on the value of B<COMPOPT_STD>, see above).
+depending on the value of B<COMPOPT_STD> or B<COMPOPT_EXTRA>, see above).
 If the value is empty, no B<-comp> parameter is passed,
 that is, the default of the installed B<mksquashfs> is chosen
 (which is usually B<gzip> but might depend on your version of B<mksquashfs>).
@@ -2514,6 +2547,7 @@ my $lsof_ro = undef;
 my $opt_lsof_ro = undef;
 my $squashfuse_ll = undef;
 my $locking = undef;
+my $use_tar2sqfs = undef;
 my $force = '';
 my $ignore_state = '';
 my $reset = '';
@@ -2549,6 +2583,8 @@ my $funionfs = undef;
 my $unionfs_fuse = undef;
 my $squashfuse = undef;
 my $mksquashfs = undef;
+my $tar = undef;
+my $tar2sqfs = undef;
 my $lsof_bin = undef;
 my $mount = undef;
 my $umount = undef;
@@ -2765,7 +2801,12 @@ sub cmd_status {
 	push(@status, "TEMPDIR: $tempdir") if (&is_abspath($tempdir));
 	push(@status, "BACKUP: $backup") if (&is_nonempty($backup));
 	&mksquashfs_options(\my @options);
-	push(@status, &shell_quote_best_effort('mksquashfs-options:', @options));
+	push(@status, &shell_quote_best_effort('mksquashfs-options:',
+		@options));
+	push(@status, &shell_quote_best_effort('tar-options:',
+		&tar_options()));
+	push(@status, &shell_quote_best_effort('tar2sqfs-options:',
+		&tar2sqfs_options()));
 	my $chmod = &get_chmod();
 	push(@status, 'CHMOD: ' . (($chmod eq '') ? 'unchanged (0400)' :
 		sprintf('%#o', $chmod)));
@@ -2963,7 +3004,7 @@ sub umount_main {
 		} else {
 			$tempfile = File::Temp->new();
 		}
-		return '' unless (&mksquashfs($tempfile->filename, $dir));
+		return '' unless (&createsquashfs($tempfile->filename, $dir));
 		$created = 1
 	}
 	&info('umounting...') unless ($quiet);
@@ -3125,7 +3166,7 @@ sub first_create {
 	&info('It seems this is mounted for the first time:',
 		"The squash-file $squashfile does not exist yet;",
 		"it will be initialized now from $dir") unless ($quiet);
-	return '' unless (&mksquashfs($squashfile, $dir));
+	return '' unless (&createsquashfs($squashfile, $dir));
 	&set_permissions($squashfile);
 	# Sanity check: do not wipe if e.g. kernel has no squashfs support
 	my $success = 1; {
@@ -3456,7 +3497,7 @@ sub mount_squashfuse {
 
 # Create the squash-file:
 
-sub mksquashfs {
+sub createsquashfs {
 	my ($squashfile, $dir) = @_;
 	unless (-d $dir) {
 		&error("no directory $dir");
@@ -3469,11 +3510,68 @@ sub mksquashfs {
 	if (($parent ne '') && !(-d $parent)) {
 		return '' unless (&make_directory($parent))
 	}
+	my $bad = '';
+	my $unavailable;
+	if ($use_tar2sqfs) {
+		$unavailable = &unavailable_tar2sqfs();
+		if ($unavailable ne '') {
+			if (&which_store(\$mksquashfs, 'mksquashfs')) {
+				$use_tar2sqfs = '';
+				&warning($unavailable .
+				' not available; using --no-tar')
+			} else {
+				$bad = 1
+			}
+		}
+	} elsif (!&which_store(\$mksquashfs, 'mksquashfs')) {
+		$unavailable = &unavailable_tar2sqfs();
+		if ($unavailable eq '') {
+			$use_tar2sqfs = 1;
+			&warning('mksquashfs not available; using --tar',
+				$quiet ?
+				'To make this the default: $tar2sqfs = 1;' : ())
+				unless ($quiet > 1)
+		} else {
+			$bad = 1;
+		}
+	}
+	if ($bad) {
+		&error('Neither mksquashfs nor ' . $unavailable . ' are in $PATH');
+		return ''
+	}
+	$use_tar2sqfs ? &tar2sqfs($squashfile, $dir)
+		: &mksquashfs($squashfile, $dir)
+}
+
+sub unavailable_tar2sqfs {
+	&which_store(\$tar, 'tar', 'gtar', 'star') ?
+		(&which_store(\$tar2sqfs, 'tar2sqfs') ? '' : 'tar2sqfs')
+		: '{,g,s}tar'
+}
+
+sub mksquashfs {
+	my ($squashfile, $dir) = @_;
 	my $redirect = &mksquashfs_options(\my @options);
 	my $oldout = undef;
 	my $ret = (&my_system($redirect, \$mksquashfs, 'mksquashfs', $dir, $squashfile, @options) == 0);
 	&error($verbose ? 'failed: ' . &shell_quote_best_effort($mksquashfs, $dir, $squashfile, @options)
 		: 'mksquashfs failed') unless ($ret);
+	$ret
+}
+
+sub tar2sqfs {
+	my ($squashfile, $dir) = @_;
+	my $cd = &shell_quote_best_effort('cd', '--', $dir) . ' && ';
+	my @tar = ('-c', &tar_options(), '.');
+	my $tarcmd = &shell_quote_best_effort($tar, @tar) . ' | ';
+	my @tar2sqfs = (&tar2sqfs_options(), '--', $squashfile);
+	my $tar2sqfscmd = &shell_quote_best_effort($tar2sqfs, @tar2sqfs);
+	my $ret = (&my_system_cmd('', $cd . $tarcmd . $tar2sqfscmd) == 0);
+	&error($verbose ? 'failed: ' . $cd .
+		&shell_quote_best_effort((File::Spec->splitpath($tar))[2],
+			@tar) . ' | ' .
+			&shell_quote_best_effort('tar2sqfs', @tar2sqfs)
+		: 'tar->tar2sqfs failed') unless ($ret);
 	$ret
 }
 
@@ -3534,6 +3632,34 @@ sub calc_mksquash_symbols {
 		}
 	}
 	$squash_symbols
+}
+
+# Set array of options for tar:
+
+sub tar_options {
+	my @options = ();
+	&push_ref(\@options, $user_config->{'TAR'} // '--numeric-owner', undef);
+	(@options)
+}
+
+# Set array of options for tar2sqfs:
+
+sub tar2sqfs_options {
+	my @options = ('-f');
+	my $comp = (defined($compression) ? lc($compression) : 'zstd');
+	my $compextra = $user_config->{'COMPEXTRA_' . uc($comp)};
+	unless (defined($compextra)) {
+		$compextra = 'level=22' if ($comp eq 'zstd');
+		$compextra = 'hc' if ($comp eq 'lz4')
+	}
+	push(@options, '-c', $comp) if ($comp ne '');
+	if (defined($compextra)) {
+		$compextra = join(',', $compextra) if ($compextra eq 'ARRAY');
+		&push_ref(\@options, ['-X', $compextra], undef)
+			if ($compextra ne '')
+	}
+	&push_ref(\@options, $user_config->{'TAR2SQFS'}, '-q');
+	(@options)
 }
 
 # Set $know_quiet:
@@ -3738,6 +3864,7 @@ sub kernelprobe {
 	our $rm_workdir = 1;
 	our $rm_readonly = 1;
 	our $locking = undef;
+	our $tar2sqfs = undef;
 	our $obsolete_overlayfs = '';
 	our @order = ();
 	our @squashorder = ();
@@ -3797,6 +3924,7 @@ sub read_config_file {
 	our $rm_workdir;
 	our $rm_readonly;
 	our $locking;
+	our $tar2sqfs;
 	our $obsolete_overlayfs;
 	our @order;
 	our @squashorder;
@@ -4677,8 +4805,18 @@ sub my_system {
 		&error(join(', ', @$b) . ' not found in $PATH');
 		return -1
 	}
+	&my_system_cmd($redirect, $$a, @_)
+}
+
+# Calls system() with appropriate messages
+# The first argument is special:
+# '' or 0: Default mode
+# 1: suppress stdout
+# 2: suppress stdout and stderr
+sub my_system_cmd {
+	my $redirect = shift();
 	if ($verbose > 2) {
-		print(&shell_quote_best_effort($$a, @_), "\n");
+		print((@_ > 1) ? &shell_quote_best_effort(@_) : @_, "\n");
 		$redirect = ''
 	}
 	my $oldout = undef;
@@ -4689,7 +4827,7 @@ sub my_system {
 		}
 		$oldout = undef unless (open($oldout, '>&', \*STDOUT) && open(STDOUT, '>', $devnull))
 	}
-	my $ret = system($$a, @_);
+	my $ret = system(@_);
 	open(STDERR, '>&', $olderr) if (defined($olderr));
 	open(STDOUT, '>&', $oldout) if (defined($oldout));
 	($ret >= 0) ? ($ret >> 8) : $ret
@@ -5178,6 +5316,8 @@ sub get_options() {
 	'kill-or-resquash|R', sub { $opt_kill = -1 },
 	'kill|k', sub { $opt_kill = 1 },
 	'no-kill|nokill|K', sub { $opt_kill = 0 },
+	'tar2sqfs|tar', \$use_tar2sqfs,
+	'no-tar2sqfs|notar2sqfs|no-tar|notar', sub { $use_tar2sqfs = '' },
 	'compression|comp|x=s', \$opt_compression,
 	'tempdir|D=s', \$opt_tempdir,
 	'backup|b=s', \$opt_backup,
@@ -5426,6 +5566,7 @@ $lsof = $CFG::lsof;
 $lsof_ro = $CFG::lsof_ro;
 $squashfuse_ll = $CFG::squashfuse_ll unless (defined($squashfuse_ll));
 $locking = $CFG::locking unless (defined($locking));
+$use_tar2sqfs = $CFG::tar2sqfs unless (defined($use_tar2sqfs));
 $modprobe_loop = $CFG::modprobe_loop;
 $resquash_on_start = $CFG::resquash_on_start;
 $rm_rundir = $CFG::rm_rundir;

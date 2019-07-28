@@ -72,6 +72,7 @@ fatal('The file /etc/squashmount.pl is not yet set up!',
 # These are the defaults:
 # $lsof = 1;
 # $lsof_ro = 0;
+# $tar2sqfs = undef;
 
 # Uncomment the following if you prefer (globally) resquashing on start
 # instead of resquashing on umount/stop. You can override this individually
@@ -129,15 +130,18 @@ $rm_changes = $rm_workdir = $rm_readonly = 0;
 
 my $defaults = {
 	COMPRESSION => 'lz4',   # We could omit this line as lz4 is default.
-	COMPOPT_LZ4 => '-Xhc',  # We could omit this line as -Xhc is default
+	COMPOPT_LZ4 => '-Xhc',  # We could omit this line as -Xhc is default.
+	COMPEXTRA_LZ4 = > 'hc', # We could omit this line as hc is default.
 	# In case of COMPRESSION => 'xz', we use the following option.
 	# Note that this option roughly doubles the squashing time for only
 	# slightly better compression of binaries.
 	COMPOPT_XZ => ['-Xbcj', 'x86'],
+	COMPEXTRA_XZ => ['x86', 'powerpc', 'ia64', 'arm', 'armthumb', 'sparc']
 };
 # Add $pure_text, if the archive is essentially pure text:
 my $pure_text = {
 	COMPOPT_XZ => undef,  # "-Xbcj x86" is slower for pure text archives
+	COMPEXTRA_XZ => undef,
 };
 # Add $git to avoid recompression of git-compressed data.
 # The archive will usually be slightly larger, but speed gain can be huge.
