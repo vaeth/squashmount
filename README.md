@@ -121,7 +121,7 @@ will work in your zsh as intended without the need to quote *.
 (I assume that you do not use any poor shell instead of zsh.) ;)
 
 If you use __revdep-rebuild__ from Gentoo or similar distributions, and
-if you use the default naming schme, it is recommended to copy the content of
+if you use the default naming scheme, it is recommended to copy the content of
 `etc/revdep-rebuild` into `/etc/revdep-rebuild` to cancel duplicate or obsolete
 paths search of revdep-rebuild.
 
