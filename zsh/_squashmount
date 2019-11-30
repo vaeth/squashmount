@@ -41,6 +41,8 @@ _arguments -C -s -S : \
 '(--color -F '{'--no-color --nocolor)-C','--nocolor -C)--no-color','--no-color -E)--nocolor'}'[non-colored output]' \
 '(--no-star --nostar)--star[print stars for info commands]' \
 '(--star '{'--nostar)--no-star','--no-star)--nostar'}'[do not print stars]' \
+'(--no-tar2sqfs --notar2sqfs --no-tar --notar '{'--tar)--tar2sqfs','--tar2sqfs)--tar'}'[use tar2sqfs]' \
+'(--tar2sqfs --tar '{'--notar2sqfs --no-tar --notar)--no-tar2sqfs','--no-tar2sqfs --no-tar --notar)--notar2sqfs','--no-tar2sqfs --notar2sqfs --notar --notar)--no-tar','--no-tar2sqfs --notar2sqfs --no-tar)--notar'}'[do not use tar2sqfs]' \
 '(--no-locking --nolocking)--locking[use file locking]' \
 '(--locking '{'--nolocking)--no-locking','--no-locking)--nolocking'}'[do not use file locking]' \
 '(--no-fatal --nofatal)--fatal[return nonzero on every failure]' \

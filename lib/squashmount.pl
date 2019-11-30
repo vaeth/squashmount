@@ -41,7 +41,7 @@ fatal('The file /etc/squashmount.pl is not yet set up!',
 # if compiled into the kernel. Use "overlay? overlayfs?" instead
 # if you want a more reliable check for that case.
 
-@order = qw(overlay overlayfs aufs! unionfs-fuse! unionfs??# funionfs??#);
+@order = qw(overlay overlayfs aufs! fuse-overlayfs! unionfs-fuse! unionfs??# funionfs??#);
 
 # The tool to mount squash files (currently: kernel or user-space squashfuse)
 # is determined according to squashorder. The following is the default

@@ -1,8 +1,12 @@
 # ChangeLog for squashmount
 
+*squashmount-21.0:
+	Martin Väth <martin at mvath.de>:
+	- Support https://github.com/containers/fuse-overlayfs
+
 *squashmount-20.0:
 	Martin Väth <martin at mvath.de>:
-	- Support https://github.com/AgentD/squashfs-tools-ng
+	- Support https://github.com/AgentD/squashfs-tools-ng (--tar2sqfs)
 	  BEWARE: For me, this new tool does not work for unknown reasons:
 	  tar2sqfs produces files unreadable by the kernel or by unsquashfs
 	  (no matter whether squashfs-root is a parent directory), and

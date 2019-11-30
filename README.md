@@ -32,6 +32,7 @@ available):
 -	overlayfs, a variant for older linux kernels, see
 		http://git.kernel.org/?p=linux/kernel/git/mszeredi/vfs.git
 -	aufs, see http://aufs.sourceforge.net
+-	fuse-overlayfs, see https://github.com/containers/fuse-overlayfs
 -	unionfs-fuse, see http://podgorny.cz/moin/UnionFsFuse
 		(unionfs-fuse-0.25 or newer is required)
 -	unionfs, see http://www.fsl.cs.sunysb.edu/project-unionfs.html

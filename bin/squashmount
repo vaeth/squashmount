@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v20.0.0;
+package Squashmount v21.0.0;
 
 use strict;
 use warnings;
@@ -269,9 +269,9 @@ Output the mtime of the squash-file.
 
 Output the tool actually used for mounting.
 Possible output is C<overlay>, C<overlayfs>, C<overlayfs-obsolete>, C<aufs>,
-C<unionfs-fuse>, C<unionfs>, C<funionfs>, C<bind>, C<readonly>, or the
-empty string (for not mounted or incompletely mounted; you can check
-the details with B<print-squashtype>).
+C<fuse-overlayfs>, C<unionfs-fuse>, C<unionfs>, C<funionfs>, C<bind>,
+C<readonly>, or the empty string (for not mounted or incompletely mounted;
+you can check the details with B<print-squashtype>).
 For usage in scripts, combine this with B<-q> and pass a tag.
 
 =item B<print-squashtype>
@@ -462,7 +462,8 @@ differently (for examples, see the description of B<@umount> and B<UMOUNT>).
 
 Add option I<opt> to the default B<@fumount> array (see also B<--umount>).
 If this option is repeated, all passed options are added to the array.
-By default, this means that the option are used in the call to B<fusermount -u DIR>.
+By default, this means that the option are used in the call to
+B<fusermount -u DIR>.
 There might be code in B</etc/squashmount.pl> which treats this array value
 differently.
 
@@ -494,7 +495,7 @@ You can avoid/change the effect by specifying B<--rundir>.
 
 You can avoid this effect by specifying B<--allow>
 
-=item Use default @order = qw(unionfs-fuse!! funionfs!!)
+=item Use default @order = qw(fuse-overlayfs!! unionfs-fuse!! funionfs!!)
 
 You can avoid this effect by specifying B<--order>
 
@@ -732,7 +733,7 @@ configured (without actually changing the configuration, of course).
 
 =item B<--tar2sqfs> or B<--tar>
 
-Use tar -> tar2sqfs for compression instead of squashfs.
+Use tar -> tar2sqfs from squashfs-tools-ng for compression instead of squashfs.
 
 =item B<--no-tar2sqfs>, B<--notar2sqfs>, B<--no-tar>, or B<--notar>
 
@@ -866,16 +867,16 @@ configuration file F</etc/squashmount.pl>
 
 =item B<--allow>
 
-Use the option C<-o allow_other> for B<MOUNT_UNIONFS_FUSE>,
-B<MOUNT_FUNIONFS>, and B<MOUNT_SQUASHFUSE> as default if these variables
-are not specified.
+Use the option C<-o allow_other> for B<MOUNT_FUSE_OVERLAYFS>,
+B<MOUNT_UNIONFS_FUSE>, B<MOUNT_FUNIONFS>, and B<MOUNT_SQUASHFUSE>
+as default if these variables are not specified.
 This is the default unless B<--user> is in use.
 
 =item B<--no-allow> or B<--noallow>
 
-Do not use the option C<-o allow_other> for B<MOUNT_UNIONFS_FUSE>,
-B<MOUNT_FUNIONFS>, and B<MOUNT_SQUASHFUSE> as default if these variables
-are not specified.
+Do not use the option C<-o allow_other> for B<MOUNT_FUSE_OVERLAYFS>,
+B<MOUNT_UNIONFS_FUSE>, B<MOUNT_FUNIONFS>, and B<MOUNT_SQUASHFUSE>
+as default if these variables are not specified.
 This overrides the setting of B<--user>.
 
 =item B<--locking>
@@ -1054,7 +1055,7 @@ see the remarks at the end of this manpage.)
 
 =item $obsolete_overlayfs = undef;  # no fallback: require >=kernel-3.15
 
-=item @order = qw(overlay? overlayfs? aufs! unionfs-fuse! unionfs??# funionfs??#);
+=item @order = qw(overlay? overlayfs? aufs! fuse-overlayfs! unionfs-fuse! unionfs??# funionfs??#);
 
 =item # The main task is to set B<@mounts>. Use one of
 
@@ -1399,7 +1400,7 @@ The content of this array should be strings with one of the texts
 
 =over 16
 
-=item B<overlay>, B<overlayfs>, B<aufs>, B<unionfs-fuse>, B<unionfs>, B<funionfs>, B<bind>
+=item B<overlay>, B<overlayfs>, B<aufs>, B<fuse-overlayfs>, B<unionfs-fuse>, B<unionfs>, B<funionfs>, B<bind>
 
 =back
 
@@ -1426,8 +1427,8 @@ in case of B<!!> the modprobe is not even attempted.
 In particular you should use this if it might happen (or you know) that the
 corresponding tool is compiled directly into the kernel.
 Note that B<overlayfs>, B<aufs>, B<unionfs> have their own kernel modules
-while B<unionfs-fuse> and B<funionfs> both require the B<fuse> module and
-need special user space binaries.
+while B<fuse-overlayfs>, B<unionfs-fuse> and B<funionfs> all require the
+B<fuse> module and need special user space binaries.
 
 =item B<?> or B<??>
 
@@ -1445,10 +1446,11 @@ B<??> variant is used, the tool is considered as unavailable.
 
 If this flag is used, it is checked whether the binary
 (B<mount> in case of B<overlay>, B<overlayfs>, B<aufs>, or B<unionfs>
-or the special user space binary for B<unionfs-fuse> or B<funionfs>,
-respectively) is available in your path. If it is unavailable, the tool is
-tacitly skipped. This flag is ignored if neither B<File::Which> nor the
-B<which> program are available.
+or the special user space binary for B<fuse-overlayfs>, B<unionfs-fuse>,
+or B<funionfs>, respectively) is available in your path.
+If it is unavailable, the tool is tacitly skipped.
+This flag is ignored if neither B<File::Which> nor the B<which> program are
+available.
 
 =back
 
@@ -1457,7 +1459,7 @@ If B<squashmount> is used with a command for which the order is possibly needed
 
 =over 16
 
-=item qw(overlay!? overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!)
+=item qw(overlay!? overlayfs!? aufs! fuse-overlayfs! unionfs-fuse! unionfs! funionfs!)
 
 =back
 
@@ -1714,6 +1716,13 @@ The default is B<['-o', 'noatime']>.
 This should be a (possibly empty) string or a reference to an array of strings:
 These strings are used as additional options when mounting with aufs.
 The default is B<['-o', 'noatime']>.
+
+=item B<MOUNT_FUSE_OVERLAYFS>
+
+This should be a (possibly empty) string or a reference to an array of strings:
+These strings are used as additional options when mounting with fuse-overlayfs.
+The default is B<['-o', 'allow_other', '-o', 'use_ino', '-o', 'nonempty',
+'-o', 'noatime']>.
 
 =item B<MOUNT_UNIONFS_FUSE>
 
@@ -2580,6 +2589,7 @@ my $titleopt = undef;
 
 my $title = undef;
 my $funionfs = undef;
+my $fuse_overlayfs = undef;
 my $unionfs_fuse = undef;
 my $squashfuse = undef;
 my $mksquashfs = undef;
@@ -3254,7 +3264,9 @@ sub mount_rw {
 		my $probemod = (($i =~ m{\!}) ? (($i =~ m{\!\!}) ? '' : -1) : 1);
 		my $check_bin = ($i =~ m{\#});
 		my $check_gz = (($i =~ m{\?}) ? (($i =~ m{\?\?}) ? -1 : 1) : '');
-		if ($i =~ m{overlayfs}i) {
+		if ($i =~ m{fuse}i && $i =~ m{over}i) {
+			return 'fuse-overlayfs' if (&mount_fuse_overlayfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes))
+		} elsif ($i =~ m{overlayfs}i) {
 			my $type = &mount_overlayfs($probemod, $check_gz, $check_bin, $ro, $rw, $changes);
 			return $type if ($type ne '')
 		} elsif ($i =~ m{overlay}i) {
@@ -3352,6 +3364,28 @@ sub mount_aufs {
 	return 1 if (&my_system('', \$mount, 'mount', '-t', 'aufs', @options,
 		'-o', "br\:${changes}\=rw\:${ro}\=rr", '--', 'aufs', $rw) == 0);
 	&warning('aufs failed') unless ($quiet > 1);
+	''
+}
+
+# Mount with fuse-overlayfs
+
+sub mount_fuse_overlayfs {
+	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
+	&push_ref(\my @options, $user_config->{'MOUNT_FUSE_OVERLAYFS'},
+		[@allow_other, '-o', 'use_ino', '-o', 'nonempty',
+		'-o', 'noatime']);
+	my $workdir = &create_workdir();
+	return '' if ($workdir eq '');
+	my $tool = 'fuse-overlayfs';
+	unless (&which_store(\$fuse_overlayfs, $tool)) {
+		return '' if ($check_bin)
+	}
+	return '' unless (&kernelprobe($probemod, $check_gz, 'fuse'));
+	return 1 if (&my_system('', \$fuse_overlayfs, $tool, @options,
+		'-o', "upperdir\=${changes}", '-o', "lowerdir\=${ro}",
+		'-o', "workdir\=${workdir}", # '--', # -- breaks fuse-overlayfs
+		$rw) == 0);
+	&warning('fuse-overlayfs failed') unless ($quiet > 1);
 	''
 }
 
@@ -4413,7 +4447,7 @@ sub is_workdir_type {
 sub is_fuse_type {
 	my $type  = (@_ ? $_[0] : $current->{'TYPE'});
 	return undef unless (&is_nonempty($type));
-	(($type eq 'unionfs-fuse') || ($type eq 'funionfs'))
+	(($type eq 'fuse-overlayfs') || ($type eq 'unionfs-fuse') || ($type eq 'funionfs'))
 }
 
 # Test if READONLY has valid type for fusermount;
@@ -5521,10 +5555,10 @@ my $action = (shift(@ARGV) // '');
 	$CFG::storing = $CFG::locking = !$run_ro;
 	if ($order_needed) {
 		if ($opt_user) {
-			@CFG::order = qw(unionfs-fuse!! funionfs!!);
+			@CFG::order = qw(fuse-overlayfs!! unionfs-fuse!! funionfs!!);
 			@CFG::squashorder = qw(squashfuse!!)
 		} else {
-			@CFG::order = qw(overlay!? overlayfs!? aufs! unionfs-fuse! unionfs! funionfs!);
+			@CFG::order = qw(overlay!? overlayfs!? aufs! fuse-overlayfs! unionfs-fuse! unionfs! funionfs!);
 			@CFG::squashorder = qw(squashfs!? squashfuse!)
 		}
 	}
