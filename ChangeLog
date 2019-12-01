@@ -1,5 +1,9 @@
 # ChangeLog for squashmount
 
+*squashmount-21.0.1:
+	Martin Väth <martin at mvath.de>:
+	- Clarify license
+
 *squashmount-21.0:
 	Martin Väth <martin at mvath.de>:
 	- Support https://github.com/containers/fuse-overlayfs

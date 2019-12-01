@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v21.0.0;
+package Squashmount v21.0.1;
 
 use strict;
 use warnings;
@@ -2523,7 +2523,7 @@ from the "portage" mount point to /srv/copy
 =head1 COPYRIGHT AND LICENSE
 
 Copyright Martin VE<auml>th.
-This program is under the BSD License.
+This project is under the BSD license 2.0 ("3-clause BSD license").
 
 =head1 AUTHOR
 

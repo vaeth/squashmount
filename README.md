@@ -2,8 +2,7 @@
 
 (C) Martin Väth (martin at mvath.de)
 
-This project is under a BSD type license, meaning that you can do practically
-everything with it except removing my name/copyright.
+This project is under the BSD license 2.0 (“3-clause BSD license”).
 
 Init and management script for mounting rewritable squashfs-compressed data
 
