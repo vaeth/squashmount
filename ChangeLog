@@ -1,5 +1,11 @@
 # ChangeLog for squashmount
 
+*squashmount-22.0:
+	Martin Väth <martin at mvath.de>:
+	- Introduce functions to handle rust libraries conveniently:
+	- Let standard_mount accept a reference to a dir array
+	- Introduce envlibs to return installed libraries as a dir array
+
 *squashmount-21.0.1:
 	Martin Väth <martin at mvath.de>:
 	- Clarify license

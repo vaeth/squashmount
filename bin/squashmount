@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 BEGIN { require 5.022 }
-package Squashmount v21.0.1;
+package Squashmount v22.0.0;
 
 use strict;
 use warnings;
@@ -510,7 +510,7 @@ You can avoid this effect by specfiying B<--squashorder>
 Since v18.0.0, the data stored in F</run/squashmount> contains information
 (device and inode) about the root directory. If that root directory has changed
 (e.g. because squashmount is called inside of a chroot), B<squashmount> will
-refuse to handle the corresponding mount point.
+refuse to handle the corresponding mount-point.
 With this option, one can take action anyway.
 There are two cases.
 
@@ -796,7 +796,7 @@ umounting unconditionally all configured directories.
 =item B<--lazy=>I<value> or B<-L> I<value>
 
 If this option is speified it overrides the setting of B<LAZY> for individual
-mount points as well as the setting of the fallback B<$lazy>.
+mount-points as well as the setting of the fallback B<$lazy>.
 
 B<value> must be one of the following:
 
@@ -820,7 +820,7 @@ Use B<-1> only if you know what you are doing.
 =item B<--lsof=>I<value> or B<-l> I<value>
 
 If this option is speified it overrides the setting of B<LSOF> for individual
-mount points as well as the setting of the fallback B<$lsof>.
+mount-points as well as the setting of the fallback B<$lsof>.
 
 B<value> must be one of the following:
 
@@ -848,7 +848,7 @@ Use B<-1> only if you know what you are doing!
 =item B<--lsof-ro=>I<value>
 
 If this option is speified it overrides the setting of B<LSOF_RO>
-for individual mount points as well as the setting of the fallback
+for individual mount-points as well as the setting of the fallback
 B<$lsof_ro>.
 
 It acts as B<--lsof>, but for the B<READONLY> directory.
@@ -1231,21 +1231,21 @@ Except for B<@mounts>, the meaning of the variables is easily explained:
 
 =item B<$lazy>
 
-This determines the default I<value> of B<--lazy> for those mount points
+This determines the default I<value> of B<--lazy> for those mount-points
 for which B<LAZY> is not defined.
 See the description of B<--lazy> for details.
 This variable defaults to the value B<1> (I<true>).
 
 =item B<$lsof>
 
-This determines the default I<value> of B<--lsof> for those mount points
+This determines the default I<value> of B<--lsof> for those mount-points
 for which B<LSOF> is not defined.
 See the description of B<--lsof> for details.
 This variable defaults to the value B<1>.
 
 =item B<$lsof_ro>
 
-This determines the default I<value> of B<--lsof-ro> for those mount points
+This determines the default I<value> of B<--lsof-ro> for those mount-points
 for which B<LSOF> is not defined.
 See the description of B<--lsof-ro> for details.
 This variable defaults to the value B<1>.
@@ -1807,20 +1807,20 @@ if you need compatibility with older versions of B<squashfs>.
 
 =item B<LAZY>
 
-This variable can be used to override the default B<$lazy> for the mount point.
+This variable can be used to override the default B<$lazy> for the mount-point.
 If the option B<--lazy> is specified, it overrides this value.
 See the description of B<--lazy> for the possible values and their meaning.
 
 =item B<LSOF>
 
-This variable can be used to override the default B<$lsof> for the mount point.
+This variable can be used to override the default B<$lsof> for the mount-point.
 If the option B<--lsof> is specified, it overrides this value.
 See the description of B<--lsof> for the possible values and their meaning.
 
 =item B<LSOF_RO>
 
 This variable can be used to override the default B<$lsof_ro> for the
-mount point.
+mount-point.
 If the option B<--lsof-ro> is specified, it overrides this value.
 See the description of B<--lsof-ro> for possible values and their meaning.
 
@@ -2037,6 +2037,25 @@ it does not replace the previous value but is added to it (provided that
 the previous value was a hash or array reference or a single string,
 respectively). Adding hash references to hash references works recursively.
 
+I<dir> can also be an array reference: This is equivalent to calling
+B<standard_mount> successively with each I<dir> value from the array;
+if the array contains more than one entry, the I<tag> value is modified
+by appending successibe numbers B<1>, B<2>, ... Alternatively,
+additionally I<tag> can be a reference to an array with two entries
+B<[>I<singletag>B<,> I<multitag>B<]>. If I<dir> refers to at most 1 directory
+(i.e. if I<dir> is a string or an arrray of length 1) then the first entry
+I<singletag> is used. Otherwise, B<sprintf(>I<multitag>, I<number>B<)> is used
+to generate a tag. Example:
+
+B<push(@mounts, standard_mount(["rust64", "rust%d_64"], [glob("/usr/lib64/rust*[0-9]")]))>
+
+will generate mount-points for all directories matching B</usr/lib64/rust*[0-9]>
+under the tags B<rust1_64>, B<rust2_64>, ... but if there is only one match,
+then it will use the tag B<rust64> instead. As a special case, if the array
+referred by I<dir> is empty (that is, if the B<glob> in the example returns
+nothing), then also B<standard_mount> returns the empty array (that is, the
+B<push> in the example does nothing).
+
 =item B<added_hash(>I<hashref>B<,> ...B<)>
 
 This function returns a reference to a hash which merges all hashes,
@@ -2049,10 +2068,27 @@ For perl specialists: This function is similar to the one provided
 by B<Hash::Merge::Simple>, but it does not require the existence of that
 perl module and can add arrays to strings.
 
+=item B<envlibs(>I<files>, I<prefix>B<)>
+
+This is a helper function which is mainly meant to be used for Gentoo systems.
+I<files> is a string or a reference to an array of strings. The function
+parses all ordinary files from I<files> and returns an array of every
+I<path> which occurs in these files in a line starting with
+B<LDPATH=">I<path>B<">. If I<prefix> is passed, it is prepended to all
+returned paths. Example:
+
+B<envlibs([glob("/etc/env.d/*rust-*")])>
+
+returns an array of all used rust libraries on a Gentoo system.
+To pass this array as a reference to B<standard_mount>, one can use:
+
+B<standard_mount('rust', [envlibs([glob("/etc/env.d/*rust-*")])])>
+
 =back
 
-Here is an example how to use this to specify the portage mount-point from
-the above example and additionally a "standard" mount-point (analogously
+Here is an example how to use B<standard_mount>
+to specify the portage mount-point from
+the first example and additionally a "standard" mount-point (analogously
 to the portage mount-point but with different paths and without the
 B<THRESHOLD> option) in a shorter way:
 
@@ -2352,7 +2388,7 @@ B<squashmount> executes its main task (specified by B<$command>), or
 before/after B<squashmount> is executes its main mount/umount command(s).
 
 Note that e.g. B<$before_mount> can be called several times successively
-for the same mount point if B<RESQUASH_ON_START> is true.
+for the same mount-point if B<RESQUASH_ON_START> is true.
 
 These functions are called with three parameters: The name of the mount-point
 (a string), a reference to the hash containing the "stored" data,
@@ -2482,7 +2518,7 @@ without calling B<squashmount stop> (or B<squashmount forget>) in between.
 
 Here is an example of the usage of some of the other hooks.
 In this example, the hooks are used to bind a copy of the mounted directory
-from the "portage" mount point to /srv/copy
+from the "portage" mount-point to /srv/copy
 
 =over 8
 
@@ -3921,6 +3957,7 @@ our @EXPORT = qw(
 	have_stored_data
 	standard_mount
 	added_hash
+	envlibs
 	fatal
 	error
 	errorinfo
@@ -4033,8 +4070,35 @@ sub added_hash(@) {
 sub standard_mount($$@) {
 	my $tag = shift();
 	my $dir = shift();
-	&fatal('first argument of standard_mount() should be a (nonempty) tag')
-		unless (defined($tag) && (ref(\$tag) eq 'SCALAR') && ($tag ne ''));
+	&fatal('first argument of standard_mount() must be a nonempty string or array')
+		unless (ref($tag) eq 'ARRAY'
+			|| (defined($tag) && (ref(\$tag) eq 'SCALAR') && ($tag ne '')));
+	if (ref($dir) eq 'ARRAY') {
+		return () if (@$dir == 0);
+		return (&standard_mount(ref($tag) eq 'ARRAY' ? $tag->[0] : $tag,
+			$dir->[0], @_)) if (@$dir == 1);
+		my $format = undef;
+		if (ref($tag) eq 'ARRAY') {
+			$format = $tag->[1];
+			&fatal('tag array in standard_mount must contain nonempty 2nd entry')
+				unless (defined($format)
+					&& ref(\$format) eq 'SCALAR'
+					&& $format ne '')
+		}
+		my @result = ();
+		my $count = 0;
+		for my $d (@$dir) {
+			++$count;
+			push(@result, &standard_mount(defined($format)
+				? sprintf($format, $count)
+				: $tag . $count,
+					$d, @_))
+		}
+		return @result
+	}
+	if (ref($tag) eq 'ARRAY') {
+		return (&standard_mount($tag->[0], $dir, @_))
+	}
 	# Checking for -d $dir might be wrong: the config might use
 	# this as a flag and not add the result to @mounts later on
 	&fatal('error: second argument of standard_mount() should be a directory')
@@ -4049,6 +4113,31 @@ sub standard_mount($$@) {
 		FILE => File::Spec->catfile($dir . '.mount',
 			((File::Spec->splitpath($dir))[2]) . '.sfs')
 	}, @_)
+}
+
+sub envlibs($@) {
+	my $dirs = shift();
+	my $prefix = shift() // '';
+	unless(ref($dirs) eq 'ARRAY') {
+		&fatal('first argument of envlibs() must be a string or array')
+			unless (defined($dirs) && (ref(\$dirs) eq 'SCALAR'));
+		$dirs = [$dirs]
+	}
+	my @result = ();
+	for my $file (@$dirs) {
+		next unless (-f $file);
+		my $fh;
+		if (open($fh, '<', $file)) {
+			while (my $line = <$fh>) {
+				if ($line =~ m{^LDPATH=\"([^\"]*)\"}) {
+					my $dir = $prefix . $1;
+					push(@result, $dir) if (-d $dir)
+				}
+			}
+		}
+		close($fh)
+	}
+	@result
 }
 
 sub calculate_inode() {

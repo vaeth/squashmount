@@ -336,7 +336,13 @@ my $git = { MKSQUASHFS => [
 		# Make sure to use the algorithm with best compression ratio,
 		# possibly overriding $defaults:
 		COMPRESSION => 'xz',
-	})
+	}),
+	# Generate a mount-point for every installed (according to the Gentoo
+	# configuration) rust library:
+	standard_mount('rust', [envlibs([glob('/etc/env.d/*rust-*')])],
+		$defaults, {
+		COMPRESSION => 'xz'
+	}),
 );
 
 
@@ -455,6 +461,5 @@ push(@mounts,  # append the following to @mounts:
 # now we finish the above push command, indicating that this push command
 # should be executed only if $custom is true:
 ) if ($custom);
-
 
 1;  # The last executed command in this file should be a true expression
