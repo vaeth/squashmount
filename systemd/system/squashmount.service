@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: BSD-3-Clause
 [Unit]
 Description=mount/umount all squashmount configured mount points
 After=local-fs.target systemd-tmpfiles-setup.service

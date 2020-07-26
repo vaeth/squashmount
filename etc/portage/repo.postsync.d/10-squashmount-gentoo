@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: BSD-3-Clause
 # This file remounts the squashmount mount-point "gentoo" after each syncing
 # of the "gentoo" repository.
 # Do not use this file if you want to use a mount-point named "gentoo" with

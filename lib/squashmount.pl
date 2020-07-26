@@ -1,4 +1,5 @@
 #!/usr/bin/perl (this is only for editors)
+# SPDX-License-Identifier: BSD-3-Clause
 
 # To use this file as e.g. /etc/squashmount.pl, copy it to that path and
 # remove this comment and the following "fatal()" command from the file

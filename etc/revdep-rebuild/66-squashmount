@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: BSD-3-Clause
 # The python variant of revdep-rebuild requires full paths and " "
 # On the other hand, it accecpts several SEARCH_DIR_MASK entries in one file
 SEARCH_DIRS_MASK="/*/*.mount/readonly"

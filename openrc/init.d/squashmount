@@ -1,5 +1,6 @@
 #!/sbin/openrc-run
-# (C) Martin V\"ath <martin@mvath.de>
+# (C) Martin V\"ath <martin at mvath.de>
+# SPDX-License-Identifier: BSD-3-Clause
 
 depend() {
 	need localmount tmpfiles.setup

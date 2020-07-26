@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+# SPDX-License-Identifier: BSD-3-Clause
 BEGIN { require 5.022 }
 package Squashmount v22.0.0;
 
