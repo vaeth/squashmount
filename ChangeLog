@@ -1,5 +1,12 @@
 # ChangeLog for squashmount
 
+*squashmount-22.1:
+	Martin Väth <martin at mvath.de>:
+	- Remove -o nonempty from MOUNT_FUSE_OVERLAYFS and MOUNT_SQUASHFUSE
+	  unless the new variable $mount_fuse_overlayfs_v3 or
+	  $mount_squashfuse_v3 is true, respectively, see
+	  https://github.com/vaeth/squashmount/issues/13
+
 *squashmount-22.0.1:
 	Martin Väth <martin at mvath.de>:
 	- Add SPDX-License-Identifier

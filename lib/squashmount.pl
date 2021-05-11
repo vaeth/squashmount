@@ -62,6 +62,12 @@ fatal('The file /etc/squashmount.pl is not yet set up!',
 # also want a fallback for older kernels.
 #$obsolete_overlayfs = 1;
 
+# Set $mount_fuse_overlayfs_v3 = 1 if fuse_overlayfs is compiled against fuse:3
+# $mount_fuse_overlayfs_v3 = 1;
+
+# Set $mount_squashfuse_v3 = 1 if sqashfuse is compiled against fuse:3
+# $mount_squashfuse_v3 = 1;
+
 # The following variables all default to 1 (true).
 # Uncomment the corresponding line if you want to have different defaults.
 # Normally, this is not needed.

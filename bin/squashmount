@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # SPDX-License-Identifier: BSD-3-Clause
 BEGIN { require 5.022 }
-package Squashmount v22.0.0;
+package Squashmount v22.1.0;
 
 use strict;
 use warnings;
@@ -1344,6 +1344,23 @@ B<RM_WORKDIR>, or B<RM_READONLY>, respectively, if the latter variables
 are not defined for a mount-point. The default of B<$rm_dir> is B<0>,
 the default of the other three variables is B<1>.
 
+=item B<$mount_fuse_overlayfs_v3>
+
+This variable determines whether the option B<'-o', 'nonempty'> is part of the
+default value B<MOUNT_FUSE_OVERLAYFS>.
+The default of this value is B<''> (false) which is the correct setting if
+B<sys-fs/unionfs-fuse> is compiled against B<sys-fs/fuse:3>.
+Set B<$mount_fause_overalyfs_v3 = 1> (true) if this is not the case.
+
+=item B<$mount_squashfuse_v3>
+
+This variable determines whether the option B<'-o', 'nonempty'> is part of the
+default value B<MOUNT_SQUASHFUSE>.
+The default of this value is B<''> (false) which is the correct setting if
+B<sys-fs/squashfuse> is compiled against B<sys-fs/fuse:3> (for instance,
+for B<E<gt>=sys-fs/unionfs-fuse-0.1.104> from the mv overlay).
+Set B<$mount_fause_overalyfs_v3 = 1> (true) if this is not the case.
+
 =item B<$mksquash_verbose>
 
 This is the default string if B<--squash-verbose> is not specified.
@@ -1722,8 +1739,9 @@ The default is B<['-o', 'noatime']>.
 
 This should be a (possibly empty) string or a reference to an array of strings:
 These strings are used as additional options when mounting with fuse-overlayfs.
-The default is B<['-o', 'allow_other', '-o', 'use_ino', '-o', 'nonempty',
-'-o', 'noatime']>.
+The default is B<['-o', 'allow_other', '-o', 'use_ino', '-o', 'noatime']>;
+if B<$mount_fuse_overlayfs_v3> is true, also B<['-o', 'nonempty']> is
+added to the default.
 
 =item B<MOUNT_UNIONFS_FUSE>
 
@@ -1748,7 +1766,8 @@ The default is B<['-o', 'allow_other', '-o', 'nonempty']>.
 
 This should be a (possibly empty) string or a reference to an array of strings:
 These strings are used as additional options when mounting with squashfuse.
-The default is B<['-o', 'allow_other', '-o', 'nonempty']>.
+The default is B<['-o', 'allow_other']>; if B<$mount_squashfuse_v3> is
+true, also B<['-o', 'nonempty']> is added to the default.
 
 =item B<UMOUNT>
 
@@ -2650,6 +2669,8 @@ my $rm_dir;
 my $rm_changes;
 my $rm_workdir;
 my $rm_readonly;
+my $mount_fuse_overlayfs_v3;
+my $mount_squashfuse_v3;
 my $lockfh = undef;
 my $stdoutterm = ((-t STDOUT) // '');  # whether stdout is a terminal
 my $stderrterm = undef;    # whether stderr is a terminal
@@ -3409,8 +3430,8 @@ sub mount_aufs {
 sub mount_fuse_overlayfs {
 	my ($probemod, $check_gz, $check_bin, $ro, $rw, $changes) = @_;
 	&push_ref(\my @options, $user_config->{'MOUNT_FUSE_OVERLAYFS'},
-		[@allow_other, '-o', 'use_ino', '-o', 'nonempty',
-		'-o', 'noatime']);
+		[@allow_other, '-o', 'use_ino', '-o', 'noatime',
+		$mount_fuse_overlayfs_v3 ? ('-o', 'nonempty') : ()]);
 	my $workdir = &create_workdir();
 	return '' if ($workdir eq '');
 	my $tool = 'fuse-overlayfs';
@@ -3541,7 +3562,8 @@ sub mount_squashfs {
 sub mount_squashfuse {
 	my ($probemod, $check_gz, $check_bin, $squashfile, $dir) = @_;
 	&push_ref(\my @options, $user_config->{'MOUNT_SQUASHFUSE'},
-		[@allow_other, '-o', 'nonempty']);
+		[@allow_other,
+		$mount_squashfuse_v3 ? ('-o', 'nonempty') : ()]);
 	push(@options,
 		# '--',  # squashfuse does not support '--'
 		$squashfile, $dir);
@@ -3934,6 +3956,8 @@ sub kernelprobe {
 	our $rm_changes = 1;
 	our $rm_workdir = 1;
 	our $rm_readonly = 1;
+	our $mount_fuse_overlayfs_v3 = '';
+	our $mount_squashfuse_v3 = '';
 	our $locking = undef;
 	our $tar2sqfs = undef;
 	our $obsolete_overlayfs = '';
@@ -5698,6 +5722,8 @@ $rm_dir = $CFG::rm_dir;
 $rm_changes = $CFG::rm_changes;
 $rm_workdir = $CFG::rm_workdir;
 $rm_readonly = $CFG::rm_readonly;
+$mount_fuse_overlayfs_v3 = $CFG::mount_fuse_overlayfs_v3;
+$mount_squashfuse_v3 = $CFG::mount_squashfuse_v3;
 &fatal('Obsolete $squash_verbose is set in the configuration.',
 'Do not define $squash_verbose; set $mksquash_verbose instead.')
 	if (defined($CFG::squash_verbose));
