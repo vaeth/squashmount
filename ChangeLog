@@ -1,5 +1,15 @@
 # ChangeLog for squashmount
 
+*squashmount-22.3:
+	Martin Väth <martin at mvath.de>:
+	- Adapt -quiet option parsing to squashfs-tools-4.7
+
+*squashmount-22.2:
+	Martin Väth <martin at mvath.de>:
+	- Add PrivateMounts=false to systemd unit; thanks to
+	  Jānis Šmēdiņš (https://github.com/Astro-Johnny) for investigating:
+	  https://github.com/vaeth/squashmount/issues/14
+
 *squashmount-22.1:
 	Martin Väth <martin at mvath.de>:
 	- Remove -o nonempty from MOUNT_FUSE_OVERLAYFS and MOUNT_SQUASHFUSE

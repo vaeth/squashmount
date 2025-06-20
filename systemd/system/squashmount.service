@@ -10,6 +10,7 @@ TimeoutStopSec=1800
 Type=oneshot
 MemoryDenyWriteExecute=true
 NoNewPrivileges=true
+PrivateMounts=false
 PrivateNetwork=true
 RemainAfterExit=true
 ExecStart=/usr/bin/squashmount start

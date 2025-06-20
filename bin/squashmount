@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # SPDX-License-Identifier: BSD-3-Clause
 BEGIN { require 5.022 }
-package Squashmount v22.1.0;
+package Squashmount v22.3.0;
 
 use strict;
 use warnings;
@@ -3761,7 +3761,7 @@ sub set_know_quiet {
 	$know_quiet = '';
 	open(my $fh, 'mksquashfs 2>&1 |') || return;
 	while(<$fh>) {
-		$know_quiet = 1 if (m{\-quiet})
+		$know_quiet = 1 if (m{\-quiet} || m{\-help\-section})
 	}
 	close($fh)
 }
